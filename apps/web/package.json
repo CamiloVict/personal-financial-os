@@ -1,0 +1,35 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@personal-finance-os/database": "workspace:*",
+    "@personal-finance-os/types": "workspace:*",
+    "@personal-finance-os/validation": "workspace:*",
+    "@tanstack/react-query": "^5.96.2",
+    "@tanstack/react-query-devtools": "^5.96.2",
+    "lucide-react": "^1.7.0",
+    "next": "^14.2.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^3.8.1",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@personal-finance-os/config": "workspace:*",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^20.12.7",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.4.5"
+  }
+}

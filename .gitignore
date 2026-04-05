@@ -16,16 +16,12 @@ lib/
 # Turborepo
 .turbo
 
-# Environment variables
+# Environment variables (no uses *.env*: ocultaría .env.example)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-*.env*
-
-# Ignore example env specifically only if you intend to hide it (typically .env.example should NOT be ignored)
-# !.env.example
 
 # Local database/data files (JSON local dev)
 apps/api/data/
