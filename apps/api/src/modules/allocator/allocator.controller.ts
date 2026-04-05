@@ -1,4 +1,5 @@
-import { Controller, Post, Param, Body } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
+import { DbUserId } from '../../auth/db-user.decorator';
 import { AllocatorService } from './allocator.service';
 import { AllocatorInput, AllocatorResult } from './allocator.contracts';
 
@@ -6,10 +7,10 @@ import { AllocatorInput, AllocatorResult } from './allocator.contracts';
 export class AllocatorController {
   constructor(private readonly allocatorService: AllocatorService) {}
 
-  @Post('plan/:userId')
+  @Post('plan')
   async generatePlan(
-    @Param('userId') userId: string,
-    @Body() input: AllocatorInput
+    @DbUserId() userId: string,
+    @Body() input: AllocatorInput,
   ): Promise<AllocatorResult> {
     return this.allocatorService.generateAllocationPlan(userId, input.availableCapital);
   }

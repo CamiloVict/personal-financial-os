@@ -11,7 +11,8 @@
     "db:setup": "bash scripts/setup-database.sh",
     "db:migrate": "pnpm --filter @personal-finance-os/database exec prisma migrate deploy",
     "db:seed": "pnpm --filter @personal-finance-os/database exec prisma db seed",
-    "db:studio": "pnpm --filter @personal-finance-os/database exec prisma studio"
+    "db:studio": "pnpm --filter @personal-finance-os/database exec prisma studio",
+    "deploy:fly": "fly deploy"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

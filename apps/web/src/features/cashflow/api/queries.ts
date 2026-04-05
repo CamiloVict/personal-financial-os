@@ -2,66 +2,63 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
 
-export function useCashflowStreams(userId: string) {
+export function useCashflowStreams() {
   return useQuery({
-    queryKey: queryKeys.cashflow.streams(userId),
-    queryFn: () => apiClient.getForUser<any[]>('/cashflow/streams', userId),
-    enabled: !!userId,
+    queryKey: queryKeys.cashflow.streams(),
+    queryFn: () => apiClient.get<any[]>('/cashflow/streams'),
   });
 }
 
-export function useCashflowAnalytics(userId: string) {
+export function useCashflowAnalytics() {
   return useQuery({
-    queryKey: queryKeys.cashflow.analytics(userId),
-    queryFn: () => apiClient.get<any>(`/analytics/cashflow/${userId}`),
-    enabled: !!userId,
+    queryKey: queryKeys.cashflow.analytics(),
+    queryFn: () => apiClient.get<any>('/analytics/cashflow'),
   });
 }
 
-export function useCategories(userId: string) {
+export function useCategories() {
   return useQuery({
-    queryKey: queryKeys.categories.forUser(userId),
-    queryFn: () => apiClient.getForUser<any[]>('/categories', userId),
-    enabled: !!userId,
+    queryKey: queryKeys.categories.forUser(),
+    queryFn: () => apiClient.get<any[]>('/categories'),
   });
 }
 
-export function useCreateCashflowStream(userId: string) {
+export function useCreateCashflowStream() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (newStream: Record<string, unknown>) =>
       apiClient.post('/cashflow/streams', newStream),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams(userId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics() });
     },
   });
 }
 
-export function useDeleteCashflowStream(userId: string) {
+export function useDeleteCashflowStream() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/cashflow/streams/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams(userId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics() });
     },
   });
 }
 
-export function useCreateCashflowEvent(userId: string) {
+export function useCreateCashflowEvent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (newEvent: { streamId: string } & Record<string, unknown>) =>
       apiClient.post(`/cashflow/streams/${newEvent.streamId}/events`, newEvent),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams(userId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics() });
     },
   });
 }
 
-export function useSeedCategories(userId: string) {
+export function useSeedCategories() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
@@ -74,11 +71,11 @@ export function useSeedCategories(userId: string) {
         { name: 'Entretenimiento', type: 'EXPENSE' },
       ];
       for (const cat of defaults) {
-        await apiClient.post('/categories', { ...cat, userId });
+        await apiClient.post('/categories', cat);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.categories.forUser(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.forUser() });
     },
   });
 }

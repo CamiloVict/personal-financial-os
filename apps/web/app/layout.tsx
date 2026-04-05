@@ -6,6 +6,7 @@ import Providers from "./providers";
 import Link from 'next/link';
 import { Home, PieChart, Target, Landmark, Banknote, Network, Sparkles, Scale, HelpCircle } from 'lucide-react';
 import { DevSessionBar } from '@/shared/ui/DevSessionBar';
+import { NavAuth } from '@/shared/ui/NavAuth';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,8 +28,8 @@ export default function RootLayout({
           {/* Minimalist Top Navigation */}
           <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between h-14">
-                <div className="flex space-x-1 sm:space-x-4 overflow-x-auto no-scrollbar items-center">
+              <div className="flex justify-between h-14 gap-2">
+                <div className="flex space-x-1 sm:space-x-4 overflow-x-auto no-scrollbar items-center min-w-0">
                   <Link href="/" className="flex items-center px-3 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors">
                     <Home className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Dashboard</span>
                   </Link>
@@ -54,6 +55,7 @@ export default function RootLayout({
                     <Sparkles className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Simulador</span>
                   </Link>
                 </div>
+                <NavAuth />
               </div>
             </div>
           </nav>

@@ -1,22 +1,23 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
+import { DbUserId } from '../../auth/db-user.decorator';
 import { AnalyticsService } from './analytics.service';
 
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  @Get('cashflow/:userId')
-  getCashflowAnalytics(@Param('userId') userId: string) {
+  @Get('cashflow')
+  getCashflowAnalytics(@DbUserId() userId: string) {
     return this.analyticsService.getCashflowDistribution(userId);
   }
 
-  @Get('net-worth/:userId')
-  getNetWorthAnalytics(@Param('userId') userId: string) {
+  @Get('net-worth')
+  getNetWorthAnalytics(@DbUserId() userId: string) {
     return this.analyticsService.getNetWorthAnalytics(userId);
   }
 
-  @Get('tax/:userId')
-  getTaxAnalytics(@Param('userId') userId: string) {
+  @Get('tax')
+  getTaxAnalytics(@DbUserId() userId: string) {
     return this.analyticsService.getTaxAnalytics(userId);
   }
 }

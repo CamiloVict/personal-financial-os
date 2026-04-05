@@ -2,21 +2,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
 import { allocatorQueryKeys } from './query-keys';
 
-export function useAllocatorPlan(userId: string) {
+export function useAllocatorPlan() {
   return useQuery({
-    queryKey: allocatorQueryKeys.plan(userId),
-    queryFn: () => apiClient.get<any>(`/allocator/plan/${userId}`),
-    enabled: false, // Don't fetch automatically, wait for manual trigger with available capital
+    queryKey: allocatorQueryKeys.plan(),
+    queryFn: async () => null,
+    enabled: false,
   });
 }
 
-export function useGenerateAllocatorPlan(userId: string) {
+export function useGenerateAllocatorPlan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (availableCapital: number) => 
-      apiClient.post(`/allocator/plan/${userId}`, { userId, availableCapital }),
+    mutationFn: (availableCapital: number) =>
+      apiClient.post('/allocator/plan', { availableCapital }),
     onSuccess: (data) => {
-      queryClient.setQueryData(allocatorQueryKeys.plan(userId), data);
-    }
+      queryClient.setQueryData(allocatorQueryKeys.plan(), data);
+    },
   });
 }

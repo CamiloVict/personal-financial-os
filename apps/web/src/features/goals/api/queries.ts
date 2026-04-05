@@ -2,11 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
 
-export function useGoals(userId: string) {
+export function useGoals() {
   return useQuery({
-    queryKey: queryKeys.goals.list(userId),
-    queryFn: () => apiClient.getForUser<any[]>('/goals', userId),
-    enabled: !!userId,
+    queryKey: queryKeys.goals.list(),
+    queryFn: () => apiClient.get<any[]>('/goals'),
   });
 }
 
@@ -18,12 +17,12 @@ export function useGoalRecommendations(id: string) {
   });
 }
 
-export function useCreateGoal(userId: string) {
+export function useCreateGoal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (newGoal: Record<string, unknown>) => apiClient.post('/goals', newGoal),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.goals.list(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.list() });
     },
   });
 }

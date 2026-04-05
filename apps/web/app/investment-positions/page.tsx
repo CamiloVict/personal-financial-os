@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { PieChart as PieChartIcon, Activity } from 'lucide-react';
-import { useGlobalStore } from '@/shared/store/global';
 import { 
   useInvestmentPositions, 
   useInvestmentTypes, 
@@ -18,14 +17,12 @@ import {
 } from '@/features/investments/components';
 
 export default function InvestmentPositionsPage() {
-  const { currentUserId } = useGlobalStore();
-  
-  const { data: positions = [], isLoading: isLoadingPos } = useInvestmentPositions(currentUserId);
-  const { data: types = [], isLoading: isLoadingTypes } = useInvestmentTypes(currentUserId);
-  
-  const createPositionMutation = useCreateInvestmentPosition(currentUserId);
-  const deletePositionMutation = useDeleteInvestmentPosition(currentUserId);
-  const createEventMutation = useCreateInvestmentEvent(currentUserId);
+  const { data: positions = [], isLoading: isLoadingPos } = useInvestmentPositions();
+  const { data: types = [], isLoading: isLoadingTypes } = useInvestmentTypes();
+
+  const createPositionMutation = useCreateInvestmentPosition();
+  const deletePositionMutation = useDeleteInvestmentPosition();
+  const createEventMutation = useCreateInvestmentEvent();
 
   const loading = isLoadingPos || isLoadingTypes;
 
@@ -52,7 +49,6 @@ export default function InvestmentPositionsPage() {
     const parsedDate = startDate ? new Date(startDate).toISOString() : new Date().toISOString();
     
     createPositionMutation.mutate({
-      userId: currentUserId,
       typeId,
       name,
       startDate: parsedDate,

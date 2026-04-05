@@ -1,30 +1,32 @@
+import { ME_SCOPE } from './query-scope';
+
 export const queryKeys = {
   cashflow: {
     all: ['cashflow'] as const,
-    streams: (userId: string) => [...queryKeys.cashflow.all, 'streams', userId] as const,
-    analytics: (userId: string) => [...queryKeys.cashflow.all, 'analytics', userId] as const,
+    streams: () => [...queryKeys.cashflow.all, 'streams', ME_SCOPE] as const,
+    analytics: () => [...queryKeys.cashflow.all, 'analytics', ME_SCOPE] as const,
   },
   categories: {
     all: ['categories'] as const,
-    forUser: (userId: string) => [...queryKeys.categories.all, userId] as const,
+    forUser: () => [...queryKeys.categories.all, ME_SCOPE] as const,
   },
   investments: {
     all: ['investments'] as const,
-    types: (userId: string) => [...queryKeys.investments.all, 'types', userId] as const,
-    positions: (userId: string) => [...queryKeys.investments.all, 'positions', userId] as const,
+    types: () => [...queryKeys.investments.all, 'types', ME_SCOPE] as const,
+    positions: () => [...queryKeys.investments.all, 'positions', ME_SCOPE] as const,
   },
   goals: {
     all: ['goals'] as const,
-    list: (userId: string) => [...queryKeys.goals.all, 'list', userId] as const,
+    list: () => [...queryKeys.goals.all, 'list', ME_SCOPE] as const,
     detail: (id: string) => [...queryKeys.goals.all, 'detail', id] as const,
     recommendations: (id: string) =>
       [...queryKeys.goals.detail(id), 'recommendations'] as const,
   },
   tax: {
     all: ['tax'] as const,
-    profile: (userId: string) => [...queryKeys.tax.all, 'profile', userId] as const,
-    classifications: (userId: string) => [...queryKeys.tax.all, 'classifications', userId] as const,
-    plan: (userId: string) => [...queryKeys.tax.all, 'plan', userId] as const,
-    analytics: (userId: string) => [...queryKeys.tax.all, 'analytics', userId] as const,
+    profile: () => [...queryKeys.tax.all, 'profile', ME_SCOPE] as const,
+    classifications: () => [...queryKeys.tax.all, 'classifications', ME_SCOPE] as const,
+    plan: () => [...queryKeys.tax.all, 'plan', ME_SCOPE] as const,
+    analytics: () => [...queryKeys.tax.all, 'analytics', ME_SCOPE] as const,
   },
 };

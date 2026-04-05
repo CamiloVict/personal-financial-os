@@ -1,4 +1,6 @@
+import { ME_SCOPE } from '../../../shared/api/query-scope';
+
 export const allocatorQueryKeys = {
   all: ['allocator'] as const,
-  plan: (userId: string) => [...allocatorQueryKeys.all, 'plan', userId] as const,
+  plan: () => [...allocatorQueryKeys.all, 'plan', ME_SCOPE] as const,
 };

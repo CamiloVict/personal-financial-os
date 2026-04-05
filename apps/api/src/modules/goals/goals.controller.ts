@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { DbUserId } from '../../auth/db-user.decorator';
 import { GoalsService } from './goals.service';
 
 @Controller('goals')
@@ -6,13 +7,13 @@ export class GoalsController {
   constructor(private readonly goalsService: GoalsService) {}
 
   @Get()
-  getGoals(@Query('userId') userId?: string) {
+  getGoals(@DbUserId() userId: string) {
     return this.goalsService.findAllGoals(userId);
   }
 
   @Post()
-  createGoal(@Body() body: any) {
-    return this.goalsService.createGoal(body);
+  createGoal(@DbUserId() userId: string, @Body() body: Record<string, unknown>) {
+    return this.goalsService.createGoal({ ...body, userId });
   }
 
   @Get(':id/recommendations')

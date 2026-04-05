@@ -1,6 +1,7 @@
 export interface AllocatorInput {
-  userId: string;
-  availableCapital: number; // The amount of money the user has available to allocate
+  /** Ignored by the API; usuario viene del token. Opcional por compatibilidad con clientes antiguos. */
+  userId?: string;
+  availableCapital: number;
 }
 
 export interface AllocationRecommendation {

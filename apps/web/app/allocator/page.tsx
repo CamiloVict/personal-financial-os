@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useGlobalStore } from '@/shared/store/global';
 import { useGenerateAllocatorPlan } from '@/features/allocator/api/queries';
 import type { AllocatorPlan } from '@/features/allocator/types';
 import {
@@ -11,8 +10,7 @@ import {
 } from '@/features/allocator/components';
 
 export default function AllocatorPage() {
-  const { currentUserId } = useGlobalStore();
-  const generatePlanMutation = useGenerateAllocatorPlan(currentUserId);
+  const generatePlanMutation = useGenerateAllocatorPlan();
 
   const [availableCapital, setAvailableCapital] = useState('');
   const [plan, setPlan] = useState<AllocatorPlan | null>(null);

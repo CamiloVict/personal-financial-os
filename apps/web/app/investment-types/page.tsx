@@ -1,15 +1,13 @@
 'use client';
 import React, { useState } from 'react';
 import { Settings } from 'lucide-react';
-import { useGlobalStore } from '@/shared/store/global';
 import { useInvestmentTypes, useCreateInvestmentType, useDeleteInvestmentType } from '@/features/investments/api/queries';
 import { TypeForm, TypeList } from '@/features/investments/components';
 
 export default function InvestmentTypesPage() {
-  const { currentUserId } = useGlobalStore();
-  const { data: types = [], isLoading } = useInvestmentTypes(currentUserId);
-  const createTypeMutation = useCreateInvestmentType(currentUserId);
-  const deleteTypeMutation = useDeleteInvestmentType(currentUserId);
+  const { data: types = [], isLoading } = useInvestmentTypes();
+  const createTypeMutation = useCreateInvestmentType();
+  const deleteTypeMutation = useDeleteInvestmentType();
 
   // Form state
   const [name, setName] = useState('');

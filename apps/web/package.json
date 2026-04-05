@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.0.8",
     "@personal-finance-os/database": "workspace:*",
     "@personal-finance-os/types": "workspace:*",
     "@personal-finance-os/validation": "workspace:*",

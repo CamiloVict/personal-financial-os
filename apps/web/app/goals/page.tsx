@@ -1,14 +1,12 @@
 'use client';
 import React, { useState } from 'react';
 import { Target } from 'lucide-react';
-import { useGlobalStore } from '@/shared/store/global';
 import { useGoals, useCreateGoal } from '@/features/goals/api/queries';
 import { GoalForm, GoalList } from '@/features/goals/components';
 
 export default function GoalsPage() {
-  const { currentUserId } = useGlobalStore();
-  const { data: goals = [], isLoading } = useGoals(currentUserId);
-  const createGoalMutation = useCreateGoal(currentUserId);
+  const { data: goals = [], isLoading } = useGoals();
+  const createGoalMutation = useCreateGoal();
 
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState<string>('');
@@ -18,7 +16,6 @@ export default function GoalsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createGoalMutation.mutate({
-      userId: currentUserId,
       name,
       targetAmount: Number(targetAmount) || 0,
       currentAmount: Number(currentAmount) || 0,

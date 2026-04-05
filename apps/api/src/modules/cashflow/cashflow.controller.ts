@@ -1,34 +1,33 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
+import { DbUserId } from '../../auth/db-user.decorator';
 import { CashflowService } from './cashflow.service';
 
 @Controller()
 export class CashflowController {
   constructor(private readonly cashflowService: CashflowService) {}
 
-  // --- CATEGORIES ---
   @Get('categories')
-  getCategories(@Query('userId') userId?: string) {
+  getCategories(@DbUserId() userId: string) {
     return this.cashflowService.getCategories(userId);
   }
 
   @Post('categories')
-  createCategory(@Body() body: any) {
-    return this.cashflowService.createCategory(body);
+  createCategory(@DbUserId() userId: string, @Body() body: Record<string, unknown>) {
+    return this.cashflowService.createCategory({ ...body, userId });
   }
 
-  // --- CASHFLOW STREAMS ---
   @Get('cashflow/streams')
-  getCashflowStreams(@Query('userId') userId?: string) {
+  getCashflowStreams(@DbUserId() userId: string) {
     return this.cashflowService.getStreams(userId);
   }
 
   @Post('cashflow/streams')
-  createCashflowStream(@Body() body: any) {
-    return this.cashflowService.createStream(body);
+  createCashflowStream(@DbUserId() userId: string, @Body() body: Record<string, unknown>) {
+    return this.cashflowService.createStream({ ...body, userId });
   }
 
   @Put('cashflow/streams/:id')
-  updateCashflowStream(@Param('id') id: string, @Body() body: any) {
+  updateCashflowStream(@Param('id') id: string, @Body() body: Record<string, unknown>) {
     return this.cashflowService.updateStream(id, body);
   }
 
@@ -37,14 +36,13 @@ export class CashflowController {
     return this.cashflowService.deleteStream(id);
   }
 
-  // --- CASHFLOW EVENTS ---
   @Get('cashflow/streams/:id/events')
   getCashflowEvents(@Param('id') streamId: string) {
     return this.cashflowService.getEvents(streamId);
   }
 
   @Post('cashflow/streams/:id/events')
-  createCashflowEvent(@Param('id') streamId: string, @Body() body: any) {
+  createCashflowEvent(@Param('id') streamId: string, @Body() body: Record<string, unknown>) {
     return this.cashflowService.createEvent(streamId, body);
   }
 }

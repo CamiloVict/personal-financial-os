@@ -1,4 +1,4 @@
-/** Respuesta de GET /debts/leverage-analysis/:userId (subset usado en UI) */
+/** Respuesta de GET /debts/leverage-analysis (usuario autenticado) */
 export interface LeverageAnalysis {
   totalDebt: number;
   badDebtTotal: number;

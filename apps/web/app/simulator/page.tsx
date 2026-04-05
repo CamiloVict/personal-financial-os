@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useGlobalStore } from '@/shared/store/global';
 import {
   useSimulatePropertyPurchase,
   useSimulateDebtVsInvest,
@@ -24,13 +23,11 @@ import {
 } from '@/features/simulator/components';
 
 export default function SimulatorPage() {
-  const { currentUserId } = useGlobalStore();
-
-  const simProperty = useSimulatePropertyPurchase(currentUserId);
-  const simDebt = useSimulateDebtVsInvest(currentUserId);
-  const simTax = useSimulateTaxAdvantaged(currentUserId);
-  const simBusiness = useSimulateBusiness(currentUserId);
-  const simCustom = useSimulateCustom(currentUserId);
+  const simProperty = useSimulatePropertyPurchase();
+  const simDebt = useSimulateDebtVsInvest();
+  const simTax = useSimulateTaxAdvantaged();
+  const simBusiness = useSimulateBusiness();
+  const simCustom = useSimulateCustom();
 
   const [activeScenario, setActiveScenario] = useState<ScenarioType>('PROPERTY');
   const [result, setResult] = useState<SimulationResult | null>(null);

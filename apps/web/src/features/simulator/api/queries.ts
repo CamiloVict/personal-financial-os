@@ -49,43 +49,41 @@ export interface SimulateCustomInput {
   yearsToSimulate: number;
 }
 
-// Hooks
-
-export function useSimulatePropertyPurchase(userId: string) {
+export function useSimulatePropertyPurchase() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: SimulatePropertyPurchaseInput) =>
-      apiClient.post<SimulationResult>(`/simulator/what-if/property/${userId}`, input),
+      apiClient.post<SimulationResult>('/simulator/what-if/property', input),
     onSuccess: (data) => {
-      queryClient.setQueryData(simulatorQueryKeys.whatIfProperty(userId), data);
-    }
+      queryClient.setQueryData(simulatorQueryKeys.whatIfProperty(), data);
+    },
   });
 }
 
-export function useSimulateDebtVsInvest(userId: string) {
+export function useSimulateDebtVsInvest() {
   return useMutation({
     mutationFn: (input: SimulateDebtVsInvestInput) =>
-      apiClient.post<SimulationResult>(`/simulator/what-if/debt-vs-invest/${userId}`, input),
+      apiClient.post<SimulationResult>('/simulator/what-if/debt-vs-invest', input),
   });
 }
 
-export function useSimulateTaxAdvantaged(userId: string) {
+export function useSimulateTaxAdvantaged() {
   return useMutation({
     mutationFn: (input: SimulateTaxAdvantagedInput) =>
-      apiClient.post<SimulationResult>(`/simulator/what-if/tax-advantaged/${userId}`, input),
+      apiClient.post<SimulationResult>('/simulator/what-if/tax-advantaged', input),
   });
 }
 
-export function useSimulateBusiness(userId: string) {
+export function useSimulateBusiness() {
   return useMutation({
     mutationFn: (input: SimulateBusinessInput) =>
-      apiClient.post<SimulationResult>(`/simulator/what-if/business/${userId}`, input),
+      apiClient.post<SimulationResult>('/simulator/what-if/business', input),
   });
 }
 
-export function useSimulateCustom(userId: string) {
+export function useSimulateCustom() {
   return useMutation({
     mutationFn: (input: SimulateCustomInput) =>
-      apiClient.post<SimulationResult>(`/simulator/what-if/custom/${userId}`, input),
+      apiClient.post<SimulationResult>('/simulator/what-if/custom', input),
   });
 }

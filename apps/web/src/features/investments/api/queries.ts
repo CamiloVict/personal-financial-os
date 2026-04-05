@@ -2,65 +2,63 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
 
-export function useInvestmentTypes(userId: string) {
+export function useInvestmentTypes() {
   return useQuery({
-    queryKey: queryKeys.investments.types(userId),
-    queryFn: () => apiClient.getForUser<any[]>('/investments/types', userId),
-    enabled: !!userId,
+    queryKey: queryKeys.investments.types(),
+    queryFn: () => apiClient.get<any[]>('/investments/types'),
   });
 }
 
-export function useCreateInvestmentType(userId: string) {
+export function useCreateInvestmentType() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (newType: Record<string, unknown>) =>
-      apiClient.post('/investments/types', { ...newType, userId }),
+      apiClient.post('/investments/types', newType),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.investments.types(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments.types() });
     },
   });
 }
 
-export function useDeleteInvestmentType(userId: string) {
+export function useDeleteInvestmentType() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/investments/types/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.investments.types(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments.types() });
     },
   });
 }
 
-export function useInvestmentPositions(userId: string) {
+export function useInvestmentPositions() {
   return useQuery({
-    queryKey: queryKeys.investments.positions(userId),
-    queryFn: () => apiClient.getForUser<any[]>('/investments/positions', userId),
-    enabled: !!userId,
+    queryKey: queryKeys.investments.positions(),
+    queryFn: () => apiClient.get<any[]>('/investments/positions'),
   });
 }
 
-export function useCreateInvestmentPosition(userId: string) {
+export function useCreateInvestmentPosition() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (newPos: Record<string, unknown>) =>
       apiClient.post('/investments/positions', newPos),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
     },
   });
 }
 
-export function useDeleteInvestmentPosition(userId: string) {
+export function useDeleteInvestmentPosition() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => apiClient.delete(`/investments/positions/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
     },
   });
 }
 
-export function useCreateInvestmentEvent(userId: string) {
+export function useCreateInvestmentEvent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (newEvent: { investmentId: string } & Record<string, unknown>) =>
@@ -69,7 +67,7 @@ export function useCreateInvestmentEvent(userId: string) {
         newEvent,
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions(userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
     },
   });
 }

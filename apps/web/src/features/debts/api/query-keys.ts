@@ -1,4 +1,6 @@
+import { ME_SCOPE } from '../../../shared/api/query-scope';
+
 export const debtsQueryKeys = {
   all: ['debts'] as const,
-  leverageAnalysis: (userId: string) => [...debtsQueryKeys.all, 'leverageAnalysis', userId] as const,
+  leverageAnalysis: () => [...debtsQueryKeys.all, 'leverageAnalysis', ME_SCOPE] as const,
 };

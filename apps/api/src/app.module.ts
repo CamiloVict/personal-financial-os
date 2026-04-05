@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 
 // Modules
 import { PrismaModule } from './infrastructure/database/prisma.module';
@@ -15,6 +18,7 @@ import { DebtsModule } from './modules/debts/debts.module';
 
 @Module({
   imports: [
+    AuthModule,
     PrismaModule,
     CashflowModule,
     InvestmentsModule,
@@ -26,6 +30,9 @@ import { DebtsModule } from './modules/debts/debts.module';
     DebtsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ClerkAuthGuard },
+  ],
 })
 export class AppModule {}

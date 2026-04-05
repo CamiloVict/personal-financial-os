@@ -1,9 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Banknote } from 'lucide-react';
 
-import { useGlobalStore } from '@/shared/store/global';
 import {
   useCategories,
   useCashflowStreams,
@@ -23,19 +21,14 @@ import {
 } from '@/features/cashflow/components';
 
 export default function CashflowPage() {
-  const { currentUserId } = useGlobalStore();
-  const queryClient = useQueryClient();
+  const { data: categories = [], isLoading: isLoadingCat } = useCategories();
+  const { data: streams = [], isLoading: isLoadingStreams } = useCashflowStreams();
+  const { data: cashflowAnalytics, isLoading: isLoadingAnalytics } = useCashflowAnalytics();
 
-  // Data Queries
-  const { data: categories = [], isLoading: isLoadingCat } = useCategories(currentUserId);
-  const { data: streams = [], isLoading: isLoadingStreams } = useCashflowStreams(currentUserId);
-  const { data: cashflowAnalytics, isLoading: isLoadingAnalytics } = useCashflowAnalytics(currentUserId);
-
-  // Mutations
-  const seedCategoriesMutation = useSeedCategories(currentUserId);
-  const createStreamMutation = useCreateCashflowStream(currentUserId);
-  const deleteStreamMutation = useDeleteCashflowStream(currentUserId);
-  const createEventMutation = useCreateCashflowEvent(currentUserId);
+  const seedCategoriesMutation = useSeedCategories();
+  const createStreamMutation = useCreateCashflowStream();
+  const deleteStreamMutation = useDeleteCashflowStream();
+  const createEventMutation = useCreateCashflowEvent();
 
   // Form State
   const [name, setName] = useState('');
@@ -57,7 +50,6 @@ export default function CashflowPage() {
     if (!categoryId && categories.length > 0) return alert('Selecciona una categoría válida');
     
     createStreamMutation.mutate({
-      userId: currentUserId,
       name,
       categoryId: categoryId || categories[0]?.id,
       flowType,

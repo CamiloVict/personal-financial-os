@@ -6,8 +6,6 @@ import { PlusCircle, Activity } from 'lucide-react';
 import { useCashflowAnalytics } from '@/features/cashflow/api/queries';
 import { useTaxAnalytics } from '@/features/tax/api/queries';
 import { useInvestmentPositions } from '@/features/investments/api/queries';
-import { useGlobalStore } from '@/shared/store/global';
-
 import {
   DashboardMetrics,
   CashflowCharts,
@@ -17,14 +15,11 @@ import {
 } from '@/features/dashboard/components';
 
 export default function HomePage() {
-  const { currentUserId } = useGlobalStore();
-
   const { data: cashflowAnalytics, isLoading: isLoadingCashflow } =
-    useCashflowAnalytics(currentUserId);
-  const { data: taxAnalytics, isLoading: isLoadingTax } =
-    useTaxAnalytics(currentUserId);
+    useCashflowAnalytics();
+  const { data: taxAnalytics, isLoading: isLoadingTax } = useTaxAnalytics();
   const { data: positions = [], isLoading: loadingPositions } =
-    useInvestmentPositions(currentUserId);
+    useInvestmentPositions();
 
   const totalInvested = positions.reduce(
     (acc: number, pos: { initialCapital?: number | string }) =>

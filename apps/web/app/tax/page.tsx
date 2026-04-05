@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Landmark, FileWarning, RefreshCw, Activity } from 'lucide-react';
-import { useGlobalStore } from '@/shared/store/global';
 import {
   useTaxProfile,
   useTaxClassifications,
@@ -18,13 +17,11 @@ import {
 } from '@/features/tax/components';
 
 export default function TaxDashboard() {
-  const { currentUserId } = useGlobalStore();
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'PLAN'>('PLAN');
 
-  // Queries
-  const { data: profile, isLoading: loadingProfile } = useTaxProfile(currentUserId);
-  const { data: classifications = [], isLoading: loadingClassifications } = useTaxClassifications(currentUserId, !!profile);
-  const { data: plan, isLoading: loadingPlan } = useTaxPlan(currentUserId, !!profile);
+  const { data: profile, isLoading: loadingProfile } = useTaxProfile();
+  const { data: classifications = [], isLoading: loadingClassifications } = useTaxClassifications(!!profile);
+  const { data: plan, isLoading: loadingPlan } = useTaxPlan(!!profile);
 
   // Profile Form State
   const [isResident, setIsResident] = useState(true);
@@ -48,13 +45,12 @@ export default function TaxDashboard() {
   }, [profile]);
 
   // Mutations
-  const saveProfileMutation = useSaveTaxProfile(currentUserId);
-  const analyzeMutation = useAnalyzeTax(currentUserId);
+  const saveProfileMutation = useSaveTaxProfile();
+  const analyzeMutation = useAnalyzeTax();
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     saveProfileMutation.mutate({
-      userId: currentUserId,
       taxYear: new Date().getFullYear(),
       jurisdiction: 'CO',
       isResident,
@@ -65,7 +61,7 @@ export default function TaxDashboard() {
       hasVoluntaryPension,
       hasAFC
     }, {
-      onSuccess: () => analyzeMutation.mutate(undefined, { onSuccess: () => setActiveTab('PLAN') })
+      onSuccess: () => analyzeMutation.mutate(undefined, { onSuccess: () => setActiveTab('PLAN') }),
     });
   };
 

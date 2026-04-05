@@ -31,6 +31,10 @@ export function DevSessionBar() {
     return null;
   }
 
+  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    return null;
+  }
+
   const apply = () => {
     setUserId(draft);
     queryClient.clear();

@@ -1,32 +1,33 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
+import { DbUserId } from '../../auth/db-user.decorator';
 import { TaxService } from './tax.service';
 
 @Controller('tax')
 export class TaxController {
   constructor(private readonly taxService: TaxService) {}
 
-  @Get('profile/:userId')
-  getProfile(@Param('userId') userId: string) {
+  @Get('profile')
+  getProfile(@DbUserId() userId: string) {
     return this.taxService.getProfile(userId);
   }
 
   @Post('profile')
-  saveProfile(@Body() body: any) {
-    return this.taxService.saveProfile(body);
+  saveProfile(@DbUserId() userId: string, @Body() body: Record<string, unknown>) {
+    return this.taxService.saveProfile({ ...body, userId });
   }
 
-  @Get('classifications/:userId')
-  getClassifications(@Param('userId') userId: string) {
+  @Get('classifications')
+  getClassifications(@DbUserId() userId: string) {
     return this.taxService.getClassifications(userId);
   }
 
-  @Get('plan/:userId')
-  getPlan(@Param('userId') userId: string) {
+  @Get('plan')
+  getPlan(@DbUserId() userId: string) {
     return this.taxService.getLatestPlan(userId);
   }
 
-  @Post('analyze/:userId')
-  analyzeTaxSituation(@Param('userId') userId: string) {
+  @Post('analyze')
+  analyzeTaxSituation(@DbUserId() userId: string) {
     return this.taxService.analyzeTaxSituation(userId);
   }
 }

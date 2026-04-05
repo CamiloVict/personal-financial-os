@@ -1,7 +1,6 @@
 'use client';
 
 import { Activity } from 'lucide-react';
-import { useGlobalStore } from '@/shared/store/global';
 import { useLeverageAnalysis } from '@/features/debts/api/queries';
 import type { LeverageAnalysis } from '@/features/debts/types';
 import {
@@ -13,8 +12,7 @@ import {
 } from '@/features/debts/components';
 
 export default function DebtsPage() {
-  const { currentUserId } = useGlobalStore();
-  const { data: analysis, isLoading } = useLeverageAnalysis(currentUserId);
+  const { data: analysis, isLoading } = useLeverageAnalysis();
 
   if (isLoading) {
     return (
