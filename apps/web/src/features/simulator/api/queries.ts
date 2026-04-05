@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
+import type { SimulationResult } from '../types';
 import { simulatorQueryKeys } from './query-keys';
 
 export interface SimulatePropertyPurchaseInput {
@@ -53,8 +54,8 @@ export interface SimulateCustomInput {
 export function useSimulatePropertyPurchase(userId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: SimulatePropertyPurchaseInput) => 
-      apiClient.post(`/simulator/what-if/property/${userId}`, input),
+    mutationFn: (input: SimulatePropertyPurchaseInput) =>
+      apiClient.post<SimulationResult>(`/simulator/what-if/property/${userId}`, input),
     onSuccess: (data) => {
       queryClient.setQueryData(simulatorQueryKeys.whatIfProperty(userId), data);
     }
@@ -63,28 +64,28 @@ export function useSimulatePropertyPurchase(userId: string) {
 
 export function useSimulateDebtVsInvest(userId: string) {
   return useMutation({
-    mutationFn: (input: SimulateDebtVsInvestInput) => 
-      apiClient.post(`/simulator/what-if/debt-vs-invest/${userId}`, input)
+    mutationFn: (input: SimulateDebtVsInvestInput) =>
+      apiClient.post<SimulationResult>(`/simulator/what-if/debt-vs-invest/${userId}`, input),
   });
 }
 
 export function useSimulateTaxAdvantaged(userId: string) {
   return useMutation({
-    mutationFn: (input: SimulateTaxAdvantagedInput) => 
-      apiClient.post(`/simulator/what-if/tax-advantaged/${userId}`, input)
+    mutationFn: (input: SimulateTaxAdvantagedInput) =>
+      apiClient.post<SimulationResult>(`/simulator/what-if/tax-advantaged/${userId}`, input),
   });
 }
 
 export function useSimulateBusiness(userId: string) {
   return useMutation({
-    mutationFn: (input: SimulateBusinessInput) => 
-      apiClient.post(`/simulator/what-if/business/${userId}`, input)
+    mutationFn: (input: SimulateBusinessInput) =>
+      apiClient.post<SimulationResult>(`/simulator/what-if/business/${userId}`, input),
   });
 }
 
 export function useSimulateCustom(userId: string) {
   return useMutation({
-    mutationFn: (input: SimulateCustomInput) => 
-      apiClient.post(`/simulator/what-if/custom/${userId}`, input)
+    mutationFn: (input: SimulateCustomInput) =>
+      apiClient.post<SimulationResult>(`/simulator/what-if/custom/${userId}`, input),
   });
 }
