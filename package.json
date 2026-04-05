@@ -1,0 +1,25 @@
+{
+  "name": "personal-finance-os",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:setup": "bash scripts/setup-database.sh",
+    "db:migrate": "pnpm --filter @personal-finance-os/database exec prisma migrate deploy",
+    "db:seed": "pnpm --filter @personal-finance-os/database exec prisma db seed",
+    "db:studio": "pnpm --filter @personal-finance-os/database exec prisma studio"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "turbo": "^2.0.4",
+    "typescript": "^5.4.5"
+  },
+  "packageManager": "pnpm@9.1.0",
+  "engines": {
+    "node": ">=18"
+  }
+}

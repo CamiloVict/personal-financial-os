@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      # host:contenedor — Postgres siempre escucha en 5432 dentro del contenedor
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: pfo
+      POSTGRES_PASSWORD: pfo
+      POSTGRES_DB: pfo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

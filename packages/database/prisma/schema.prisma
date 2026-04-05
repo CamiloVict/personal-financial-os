@@ -1,0 +1,574 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String?
+  firstName    String?
+  lastName     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  preferences   UserPreference?
+  accounts      Account[]
+  categories    Category[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  savingGoals   SavingGoal[]
+  debts         Debt[]
+  subscriptions Subscription[]
+
+  // Investment & Asset Module
+  assets              Asset[]
+  investmentTypes     InvestmentTypeDefinition[]
+  investmentPositions InvestmentPosition[]
+
+  // Cashflow Module (Income/Expenses)
+  cashflowStreams CashflowStream[]
+
+  // Tax Module
+  taxProfiles TaxProfile[]
+}
+
+// ==========================================
+// TAX PLANNING MODULE (COLOMBIA & GLOBAL)
+// ==========================================
+
+model TaxProfile {
+  id           String @id @default(uuid())
+  userId       String
+  taxYear      Int
+  jurisdiction String @default("CO") // e.g., 'CO' for Colombia
+
+  // Profile Base
+  isResident         Boolean @default(true)
+  daysInCountry      Int     @default(365)
+  primaryNationality String  @default("CO")
+  hasForeignIncome   Boolean @default(false)
+  hasForeignAssets   Boolean @default(false)
+
+  // Dependents and basic benefits
+  hasDependents       Boolean @default(false)
+  hasVoluntaryPension Boolean @default(false)
+  hasAFC              Boolean @default(false)
+  hasPrepaidMedicine  Boolean @default(false)
+  hasHousingInterest  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classifications TaxIncomeClassification[]
+  plans           TaxPlan[]
+
+  @@unique([userId, taxYear, jurisdiction])
+}
+
+model TaxIncomeClassification {
+  id        String @id @default(uuid())
+  profileId String
+
+  // Link to the actual operational income stream or transaction
+  referenceId   String // This could be a CashflowStream ID or InvestmentPosition ID
+  referenceType String // "CASHFLOW" | "INVESTMENT"
+
+  // Tax Engine Output
+  suggestedCedula String // e.g., 'GENERAL_LABORAL', 'DIVIDENDOS', 'GANANCIA_OCASIONAL'
+  confidenceLevel String // 'HIGH', 'MEDIUM', 'LOW'
+  isForeignSource Boolean @default(false)
+  hasWithholding  Boolean @default(false)
+  foreignTaxPaid  Decimal @default(0.00)
+
+  // Audit & Explainability
+  engineVersion     String
+  explanation       String?
+  missingConditions String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile TaxProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model TaxPlan {
+  id          String   @id @default(uuid())
+  profileId   String
+  generatedAt DateTime @default(now())
+
+  // Scenarios
+  scenarios TaxScenario[]
+
+  profile TaxProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model TaxScenario {
+  id     String @id @default(uuid())
+  planId String
+  name   String // e.g., "Conservador", "Optimizado Legalmente"
+  type   String // "CONSERVATIVE", "OPTIMIZED", "FOREIGN_CREDIT"
+
+  // Estimatations
+  estimatedGrossIncome   Decimal
+  estimatedDeductions    Decimal
+  estimatedExemptions    Decimal
+  estimatedTaxableBase   Decimal
+  estimatedTaxLiability  Decimal
+  estimatedForeignCredit Decimal @default(0)
+  estimatedNetTaxPayable Decimal
+
+  // Textual logic
+  explanation  String
+  riskLevel    String // 'LOW', 'MEDIUM', 'HIGH'
+  requirements String[] // Array of strings detailing required proofs/supports
+
+  plan TaxPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
+
+model UserPreference {
+  id                  String  @id @default(uuid())
+  userId              String  @unique
+  baseCurrency        String  @default("USD")
+  country             String?
+  onboardingCompleted Boolean @default(false)
+
+  // Modules configuration
+  enableBudgets       Boolean @default(false)
+  enableInvestments   Boolean @default(false)
+  enableDebts         Boolean @default(false)
+  enableSavingGoals   Boolean @default(false)
+  enableSubscriptions Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                   String      @id @default(uuid())
+  userId               String
+  name                 String
+  type                 AccountType
+  currency             String      @default("USD")
+  balance              Decimal     @default(0.00) // Se actualizará mediante transacciones o sync
+  color                String?
+  icon                 String?
+  isIncludedInNetWorth Boolean     @default(true)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  deletedAt            DateTime?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[] @relation("AccountTransactions")
+  transfersIn  Transaction[] @relation("TransferDestination")
+}
+
+enum AccountType {
+  CASH
+  CHECKING
+  SAVINGS
+  CREDIT_CARD
+  INVESTMENT
+  LOAN
+}
+
+model Category {
+  id            String          @id @default(uuid())
+  userId        String
+  name          String
+  type          TransactionType
+  color         String?
+  icon          String?
+  parentId      String? // Para subcategorías
+  parent        Category?       @relation("SubCategories", fields: [parentId], references: [id])
+  subcategories Category[]      @relation("SubCategories")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+  budgets         Budget[]
+  cashflowStreams CashflowStream[]
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+model Transaction {
+  id                   String            @id @default(uuid())
+  userId               String
+  accountId            String
+  destinationAccountId String? // Para transferencias
+  categoryId           String?
+  amount               Decimal
+  type                 TransactionType
+  date                 DateTime
+  description          String?
+  notes                String?
+  status               TransactionStatus @default(COMPLETED)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  deletedAt            DateTime?
+
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account            Account   @relation("AccountTransactions", fields: [accountId], references: [id])
+  destinationAccount Account?  @relation("TransferDestination", fields: [destinationAccountId], references: [id])
+  category           Category? @relation(fields: [categoryId], references: [id])
+
+  expenseFundingLinks ExpenseFundingLink[]
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model Budget {
+  id         String       @id @default(uuid())
+  userId     String
+  categoryId String
+  amount     Decimal
+  period     BudgetPeriod
+  startDate  DateTime?
+  endDate    DateTime?
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  YEARLY
+  CUSTOM
+}
+
+model SavingGoal {
+  id            String    @id @default(uuid())
+  userId        String
+  name          String
+  targetAmount  Decimal
+  currentAmount Decimal   @default(0.00)
+  targetDate    DateTime?
+  color         String?
+  icon          String?
+  createdAt     DateTime  @default(now())
+
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendations GoalRecommendation[]
+}
+
+// ==========================================
+// GOALS & RECOMMENDATIONS MODULE
+// ==========================================
+
+model GoalRecommendation {
+  id          String   @id @default(uuid())
+  goalId      String
+  generatedAt DateTime @default(now())
+
+  // Snapshots
+  currentMonthlySavings  Decimal
+  targetAmount           Decimal
+  currentAmount          Decimal
+  monthsRemaining        Int
+  monthlyAmountNeeded    Decimal
+  monthlyShortfall       Decimal
+  currentProjectedMonths Int?
+
+  // Status
+  feasibilityLevel FeasibilityLevel
+
+  goal      SavingGoal               @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  scenarios RecommendationScenario[]
+}
+
+model RecommendationScenario {
+  id               String       @id @default(uuid())
+  recommendationId String
+  type             ScenarioType
+
+  // Adjustments
+  incomeIncreaseAmount       Decimal @default(0.00)
+  expenseReductionAmount     Decimal @default(0.00)
+  reinvestmentIncreaseAmount Decimal @default(0.00)
+
+  // Outcome
+  newProjectedMonths Int?
+  monthsSaved        Int?
+
+  // Strategy explanation
+  explanation      String
+  feasibilityLevel FeasibilityLevel
+
+  recommendation GoalRecommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+}
+
+enum FeasibilityLevel {
+  CONSERVATIVE
+  REASONABLE
+  AGGRESSIVE
+  UNREALISTIC
+}
+
+enum ScenarioType {
+  INCREASE_INCOME
+  REDUCE_EXPENSES
+  OPTIMIZE_INVESTMENTS
+  COMBINED_STRATEGY
+}
+
+model Debt {
+  id              String    @id @default(uuid())
+  userId          String
+  name            String
+  totalAmount     Decimal
+  remainingAmount Decimal
+  currency        String    @default("USD")
+  interestRate    Decimal?
+  dueDate         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  /// MORTGAGE | AUTO_LOAN | CREDIT_CARD | PERSONAL_LOAN | BUSINESS_LOAN (texto para compatibilidad con el API)
+  debtKind         String?
+  monthlyPayment   Decimal?
+  linkedPositionId String?
+  linkedPosition   InvestmentPosition? @relation(fields: [linkedPositionId], references: [id], onDelete: SetNull)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  assetLinks   AssetDebtLink[]
+  expenseLinks ExpenseFundingLink[]
+}
+
+model Subscription {
+  id           String       @id @default(uuid())
+  userId       String
+  name         String
+  amount       Decimal
+  billingCycle BillingCycle
+  nextDate     DateTime
+  isActive     Boolean      @default(true)
+  url          String?
+  createdAt    DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum BillingCycle {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// ==========================================
+// INVESTMENT & ASSET MANAGEMENT MODULE
+// ==========================================
+
+model Asset {
+  id                   String   @id @default(uuid())
+  userId               String
+  name                 String
+  description          String?
+  currency             String   @default("USD")
+  estimatedValue       Decimal  @default(0.00)
+  isIncludedInNetWorth Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investmentPositions InvestmentPosition[]
+  debtLinks           AssetDebtLink[]
+}
+
+model InvestmentTypeDefinition {
+  id          String  @id @default(uuid())
+  userId      String? // Nullable for system-wide default types
+  name        String
+  description String?
+
+  // Configuration flags
+  generatesCashflow        Boolean          @default(false)
+  allowsProfitDistribution Boolean          @default(false)
+  expectedFrequency        PeriodFrequency?
+  allowsExtraContributions Boolean          @default(false)
+  allowsPartialWithdrawals Boolean          @default(false)
+  allowsLinkedDebt         Boolean          @default(false)
+  hasManualValuation       Boolean          @default(false)
+  hasMaturityDate          Boolean          @default(false)
+  hasPaymentSchedule       Boolean          @default(false)
+  showAsPatrimonialAsset   Boolean          @default(true)
+  isSystem                 Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions InvestmentPosition[]
+}
+
+model InvestmentPosition {
+  id                    String           @id @default(uuid())
+  userId                String
+  typeId                String
+  assetId               String? // Optional link to a physical/conceptual Asset
+  name                  String
+  startDate             DateTime
+  initialCapital        Decimal
+  currency              String           @default("USD")
+  currentEstimatedValue Decimal          @default(0.00)
+  status                InvestmentStatus @default(ACTIVE)
+  notes                 String?
+  isIncludedInNetWorth  Boolean          @default(true)
+
+  // Frequency overrides
+  generatesPeriodicIncome Boolean          @default(false)
+  frequency               PeriodFrequency?
+  customFrequencyMonths   Int?
+  nextExpectedDate        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type   InvestmentTypeDefinition @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  asset  Asset?                   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  events InvestmentEvent[]
+  debts  Debt[]
+}
+
+model InvestmentEvent {
+  id           String              @id @default(uuid())
+  investmentId String
+  date         DateTime
+  type         InvestmentEventType
+  amount       Decimal
+  currency     String              @default("USD")
+  observations String?
+
+  // Event details
+  wasMoneyWithdrawn         Boolean @default(false)
+  wasMoneyReinvested        Boolean @default(false)
+  hadAdditionalContribution Boolean @default(false)
+  supportingDocument        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  investment InvestmentPosition @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+}
+
+model AssetDebtLink {
+  id             String   @id @default(uuid())
+  assetId        String
+  debtId         String
+  assignedAmount Decimal // How much of the debt was assigned to this asset
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  debt  Debt  @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, debtId])
+}
+
+model ExpenseFundingLink {
+  id             String   @id @default(uuid())
+  transactionId  String
+  debtId         String
+  assignedAmount Decimal
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  debt        Debt        @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, debtId])
+}
+
+// ==========================================
+// CASHFLOW MANAGEMENT MODULE (INCOME/EXPENSE)
+// ==========================================
+
+model CashflowStream {
+  id                    String          @id @default(uuid())
+  userId                String
+  name                  String // e.g. "Main Job", "Rent", "Netflix"
+  categoryId            String
+  flowType              TransactionType // INCOME | EXPENSE
+  streamType            StreamType // FIXED | VARIABLE
+  expectedAmount        Decimal
+  currency              String          @default("USD")
+  frequency             PeriodFrequency
+  customFrequencyMonths Int?
+  startDate             DateTime
+  endDate               DateTime?
+  isActive              Boolean         @default(true)
+  notes                 String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category        @relation(fields: [categoryId], references: [id])
+  events   CashflowEvent[]
+}
+
+model CashflowEvent {
+  id           String   @id @default(uuid())
+  streamId     String
+  date         DateTime
+  amount       Decimal
+  currency     String   @default("USD")
+  observations String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stream CashflowStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+}
+
+enum StreamType {
+  FIXED
+  VARIABLE
+}
+
+enum PeriodFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  BIMONTHLY
+  QUARTERLY
+  FOUR_MONTHLY
+  SEMIANNUALLY
+  ANNUALLY
+  CUSTOM
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  CLOSED
+  PENDING
+}
+
+enum InvestmentEventType {
+  CAPITAL_CONTRIBUTION
+  CAPITAL_WITHDRAWAL
+  PROFIT_DISTRIBUTION
+  PROFIT_REINVESTMENT
+  VALUATION_INCREASE
+  VALUATION_DECREASE
+  INITIAL_PURCHASE
+  PARTIAL_SALE
+  TOTAL_SALE
+  ASSOCIATED_EXPENSE
+  MANUAL_ADJUSTMENT
+}
