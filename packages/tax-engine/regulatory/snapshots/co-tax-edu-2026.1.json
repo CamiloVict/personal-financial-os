@@ -1,0 +1,228 @@
+{
+  "lawPackageId": "co-tax-edu-2026.1",
+  "taxYear": 2026,
+  "jurisdiction": "CO",
+  "engineVersion": "CO-AG2026-v1.0",
+  "exportedAt": "2026-04-06T04:00:07.011Z",
+  "rules": [
+    {
+      "ruleRef": "CO-AG2026-DED-DEP",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Deducción por dependientes",
+        "article": "Art. 338 y correlatos (tope y requisitos de dependientes económicos)"
+      },
+      "interpretation": {
+        "summary": "El motor aplica 10% del ingreso bruto anual estimado con tope 384 UVT como aproximación; no valida calidad de dependiente ni límites adicionales del año gravable.",
+        "limitations": [
+          "Sin validación documental",
+          "UVT fija de referencia del paquete"
+        ]
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:dependientes"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-DED-PREP",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Gastos de salud / medicina prepagada",
+        "article": "Art. 336 numeral 3 (deducciones por salud, con topes)"
+      },
+      "interpretation": {
+        "summary": "Deducción modelada al menor entre 5% del ingreso y 192 UVT; puede combinar perfil y gastos normalizados desde Cashflow."
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:prepagada"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-DED-VIV",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Intereses o corrección monetaria en créditos de vivienda",
+        "article": "Art. 336 numeral 1 (intereses de vivienda, topes)"
+      },
+      "interpretation": {
+        "summary": "Tope 15% del ingreso y 1200 UVT; integra intereses inferidos de deudas hipotecarias y categorías normalizadas."
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:vivienda"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-EX-AFC",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Rentas exentas: ahorro AFC",
+        "article": "Art. 126-1 E.T. y concordantes (requisitos y topes de permanencia)"
+      },
+      "interpretation": {
+        "summary": "Renta exenta simplificada al 10% del ingreso con datos de perfil o Cashflow; omite topes adicionales y retiros.",
+        "limitations": [
+          "Topes legales adicionales no modelados en esta versión"
+        ]
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:AFC"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-EX-FPV",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Rentas exentas: pensión voluntaria",
+        "article": "Art. 126-1 E.T. y reglamentación de fondos voluntarios"
+      },
+      "interpretation": {
+        "summary": "Misma lógica simplificada 10% que AFC; integración opcional con aportes etiquetados en Cashflow.",
+        "limitations": [
+          "Topes de ley no expresados en su totalidad"
+        ]
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:FPV"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-DED-OTHER-CF",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Deducciones por pagos que generan renta",
+        "article": "Art. 336 y 337 (gastos deducibles, relación con actividad)"
+      },
+      "interpretation": {
+        "summary": "Suma líneas normalizadas con hint OTHER_DEDUCTIBLE; el usuario debe validar contra norma y límites globales."
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:other_cf"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-EX-25PCT",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Renta exenta laboral (porcentaje)",
+        "article": "Art. 336 numeral 10 (25% con tope en UVT)"
+      },
+      "interpretation": {
+        "summary": "Tras deducciones y exenciones explícitas, aplica el menor entre 25% de la subbase y 790 UVT."
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:exenta25"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-CAP-40-1340",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Limitación conjunta deducciones y rentas exentas",
+        "article": "Art. 336 numeral 5 (40% ingreso / 1340 UVT, según texto vigente)"
+      },
+      "interpretation": {
+        "summary": "Si la suma de deducciones y exenciones excede el tope, el motor reduce primero exenciones hasta encajar (modelo simplificado)."
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:cap40"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-UVT",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Resolución DIAN / normas de valor tributario",
+        "citation": "Unidad de Valor Tributario (UVT)",
+        "article": "Valor UVT año gravable correspondiente (referencia oficial)"
+      },
+      "interpretation": {
+        "summary": "El paquete fija UVT de referencia para el modelo educativo; debe actualizarse al publicarse el valor oficial anual."
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "UVT_2026 constant + inputs explanation node"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-TARIFF",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Tarifa incremental personas naturales cédula general",
+        "article": "Art. 336 (tramos UVT para residentes)"
+      },
+      "interpretation": {
+        "summary": "Tabla progresiva en UVT según anexo del modelo CO-AG2026; constantes y tramos alineados a estructura educativa del motor."
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "calculateColombiaIncomeTaxUVT2026Detailed"
+      }
+    },
+    {
+      "ruleRef": "CO-AG2026-FOREIGN-CREDIT",
+      "jurisdiction": "CO",
+      "taxYear": 2026,
+      "lawPackageId": "co-tax-edu-2026.1",
+      "law": {
+        "instrument": "Estatuto Tributario (Colombia)",
+        "citation": "ET — Impuesto pagado en el exterior y convenios",
+        "article": "Art. 254 y 255 (crédito tributario, límites)"
+      },
+      "interpretation": {
+        "summary": "Crédito hasta el menor entre impuesto pagado en el exterior e impuesto calculado en Colombia sobre la misma base modelada."
+      },
+      "implementation": {
+        "engineVersion": "CO-AG2026-v1.0",
+        "modulePath": "packages/tax-engine/src/jurisdictions/co/ag2026/index.ts",
+        "symbol": "computeOptimizedTaxSnapshotWithExplanation:foreignCredit"
+      }
+    }
+  ]
+}

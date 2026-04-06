@@ -14,8 +14,16 @@ export interface NormativeRef {
   /** Identificador corto p. ej. ET-CO-2026 */
   id: string;
   title: string;
+  /** Cita del artículo o numeral (capa “ley publicada”). */
   article?: string;
   url?: string;
+  /** Instrumento legal (p. ej. Estatuto Tributario, Decreto reglamentario). */
+  legalInstrument?: string;
+  /**
+   * Capa “interpretación del producto”: cómo el motor entiende la norma para este cálculo.
+   * No constituye asesoría legal; documenta supuestos para auditoría interna.
+   */
+  productInterpretation?: string;
 }
 
 export interface ExplanationNode {
@@ -35,6 +43,21 @@ export interface ExplanationNode {
   children?: ExplanationNode[];
 }
 
+/** Contexto regulatorio del cómputo (versionado por jurisdicción y año gravable). */
+export interface RegulatoryComputationContext {
+  jurisdiction: string;
+  taxYear: number;
+  /** Versión del motor/implementación (p. ej. CO-AG2026-v1.0). */
+  engineVersion: string;
+  /**
+   * Identificador del paquete normativo enlazado (ley + interpretaciones revisadas).
+   * Cambia cuando se actualizan artículos o interpretaciones sin cambiar solo código.
+   */
+  lawPackageId: string;
+  /** Momento ISO del cálculo en servidor (opcional; puede fijarlo la API). */
+  computedAt?: string;
+}
+
 export interface FinancialExplanation {
   schemaVersion: '1.0';
   /** Dominio funcional: tax.co.declaration, debts.leverage, simulator.property, … */
@@ -48,6 +71,8 @@ export interface FinancialExplanation {
   assumptions: string[];
   missingData: string[];
   normativeRefs: NormativeRef[];
+  /** Trazabilidad regulatoria del resultado (ley → interpretación → implementación). */
+  regulatoryContext?: RegulatoryComputationContext;
   /** Resultado destacado (opcional) */
   result?: {
     label: string;
