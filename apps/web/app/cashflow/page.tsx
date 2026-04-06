@@ -65,6 +65,11 @@ export default function CashflowPage() {
   const [expectedAmount, setExpectedAmount] = useState<string>('');
   const [frequency, setFrequency] = useState('MONTHLY');
   const [startDate, setStartDate] = useState('');
+  const [streamCurrency, setStreamCurrency] = useState<'USD' | 'COP'>(() =>
+    useGlobalStore.getState().displayValuationMode === 'NOMINAL_USD'
+      ? 'USD'
+      : 'COP',
+  );
   
   // Event Modal state
   const [selectedStream, setSelectedStream] = useState<any>(null);
@@ -82,7 +87,7 @@ export default function CashflowPage() {
       flowType,
       streamType,
       expectedAmount: Number(expectedAmount) || 0,
-      currency: 'USD',
+      currency: streamCurrency,
       frequency,
       startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
       isActive: true
@@ -248,6 +253,8 @@ export default function CashflowPage() {
           expectedAmount={expectedAmount} setExpectedAmount={setExpectedAmount}
           frequency={frequency} setFrequency={setFrequency}
           startDate={startDate} setStartDate={setStartDate}
+          streamCurrency={streamCurrency}
+          setStreamCurrency={setStreamCurrency}
         />
 
         <CashflowList

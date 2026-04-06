@@ -24,13 +24,16 @@ interface CashflowFormProps {
   setFrequency: Dispatch<SetStateAction<string>>;
   startDate: string;
   setStartDate: Dispatch<SetStateAction<string>>;
+  streamCurrency: 'USD' | 'COP';
+  setStreamCurrency: Dispatch<SetStateAction<'USD' | 'COP'>>;
 }
 
 export function CashflowForm({
   categories, loadingCategories, seedCategoriesPending, onSeedCategories, onSubmit, isPending,
   flowType, setFlowType, name, setName, streamType, setStreamType,
   categoryId, setCategoryId, expectedAmount, setExpectedAmount,
-  frequency, setFrequency, startDate, setStartDate
+  frequency, setFrequency, startDate, setStartDate,
+  streamCurrency, setStreamCurrency,
 }: CashflowFormProps) {
   
   const filteredCategories = categories.filter((c: any) => c.type === flowType);
@@ -92,17 +95,43 @@ export function CashflowForm({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Monto Esperado</label>
-            <div className="relative">
-              <span className="absolute left-2.5 top-2 text-slate-400 font-bold text-sm">$</span>
-              <input 
-                type="number" 
-                required 
-                value={expectedAmount} 
-                onChange={e => setExpectedAmount(e.target.value)} 
-                className="glass-input w-full p-2 pl-6 rounded-lg text-sm" 
-                placeholder="0.00"
-              />
+            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">
+              Monto esperado
+            </label>
+            <p className="text-[11px] text-slate-500 mb-1.5 leading-snug">
+              Ingresa el valor en la moneda que elijas; el flujo queda guardado en esa moneda. Los
+              resúmenes pueden mostrarse convertidos según tu modo de valuación global.
+            </p>
+            <div className="flex gap-2">
+              <div className="relative flex-1 min-w-0">
+                <span className="absolute left-2.5 top-2 text-slate-400 font-bold text-xs pointer-events-none">
+                  {streamCurrency === 'USD' ? 'US$' : 'COP'}
+                </span>
+                <input
+                  type="number"
+                  required
+                  value={expectedAmount}
+                  onChange={(e) => setExpectedAmount(e.target.value)}
+                  className="glass-input w-full p-2 pl-14 rounded-lg text-sm"
+                  placeholder={streamCurrency === 'USD' ? '0.00' : '0'}
+                  min={0}
+                  step={streamCurrency === 'USD' ? '0.01' : '1'}
+                />
+              </div>
+              <div className="w-30 shrink-0">
+                <label className="sr-only">Moneda del monto</label>
+                <select
+                  value={streamCurrency}
+                  onChange={(e) =>
+                    setStreamCurrency(e.target.value as 'USD' | 'COP')
+                  }
+                  className="glass-input w-full p-2 rounded-lg text-sm h-[38px]"
+                  aria-label="Moneda del monto esperado"
+                >
+                  <option value="COP">COP</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
             </div>
           </div>
 

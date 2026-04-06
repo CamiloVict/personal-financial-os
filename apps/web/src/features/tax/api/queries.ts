@@ -1,9 +1,12 @@
+'use client';
+
 import {
   useQuery,
   useMutation,
   useQueryClient,
   keepPreviousData,
 } from '@tanstack/react-query';
+import { useAuth } from '@clerk/nextjs';
 import type { NormalizedTaxFinancials } from '@personal-finance-os/tax-engine';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
@@ -11,10 +14,32 @@ import { ME_SCOPE } from '../../../shared/api/query-scope';
 import type { TaxPlanningOverview } from '../types/taxPlanningOverview';
 
 export function useTaxProfile() {
+  const hasClerk = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  const { isLoaded, isSignedIn } = useAuth();
+  const authReady = !hasClerk || (isLoaded && !!isSignedIn);
+
   return useQuery({
     queryKey: queryKeys.tax.profile(),
-    queryFn: () => apiClient.get<any | null>('/tax/profile'),
-    retry: 1,
+    queryFn: async () => {
+      try {
+        const raw = await apiClient.get<any | null | undefined>('/tax/profile');
+        // v5: query data must not be undefined (empty body → parseJson returns undefined).
+        return raw ?? null;
+      } catch (e) {
+        if (e instanceof Error && /\b404\b/.test(e.message)) {
+          return null;
+        }
+        throw e;
+      }
+    },
+    enabled: authReady,
+    retry: (failureCount, error) => {
+      if (error instanceof Error && /\b401\b/.test(error.message)) {
+        return failureCount < 4;
+      }
+      return failureCount < 1;
+    },
+    retryDelay: (attempt) => Math.min(350 * (attempt + 1), 2000),
     staleTime: 60 * 1000,
   });
 }

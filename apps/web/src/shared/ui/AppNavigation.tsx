@@ -65,6 +65,7 @@ const PRIMARY_NAV: PrimaryNavItem[] = [
   {
     href: '/tax',
     label: 'Fiscal',
+    shortDescription: 'Perfil e impuestos (Colombia)',
     icon: Landmark,
     onboarding: 'nav-tax',
   },

@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useLayoutEffect } from 'react';
+import { useAuth, SignInButton } from '@clerk/nextjs';
 import { Landmark, FileWarning, RefreshCw, Activity, AlertCircle } from 'lucide-react';
 import {
   useTaxProfile,
@@ -30,6 +31,9 @@ import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 export default function TaxDashboard() {
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'PLAN'>('PROFILE');
   const [selectedLeverIds, setSelectedLeverIds] = useState<string[]>([]);
+
+  const hasClerk = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  const { isLoaded: clerkLoaded, isSignedIn } = useAuth();
 
   const {
     data: profile,
@@ -160,6 +164,38 @@ export default function TaxDashboard() {
     taxVal,
   ]);
 
+  if (hasClerk && !clerkLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-500">
+        <Activity className="w-8 h-8 animate-spin text-slate-400" aria-hidden />
+        <p className="text-xs">Preparando sesión…</p>
+      </div>
+    );
+  }
+
+  if (hasClerk && clerkLoaded && !isSignedIn) {
+    return (
+      <div className="glass-card rounded-xl p-6 border border-indigo-200 bg-indigo-50/90 max-w-lg mx-auto">
+        <div className="flex items-center gap-2 mb-2">
+          <Landmark className="w-5 h-5 text-indigo-700" />
+          <h2 className="text-sm font-bold text-indigo-950">Planeación fiscal</h2>
+        </div>
+        <p className="text-xs text-indigo-900/90 leading-relaxed mb-4">
+          Para crear tu perfil fiscal (Colombia), ver escenarios y el checklist de soportes, necesitas una
+          sesión iniciada. No compartimos tus datos con terceros fuera del inicio de sesión.
+        </p>
+        <SignInButton mode="modal">
+          <button
+            type="button"
+            className="text-xs font-semibold bg-indigo-700 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-800 w-full sm:w-auto"
+          >
+            Iniciar sesión
+          </button>
+        </SignInButton>
+      </div>
+    );
+  }
+
   if (loadingProfile) {
     return (
       <div className="flex justify-center py-20">
@@ -169,6 +205,41 @@ export default function TaxDashboard() {
   }
 
   if (profileError) {
+    const msg =
+      profileErrorDetail instanceof Error ? profileErrorDetail.message : '';
+    const looksUnauthorized = /\b401\b/.test(msg);
+
+    if (hasClerk && looksUnauthorized) {
+      return (
+        <div className="glass-card rounded-xl p-6 border border-amber-200 bg-amber-50/90 max-w-lg mx-auto">
+          <h2 className="text-sm font-bold text-amber-950 flex items-center gap-2 mb-2">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            Sesión requerida o expirada
+          </h2>
+          <p className="text-xs text-amber-950/90 mb-4 leading-relaxed">
+            No pudimos validar tu sesión con el servidor. Vuelve a iniciar sesión e inténtalo de nuevo.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="text-xs font-semibold bg-amber-800 text-white px-3 py-2 rounded-lg hover:bg-amber-900"
+              >
+                Iniciar sesión
+              </button>
+            </SignInButton>
+            <button
+              type="button"
+              onClick={() => refetchProfile()}
+              className="text-xs font-semibold border border-amber-800/40 text-amber-950 px-3 py-2 rounded-lg hover:bg-amber-100/80"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="glass-card rounded-xl p-6 border border-rose-200 bg-rose-50/80">
         <h2 className="text-sm font-bold text-rose-900 flex items-center gap-2 mb-2">
@@ -176,7 +247,7 @@ export default function TaxDashboard() {
           No se pudo cargar el perfil fiscal
         </h2>
         <p className="text-xs text-rose-800 mb-3">
-          {profileErrorDetail instanceof Error ? profileErrorDetail.message : 'Revisa que el API esté en marcha y que tengas sesión iniciada.'}
+          {msg || 'Revisa que el API esté en marcha y que tengas sesión iniciada.'}
         </p>
         <button
           type="button"
