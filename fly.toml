@@ -4,7 +4,7 @@
 # 1) fly apps create personal-finance-os-api   # o cambia `app` abajo
 # 2) fly postgres create --name pfo-db --region gru   # bog está deprecada; gru/iad/ord son válidas
 # 3) fly postgres attach --app personal-finance-os-api pfo-db
-# 4) fly secrets set CLERK_SECRET_KEY="sk_..."
+# 4) fly secrets set CLERK_SECRET_KEY="sk_..." CORS_ORIGINS="https://tu-front.com"
 # 5) fly deploy
 #
 # Cuotas de deuda automáticas: se aplican al abrir /debts (GET) y con cron diario UTC.
@@ -19,6 +19,7 @@ primary_region = "gru"
 
 [env]
   NODE_ENV = "production"
+  PORT = "8080"
 
 [deploy]
   release_command = "pnpm --filter @personal-finance-os/database exec prisma migrate deploy"
