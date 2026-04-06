@@ -1,5 +1,6 @@
 import React, { Dispatch, SetStateAction } from 'react';
-import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, Plus } from 'lucide-react';
 
 interface PositionFormProps {
   types: any[];
@@ -29,8 +30,19 @@ export function PositionForm({
       <h3 className="text-base font-bold text-slate-800 tracking-tight mb-6">Añadir Posición</h3>
       
       {types.length === 0 ? (
-        <div className="bg-rose-50 text-rose-800 p-4 rounded-lg border border-rose-200 text-sm">
-          Primero debes crear al menos un <strong>Tipo de Inversión</strong> en la pestaña de Configuración.
+        <div className="bg-rose-50 text-rose-800 p-4 rounded-lg border border-rose-200 text-sm space-y-3">
+          <p>
+            Para registrar una posición necesitas al menos un <strong>tipo de activo</strong> (fondo, ETF,
+            vivienda en arriendo, etc.). Eso se define en la página{' '}
+            <strong>Tipos de inversión</strong>, en el menú superior.
+          </p>
+          <Link
+            href="/investment-types"
+            className="inline-flex items-center gap-1.5 font-semibold text-white bg-rose-700 hover:bg-rose-800 px-3 py-2 rounded-lg text-xs transition-colors"
+          >
+            Ir a Tipos de inversión
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">

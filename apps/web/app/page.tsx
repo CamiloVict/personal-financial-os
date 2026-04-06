@@ -1,9 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { PlusCircle, Activity } from 'lucide-react';
-import { useCashflowAnalytics } from '@/features/cashflow/api/queries';
+import {
+  useCashflowStreams,
+  useCashflowAnalytics,
+} from '@/features/cashflow/api/queries';
 import { useTaxAnalytics } from '@/features/tax/api/queries';
 import { useInvestmentPositions } from '@/features/investments/api/queries';
 import {
@@ -14,12 +18,33 @@ import {
   QuickActions,
 } from '@/features/dashboard/components';
 
+/** Al menos un flujo de caja (ingreso o gasto) o una inversión */
+function hasFinancialSetup(
+  streams: unknown[],
+  positions: unknown[],
+) {
+  return streams.length > 0 || positions.length > 0;
+}
+
 export default function HomePage() {
+  const router = useRouter();
+  const { data: streams = [], isLoading: loadingStreams } = useCashflowStreams();
   const { data: cashflowAnalytics, isLoading: isLoadingCashflow } =
     useCashflowAnalytics();
   const { data: taxAnalytics, isLoading: isLoadingTax } = useTaxAnalytics();
   const { data: positions = [], isLoading: loadingPositions } =
     useInvestmentPositions();
+
+  const gateReady = !loadingStreams && !loadingPositions;
+  const hasSetup = useMemo(
+    () => hasFinancialSetup(streams, positions),
+    [streams, positions],
+  );
+
+  useEffect(() => {
+    if (!gateReady || hasSetup) return;
+    router.replace('/cashflow');
+  }, [gateReady, hasSetup, router]);
 
   const totalInvested = positions.reduce(
     (acc: number, pos: { initialCapital?: number | string }) =>
@@ -35,7 +60,16 @@ export default function HomePage() {
   const returnPercentage =
     totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
 
-  const loading = loadingPositions;
+  const showDashboard = gateReady && hasSetup;
+
+  if (!showDashboard) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-slate-400 gap-3">
+        <Activity className="w-8 h-8 animate-spin" />
+        <p className="text-xs text-slate-500">Preparando tu espacio…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -60,39 +94,33 @@ export default function HomePage() {
         </div>
       </header>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-10 text-slate-400">
-          <Activity className="w-5 h-5 animate-spin" />
-        </div>
-      ) : (
-        <>
-          <DashboardMetrics
-            totalInvested={totalInvested}
-            totalEstimatedValue={totalEstimatedValue}
-            totalReturn={totalReturn}
-            returnPercentage={returnPercentage}
+      <>
+        <DashboardMetrics
+          totalInvested={totalInvested}
+          totalEstimatedValue={totalEstimatedValue}
+          totalReturn={totalReturn}
+          returnPercentage={returnPercentage}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <CashflowCharts
+            isLoading={isLoadingCashflow}
+            analytics={cashflowAnalytics}
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <CashflowCharts
-              isLoading={isLoadingCashflow}
-              analytics={cashflowAnalytics}
+          <div className="lg:col-span-5 flex flex-col gap-4">
+            <TaxAnalysisChart
+              isLoading={isLoadingTax}
+              analytics={taxAnalytics}
             />
-
-            <div className="lg:col-span-5 flex flex-col gap-4">
-              <TaxAnalysisChart
-                isLoading={isLoadingTax}
-                analytics={taxAnalytics}
-              />
-              <QuickActions />
-            </div>
-
-            <div className="lg:col-span-3">
-              <TopInvestments positions={positions} />
-            </div>
+            <QuickActions />
           </div>
-        </>
-      )}
+
+          <div className="lg:col-span-3">
+            <TopInvestments positions={positions} />
+          </div>
+        </div>
+      </>
     </div>
   );
 }

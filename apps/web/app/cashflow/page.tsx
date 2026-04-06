@@ -9,21 +9,28 @@ import {
   useSeedCategories,
   useCreateCashflowStream,
   useDeleteCashflowStream,
-  useCreateCashflowEvent
+  useCreateCashflowEvent,
 } from '@/features/cashflow/api/queries';
+import { useInvestmentPositions } from '@/features/investments/api/queries';
 
 import {
+  CashflowSetupWelcome,
   CashflowMetrics,
   CashflowCharts,
   CashflowForm,
   CashflowList,
-  CashflowEventModal
+  CashflowEventModal,
 } from '@/features/cashflow/components';
 
 export default function CashflowPage() {
   const { data: categories = [], isLoading: isLoadingCat } = useCategories();
   const { data: streams = [], isLoading: isLoadingStreams } = useCashflowStreams();
+  const { data: positions = [], isLoading: isLoadingPositions } = useInvestmentPositions();
   const { data: cashflowAnalytics, isLoading: isLoadingAnalytics } = useCashflowAnalytics();
+
+  const setupHelpLoading = isLoadingStreams || isLoadingPositions;
+  const showSetupHelp =
+    !setupHelpLoading && streams.length === 0 && positions.length === 0;
 
   const seedCategoriesMutation = useSeedCategories();
   const createStreamMutation = useCreateCashflowStream();
@@ -84,6 +91,11 @@ export default function CashflowPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      <CashflowSetupWelcome
+        visible={showSetupHelp}
+        needsCategoriesFirst={!isLoadingCat && categories.length === 0}
+      />
+
       <header className="flex justify-between items-end border-b border-slate-200/50 pb-4 mb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">

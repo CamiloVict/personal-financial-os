@@ -36,7 +36,10 @@ export function CashflowForm({
   const filteredCategories = categories.filter((c: any) => c.type === flowType);
 
   return (
-    <div className="lg:col-span-4 glass-card p-4 rounded-xl self-start">
+    <div
+      id="cashflow-nuevo-flujo"
+      className="lg:col-span-4 glass-card p-4 rounded-xl self-start scroll-mt-24"
+    >
       <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-4">Crear Flujo</h3>
       
       {categories.length === 0 && !loadingCategories ? (

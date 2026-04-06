@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Link from 'next/link';
-import { Home, PieChart, Target, Landmark, Banknote, Network, Sparkles, Scale, HelpCircle } from 'lucide-react';
+import { Home, PieChart, Target, Landmark, Banknote, Network, Sparkles, Scale, HelpCircle, Settings2 } from 'lucide-react';
 import { DevSessionBar } from '@/shared/ui/DevSessionBar';
 import { NavAuth } from '@/shared/ui/NavAuth';
 
@@ -41,6 +41,9 @@ export default function RootLayout({
                   </Link>
                   <Link href="/investment-positions" className="flex items-center px-3 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors">
                     <PieChart className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Portafolio</span>
+                  </Link>
+                  <Link href="/investment-types" className="flex items-center px-3 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors" title="Definir fondos, propiedades, etc.">
+                    <Settings2 className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Tipos</span>
                   </Link>
                   <Link href="/goals" className="flex items-center px-3 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors">
                     <Target className="w-4 h-4 mr-1.5" /> <span className="hidden sm:inline">Metas</span>
