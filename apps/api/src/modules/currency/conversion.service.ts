@@ -173,17 +173,23 @@ export class ConversionService {
       let presented: number;
       let inflationFactor: number | undefined;
       let fxLabel: string;
+      let presentedCurrency: string;
 
       if (display === 'NOMINAL_COP') {
         const r = await this.convert(line.amount, cur, COP, asOfDate);
         presented = r.amount;
         warnings.push(...r.warnings);
         fxLabel = asOfDate.toISOString().slice(0, 10);
+        presentedCurrency = COP;
       } else if (display === 'NOMINAL_USD') {
         const r = await this.convert(line.amount, cur, USD, asOfDate);
         presented = r.amount;
         warnings.push(...r.warnings);
         fxLabel = asOfDate.toISOString().slice(0, 10);
+        const usdUnavailable = r.warnings.some((w) =>
+          w.includes('se devuelve COP'),
+        );
+        presentedCurrency = usdUnavailable ? COP : USD;
       } else {
         const vd = line.valueDate;
         const nominalCop = await this.convert(line.amount, cur, COP, vd);
@@ -208,6 +214,7 @@ export class ConversionService {
           presented = nominalCop.amount * inflationFactor;
         }
         fxLabel = vd.toISOString().slice(0, 10);
+        presentedCurrency = COP;
       }
 
       out.push({
@@ -215,7 +222,7 @@ export class ConversionService {
         originalAmount: line.amount,
         originalCurrency: cur,
         presentedAmount: presented,
-        presentedCurrency: display === 'NOMINAL_USD' ? USD : COP,
+        presentedCurrency,
         fxAsOfUsed: fxLabel,
         inflationFactor,
         warnings,

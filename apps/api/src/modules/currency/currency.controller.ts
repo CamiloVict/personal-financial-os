@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { DbUserId } from '../../auth/db-user.decorator';
 import { ConversionService, DISPLAY_VALUATION_MODES } from './conversion.service';
 import { UserPreferencesService } from './user-preferences.service';
@@ -44,6 +53,7 @@ export class CurrencyController {
   }
 
   @Post('currency/present-lines')
+  @HttpCode(HttpStatus.OK)
   presentLines(
     @Body()
     body: {
