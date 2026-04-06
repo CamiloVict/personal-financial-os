@@ -23,6 +23,22 @@ export function useCreateInvestmentType() {
   });
 }
 
+export function useUpdateInvestmentType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: Record<string, unknown>;
+    }) => apiClient.put(`/investments/types/${id}`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments.types() });
+    },
+  });
+}
+
 export function useDeleteInvestmentType() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -62,6 +78,21 @@ export function useCreateInvestmentPosition() {
   return useMutation({
     mutationFn: (newPos: Record<string, unknown>) =>
       apiClient.post('/investments/positions', newPos),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.investments.portfolioAnalytics(),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
+    },
+  });
+}
+
+export function useUpdateInvestmentPosition() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
+      apiClient.put(`/investments/positions/${id}`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
       queryClient.invalidateQueries({

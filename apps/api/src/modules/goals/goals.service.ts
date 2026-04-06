@@ -1,12 +1,44 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { FeasibilityLevel, ScenarioType } from '@prisma/client';
+import {
+  FeasibilityLevel,
+  GoalUtilityCadence,
+  GoalUtilityMode,
+  ScenarioType,
+} from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import {
   annualToMonthlyRate,
   DEFAULT_PROJECTION_SCENARIOS,
   monthsToReachTarget,
   splitContributionVsGrowth,
+  utilityImpliedMonthlySavings,
 } from './goal-projection.util';
+
+const GOAL_WRITABLE_KEYS = [
+  'name',
+  'targetAmount',
+  'currentAmount',
+  'targetDate',
+  'color',
+  'icon',
+  'currency',
+  'utilityMode',
+  'utilityCadence',
+  'utilityValue',
+] as const;
+
+function pickGoalBody(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of GOAL_WRITABLE_KEYS) {
+    if (k in body && body[k] !== undefined) out[k] = body[k];
+  }
+  return out;
+}
+
+function normalizeGoalCurrency(c: unknown): string {
+  const s = String(c ?? 'COP').toUpperCase();
+  return s === 'USD' ? 'USD' : 'COP';
+}
 
 @Injectable()
 export class GoalsService {
@@ -19,14 +51,81 @@ export class GoalsService {
     });
   }
 
+  async findOneGoal(id: string, userId: string) {
+    const g = await this.prisma.savingGoal.findFirst({
+      where: { id, userId },
+    });
+    if (!g) throw new NotFoundException('Meta no encontrada');
+    return g;
+  }
+
   createGoal(payload: Record<string, unknown>) {
+    const raw = pickGoalBody(payload);
+    const currency = normalizeGoalCurrency(raw.currency);
+    const utilityMode = (raw.utilityMode as GoalUtilityMode) ?? GoalUtilityMode.NONE;
+    const utilityCadence =
+      (raw.utilityCadence as GoalUtilityCadence) ?? GoalUtilityCadence.MANUAL;
+    let utilityValue = Number(raw.utilityValue ?? 0);
+    if (utilityMode === GoalUtilityMode.PERCENT)
+      utilityValue = Math.min(100, Math.max(0, utilityValue));
+
     return this.prisma.savingGoal.create({
       data: {
-        ...payload,
-        targetDate: payload.targetDate
-          ? new Date(payload.targetDate as string)
+        userId: payload.userId as string,
+        name: String(raw.name ?? ''),
+        targetAmount: Number(raw.targetAmount ?? 0),
+        currentAmount: Number(raw.currentAmount ?? 0),
+        targetDate: raw.targetDate
+          ? new Date(raw.targetDate as string)
           : null,
-      } as any,
+        color: raw.color != null ? String(raw.color) : null,
+        icon: raw.icon != null ? String(raw.icon) : null,
+        currency,
+        utilityMode,
+        utilityCadence,
+        utilityValue,
+      },
+    });
+  }
+
+  async updateGoal(id: string, userId: string, body: Record<string, unknown>) {
+    const existing = await this.prisma.savingGoal.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) throw new NotFoundException('Meta no encontrada');
+    const raw = pickGoalBody(body);
+    const data: Record<string, unknown> = {};
+
+    if ('name' in raw) data.name = String(raw.name);
+    if ('targetAmount' in raw) data.targetAmount = Number(raw.targetAmount);
+    if ('currentAmount' in raw) data.currentAmount = Number(raw.currentAmount);
+    if ('targetDate' in raw)
+      data.targetDate = raw.targetDate
+        ? new Date(raw.targetDate as string)
+        : null;
+    if ('color' in raw) data.color = raw.color != null ? String(raw.color) : null;
+    if ('icon' in raw) data.icon = raw.icon != null ? String(raw.icon) : null;
+    if ('currency' in raw) data.currency = normalizeGoalCurrency(raw.currency);
+    if ('utilityMode' in raw) data.utilityMode = raw.utilityMode as GoalUtilityMode;
+    if ('utilityCadence' in raw)
+      data.utilityCadence = raw.utilityCadence as GoalUtilityCadence;
+
+    if ('utilityValue' in raw || 'utilityMode' in raw) {
+      const nextMode = (
+        'utilityMode' in raw ? raw.utilityMode : existing.utilityMode
+      ) as GoalUtilityMode;
+      const vIn =
+        'utilityValue' in raw ? Number(raw.utilityValue) : Number(existing.utilityValue);
+      data.utilityValue =
+        nextMode === GoalUtilityMode.PERCENT
+          ? Math.min(100, Math.max(0, vIn))
+          : Math.max(0, vIn);
+    }
+
+    if (Object.keys(data).length === 0) return existing;
+    return this.prisma.savingGoal.update({
+      where: { id },
+      data: data as any,
     });
   }
 
@@ -131,6 +230,9 @@ export class GoalsService {
       goalName: goal.name,
       cashContext: {
         currentMonthlySavings: ctx.currentMonthlySavings,
+        cashflowMonthlySavings: ctx.cashflowMonthlySavings,
+        utilityMonthly: ctx.utilityMonthly,
+        goalCurrency: ctx.goalCurrency,
         monthlyAmountNeeded: ctx.monthlyAmountNeeded,
         monthlyShortfall: ctx.monthlyShortfall,
         monthsRemainingModel: ctx.monthsRemaining,
@@ -144,8 +246,8 @@ export class GoalsService {
       strategy,
       disclaimers: [
         'Las tasas de rendimiento son ilustrativas y no constituyen promesa de rentabilidad.',
-        'Los montos siguen la moneda de registro de la meta y de los streams.',
-        'El ahorro mensual del modelo es la suma de ingresos menos gastos esperados (sin anualizar).',
+        'Los montos objetivo/saldo siguen la moneda de la meta; el cashflow sigue la moneda de cada flujo.',
+        'El ahorro mensual del modelo suma (ingresos − gastos) más utilidades hacia la meta solo si configuraste monto o % trimestral; con cadencia manual actualizá el saldo a mano.',
       ],
     };
   }
@@ -201,11 +303,18 @@ export class GoalsService {
   }
 
   /** Contexto numérico compartido entre simulación y proyección. */
-  private computeGoalCashContext(goal: {
-    targetAmount: unknown;
-    currentAmount: unknown;
-    targetDate: Date | null;
-  }, streams: { flowType: string; expectedAmount: unknown }[]) {
+  private computeGoalCashContext(
+    goal: {
+      targetAmount: unknown;
+      currentAmount: unknown;
+      targetDate: Date | null;
+      utilityMode?: GoalUtilityMode;
+      utilityCadence?: GoalUtilityCadence;
+      utilityValue?: unknown;
+      currency?: string | null;
+    },
+    streams: { flowType: string; expectedAmount: unknown }[],
+  ) {
     const incomeStreams = streams.filter((s) => s.flowType === 'INCOME');
     const expenseStreams = streams.filter((s) => s.flowType === 'EXPENSE');
 
@@ -217,7 +326,14 @@ export class GoalsService {
       (acc, s) => acc + Number(s.expectedAmount),
       0,
     );
-    const currentMonthlySavings = totalIncome - totalExpense;
+    const cashflowMonthlySavings = totalIncome - totalExpense;
+    const utilityMonthly = utilityImpliedMonthlySavings({
+      mode: goal.utilityMode ?? GoalUtilityMode.NONE,
+      cadence: goal.utilityCadence ?? GoalUtilityCadence.MANUAL,
+      utilityValue: Number(goal.utilityValue ?? 0),
+      currentAmount: Number(goal.currentAmount ?? 0),
+    });
+    const currentMonthlySavings = cashflowMonthlySavings + utilityMonthly;
 
     const targetAmount = Number(goal.targetAmount);
     const currentAmount = Number(goal.currentAmount || 0);
@@ -253,6 +369,9 @@ export class GoalsService {
     return {
       totalIncome,
       totalExpense,
+      cashflowMonthlySavings,
+      utilityMonthly,
+      goalCurrency: normalizeGoalCurrency(goal.currency),
       currentMonthlySavings,
       targetAmount,
       currentAmount,

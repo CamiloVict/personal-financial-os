@@ -5,7 +5,7 @@
  * - Hoy: posición financiera (dashboard, flujo, deudas, portafolio, metas).
  * - Fiscal: planeación tributaria Colombia (ruta dedicada, separada visualmente en desktop).
  * - Futuro: herramientas hipotéticas (asignación, simulador).
- * - Modelo: catálogo avanzado (tipos de inversión).
+ * - Modelo: categorías de patrimonio (clasificar posiciones).
  */
 
 import { useEffect, useState } from 'react';
@@ -63,7 +63,7 @@ const HOY_NAV: PrimaryNavItem[] = [
   {
     href: '/investment-positions',
     label: 'Portafolio',
-    shortDescription: 'Posiciones e inversiones',
+    shortDescription: 'Activos y posiciones patrimoniales',
     icon: PieChart,
     onboarding: 'nav-portfolio',
   },
@@ -109,8 +109,8 @@ const PLANNING_NAV: NavMenuItem[] = [
 const CONFIG_NAV: NavMenuItem[] = [
   {
     href: '/investment-types',
-    label: 'Tipos de inversión',
-    shortDescription: 'Catálogo del modelo (avanzado)',
+    label: 'Categorías de patrimonio',
+    shortDescription: 'Define cómo clasificás cada posición',
     icon: Settings2,
   },
 ];
@@ -219,7 +219,7 @@ export function AppNavigation() {
                 <NavMenuDropdown
                   id="nav-config"
                   buttonLabel="Modelo"
-                  buttonTitle="Catálogo y estructura: tipos de inversión para clasificar posiciones"
+                  buttonTitle="Categorías de patrimonio: activos, instrumentos o estructura que uses en tu portafolio"
                   items={CONFIG_NAV}
                 />
               </div>

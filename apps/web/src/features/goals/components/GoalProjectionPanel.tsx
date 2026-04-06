@@ -5,8 +5,6 @@ import { Compass, TrendingUp, Calendar, Activity } from 'lucide-react';
 import { formatBookAmount } from '@/features/currency/format';
 import type { GoalProjectionResponse } from '@/features/goals/types/goalProjection';
 
-const BOOK = 'COP';
-
 function feasibilityLabel(level: string) {
   switch (level) {
     case 'CONSERVATIVE':
@@ -40,6 +38,9 @@ export function GoalProjectionPanel({
   if (!data) return null;
 
   const { strategy, scenarios, disclaimers, cashContext } = data;
+  const book = cashContext.goalCurrency === 'USD' ? 'USD' : 'COP';
+  const cfS = cashContext.cashflowMonthlySavings ?? cashContext.currentMonthlySavings;
+  const uM = cashContext.utilityMonthly ?? 0;
 
   return (
     <section className="space-y-4">
@@ -102,10 +103,10 @@ export function GoalProjectionPanel({
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <GrowthCell h={s.horizon5y} />
+                  <GrowthCell h={s.horizon5y} book={book} />
                 </td>
                 <td className="px-3 py-2">
-                  <GrowthCell h={s.horizon15y} />
+                  <GrowthCell h={s.horizon15y} book={book} />
                 </td>
                 <td className="px-3 py-2 text-[10px] font-medium text-slate-600">
                   {feasibilityLabel(s.feasibilityLevel)}
@@ -127,10 +128,17 @@ export function GoalProjectionPanel({
         <div className="rounded-lg border border-slate-100 bg-slate-50/80 p-3 text-[10px] text-slate-600 leading-relaxed">
           <p className="font-bold text-slate-800 mb-1">Contexto de flujo</p>
           <p>
-            Ahorro modelado:{' '}
-            <strong>{formatBookAmount(cashContext.currentMonthlySavings, BOOK)}</strong> · Requerido:{' '}
-            <strong>{formatBookAmount(cashContext.monthlyAmountNeeded, BOOK)}</strong> · Plazo modelo:{' '}
-            {cashContext.monthsRemainingModel} meses.
+            Flujo (ing − gasto): <strong>{formatBookAmount(cfS, book)}</strong>
+            {uM > 0 ? (
+              <>
+                {' '}
+                + utilidades modelo: <strong>{formatBookAmount(uM, book)}</strong>/mes
+              </>
+            ) : null}{' '}
+            → ahorro modelado:{' '}
+            <strong>{formatBookAmount(cashContext.currentMonthlySavings, book)}</strong> · Requerido:{' '}
+            <strong>{formatBookAmount(cashContext.monthlyAmountNeeded, book)}</strong> · Plazo:{' '}
+            {cashContext.monthsRemainingModel} meses ({book}).
           </p>
         </div>
       </div>
@@ -146,18 +154,20 @@ export function GoalProjectionPanel({
 
 function GrowthCell({
   h,
+  book,
 }: {
   h: { futureValue: number; contributions: number; growth: number };
+  book: string;
 }) {
   return (
     <div className="space-y-0.5">
       <p className="font-semibold text-slate-800 flex items-center gap-0.5">
         <TrendingUp className="w-3 h-3 text-emerald-600" />
-        {formatBookAmount(h.futureValue, BOOK)}
+        {formatBookAmount(h.futureValue, book)}
       </p>
       <p className="text-[9px] text-slate-500">
-        Aportes {formatBookAmount(h.contributions, BOOK)} · Crec.{' '}
-        {formatBookAmount(h.growth, BOOK)}
+        Aportes {formatBookAmount(h.contributions, book)} · Crec.{' '}
+        {formatBookAmount(h.growth, book)}
       </p>
     </div>
   );

@@ -10,6 +10,36 @@ export function useGoals() {
   });
 }
 
+export function useGoal(id: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.goals.detail(id),
+    queryFn: () => apiClient.get<any>(`/goals/${id}`),
+    enabled: Boolean(id) && enabled,
+  });
+}
+
+export function useUpdateGoal(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const updated = await apiClient.patch<any>(`/goals/${id}`, body);
+      try {
+        await apiClient.post(`/goals/${id}/scenarios/simulate`, {});
+      } catch {
+        /* sin cashflow u otro error: la meta igual quedó guardada */
+      }
+      return updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.detail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.scenarios(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.projection(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
+    },
+  });
+}
+
 export function useGoalScenarios(id: string) {
   return useQuery({
     queryKey: queryKeys.goals.scenarios(id),

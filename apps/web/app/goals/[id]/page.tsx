@@ -4,11 +4,17 @@ import { Zap, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
+  useGoal,
   useGoalScenarios,
   useSimulateGoalScenarios,
   useGoalProjection,
 } from '@/features/goals/api/queries';
-import { GoalSnapshot, GoalScenarios, GoalProjectionPanel } from '@/features/goals/components';
+import {
+  GoalSnapshot,
+  GoalScenarios,
+  GoalProjectionPanel,
+  GoalSettingsForm,
+} from '@/features/goals/components';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
 import { presentedCurrencyFromRows } from '@/features/currency/valuationUtils';
 import { useGlobalStore } from '@/shared/store/global';
@@ -17,6 +23,7 @@ export default function GoalDetailPage() {
   const params = useParams();
   const goalId = typeof params.id === 'string' ? params.id : '';
 
+  const { data: goalRecord, isLoading: loadingGoal } = useGoal(goalId);
   const { data: scenarioSnapshot, isLoading } = useGoalScenarios(goalId);
   const { data: projectionData, isLoading: projectionLoading } =
     useGoalProjection(goalId);
@@ -35,29 +42,33 @@ export default function GoalDetailPage() {
       monthlyShortfall,
       scenarios,
     } = scenarioSnapshot;
+    const bookCcy =
+      goalRecord?.currency === 'USD' || goalRecord?.currency === 'COP'
+        ? goalRecord.currency
+        : 'COP';
     const base = [
       {
         id: 'gs-needed',
         amount: Number(monthlyAmountNeeded),
-        currency: 'COP',
+        currency: bookCcy,
         valueDate: d,
       },
       {
         id: 'gs-target',
         amount: Number(targetAmount),
-        currency: 'COP',
+        currency: bookCcy,
         valueDate: d,
       },
       {
         id: 'gs-savings',
         amount: Number(currentMonthlySavings),
-        currency: 'COP',
+        currency: bookCcy,
         valueDate: d,
       },
       {
         id: 'gs-shortfall',
         amount: Number(monthlyShortfall),
-        currency: 'COP',
+        currency: bookCcy,
         valueDate: d,
       },
     ];
@@ -65,18 +76,18 @@ export default function GoalDetailPage() {
       {
         id: `gs-${s.id}-inc`,
         amount: Number(s.incomeIncreaseAmount || 0),
-        currency: 'COP',
+        currency: bookCcy,
         valueDate: d,
       },
       {
         id: `gs-${s.id}-exp`,
         amount: Number(s.expenseReductionAmount || 0),
-        currency: 'COP',
+        currency: bookCcy,
         valueDate: d,
       },
     ]);
     return [...base, ...fromScen];
-  }, [scenarioSnapshot, valuationAsOfDate]);
+  }, [scenarioSnapshot, valuationAsOfDate, goalRecord?.currency]);
 
   const { data: simPresRows, isLoading: simPresLoading } = useValuationPresentation(
     goalSimLines,
@@ -156,7 +167,7 @@ export default function GoalDetailPage() {
     );
   }
 
-  if (isLoading || (simulateMutation.isPending && !scenarioSnapshot)) {
+  if (loadingGoal || isLoading || (simulateMutation.isPending && !scenarioSnapshot)) {
     return (
       <div className="flex justify-center items-center py-20 text-slate-400">
         <Activity className="w-8 h-8 animate-spin" />
@@ -204,13 +215,17 @@ export default function GoalDetailPage() {
         <span>Escenarios</span>
       </div>
 
+      {goalRecord ? (
+        <GoalSettingsForm goalId={goalId} goal={goalRecord} />
+      ) : null}
+
       <header className="flex justify-between items-end border-b border-slate-200/50 pb-4 mb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <div className="p-1 bg-blue-100 rounded-md">
               <Zap className="w-4 h-4 text-blue-600" />
             </div>
-            Simulación de meta
+            {goalRecord?.name ? goalRecord.name : 'Simulación de meta'}
           </h1>
           <p className="text-slate-500 mt-1 max-w-2xl text-xs leading-relaxed">
             Proyecciones condicionales según tus flujos registrados y {Number(monthsRemaining)} meses en el horizonte
@@ -236,6 +251,11 @@ export default function GoalDetailPage() {
         isAchievable={isAchievable}
         currentProjectedMonths={currentProjectedMonths}
         monthsRemaining={monthsRemaining}
+        bookCurrency={
+          goalRecord?.currency === 'USD' || goalRecord?.currency === 'COP'
+            ? goalRecord.currency
+            : 'COP'
+        }
         presented={presentedSnapshot}
         presentationLoading={simPresLoading}
       />
@@ -246,6 +266,11 @@ export default function GoalDetailPage() {
         scenarios={scenarios}
         isAchievable={isAchievable}
         currentMonthlySavings={currentMonthlySavings}
+        bookCurrency={
+          goalRecord?.currency === 'USD' || goalRecord?.currency === 'COP'
+            ? goalRecord.currency
+            : 'COP'
+        }
         presentedSavings={presentedSnapshot?.currentMonthlySavings ?? null}
         presentedSavingsCurrency={presentedSnapshot?.currency}
         presentedByScenarioId={presentedByScenarioId}

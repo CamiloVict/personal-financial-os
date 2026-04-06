@@ -181,7 +181,7 @@ export function PortfolioAnalyticsSection({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="glass-card rounded-xl p-4 border border-slate-200/60">
           <h3 className="text-sm font-bold text-slate-800 mb-2">
-            Composición por tipo de inversión
+            Composición por categoría de patrimonio
           </h3>
           <p className="text-[11px] text-slate-500 mb-3">
             Etiquetas con &quot;flujo&quot; indican tipos marcados como que generan ingreso periódico.

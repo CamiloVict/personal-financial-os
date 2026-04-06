@@ -3,8 +3,6 @@ import { Target, Activity, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
-const GOAL_BOOK_CCY = 'COP';
-
 interface GoalListProps {
   goals: any[];
   isLoading: boolean;
@@ -45,6 +43,10 @@ export function GoalList({
           ) : (
             <ul className="divide-y divide-slate-100">
               {goals.map((goal: any) => {
+                const bookCcy =
+                  goal.currency === 'USD' || goal.currency === 'COP'
+                    ? goal.currency
+                    : 'COP';
                 const targetNom = Number(goal.targetAmount);
                 const currentNom = Number(goal.currentAmount || 0);
                 const pres = presentedByGoalId?.[goal.id];
@@ -82,18 +84,18 @@ export function GoalList({
                             </p>
                             <p className="text-[8px] text-slate-400 mt-0.5">
                               Nom. obj.:{' '}
-                              {formatBookAmount(targetNom, GOAL_BOOK_CCY)} · Actual:{' '}
-                              {formatBookAmount(currentNom, GOAL_BOOK_CCY)}
+                              {formatBookAmount(targetNom, bookCcy)} · Actual:{' '}
+                              {formatBookAmount(currentNom, bookCcy)}
                             </p>
                           </>
                         ) : (
                           <>
                             <p className="text-base font-bold tracking-tight text-blue-600">
-                              {formatBookAmount(targetNom, GOAL_BOOK_CCY)}
+                              {formatBookAmount(targetNom, bookCcy)}
                             </p>
                             <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
                               Actual:{' '}
-                              {formatBookAmount(currentNom, GOAL_BOOK_CCY)}
+                              {formatBookAmount(currentNom, bookCcy)}
                             </p>
                           </>
                         )}

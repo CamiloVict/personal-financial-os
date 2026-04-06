@@ -20,11 +20,11 @@ export function NetWorthCompositionChart({
   return (
     <ChartCard
       title="Composición patrimonial"
-      description="Por tipo de inversión (valor estimado actual)."
+      description="Todas las posiciones activas por categoría. Los pasivos se gestionan en Deudas."
       chartClassName="h-52 min-h-[13rem] sm:h-56"
       isEmpty={data.length === 0}
       emptyTitle="Sin posiciones activas"
-      emptyDescription="Agrega inversiones para ver la composición por tipo."
+      emptyDescription="Agrega posiciones en Portafolio para ver la composición por categoría."
     >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Calendar, ListPlus, Trash2 } from 'lucide-react';
+import { Calendar, ListPlus, Pencil, Trash2 } from 'lucide-react';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+import { periodicIncomeMonthlyEquivalent } from '@/features/investments/utils/periodicIncomeMonthlyEquivalent';
 
 function PositionProgressBlock({ pos }: { pos: any }) {
   const cap = Number(pos.initialCapital);
@@ -43,9 +44,25 @@ function PositionProgressBlock({ pos }: { pos: any }) {
   );
 }
 
+function periodicIncomeLabel(freq: string | null | undefined): string {
+  const m: Record<string, string> = {
+    MONTHLY: 'mes',
+    QUARTERLY: 'trimestre',
+    ANNUALLY: 'año',
+    WEEKLY: 'semana',
+    BIWEEKLY: 'quincena',
+    BIMONTHLY: 'bimestre',
+    FOUR_MONTHLY: 'cuatrimestre',
+    SEMIANNUALLY: 'semestre',
+    CUSTOM: 'período personalizado',
+  };
+  return m[freq ?? ''] ?? 'período';
+}
+
 interface PositionListProps {
   positions: any[];
   onSelectPosition: (pos: any) => void;
+  onEditPosition?: (pos: any) => void;
   onDeletePosition: (id: string) => void;
   isDeleting: boolean;
   /** Valuación coherente (mismo modo que barra global) */
@@ -59,6 +76,7 @@ interface PositionListProps {
 export function PositionList({
   positions,
   onSelectPosition,
+  onEditPosition,
   onDeletePosition,
   isDeleting,
   presentedById,
@@ -78,6 +96,15 @@ export function PositionList({
                 <span className="inline-block bg-indigo-100 text-indigo-900 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-indigo-200/80">
                   {pos.type?.name ?? 'Sin tipo'}
                 </span>
+                {pos.patrimonyLeg === 'LIABILITY' ? (
+                  <span className="text-[10px] font-semibold text-amber-900 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
+                    Pasivo patrimonial
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-full">
+                    Activo
+                  </span>
+                )}
                 {pos.type?.generatesCashflow ? (
                   <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
                     Genera flujo
@@ -165,9 +192,43 @@ export function PositionList({
             </div>
           </div>
 
+          {pos.generatesPeriodicIncome &&
+          Number(pos.expectedPeriodicIncomeAmount) > 0 &&
+          pos.frequency ? (
+            <div className="px-5 py-2 bg-emerald-50/80 border-b border-emerald-100/80 text-xs text-emerald-900">
+              <span className="font-semibold">Ingreso esperado: </span>
+              {formatBookAmount(
+                Number(pos.expectedPeriodicIncomeAmount),
+                pos.currency ?? 'USD',
+              )}{' '}
+              / {periodicIncomeLabel(pos.frequency)}
+              {(() => {
+                const mo = periodicIncomeMonthlyEquivalent(pos);
+                if (mo == null || mo <= 0) return null;
+                return (
+                  <span className="text-emerald-800/90">
+                    {' '}
+                    (~
+                    {formatBookAmount(mo, pos.currency ?? 'USD')}
+                    /mes)
+                  </span>
+                );
+              })()}
+            </div>
+          ) : null}
+
           <PositionProgressBlock pos={pos} />
 
           <div className="p-4 border-t border-slate-100 bg-white flex flex-wrap justify-end gap-3 transition-opacity hover-reveal-actions">
+            {onEditPosition ? (
+              <button
+                type="button"
+                onClick={() => onEditPosition(pos)}
+                className="touch-manipulation flex items-center gap-2 bg-white border border-slate-200 active:bg-slate-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-50 text-slate-700 px-3 py-2 min-h-10 rounded-lg text-xs font-semibold transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Editar
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => onSelectPosition(pos)}

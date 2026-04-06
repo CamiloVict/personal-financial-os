@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { DbUserId } from '../../auth/db-user.decorator';
 import { GoalsService } from './goals.service';
 
@@ -33,5 +33,19 @@ export class GoalsController {
     @Body() _input: Record<string, unknown>,
   ) {
     return this.goalsService.simulateGoalScenarios(id, userId);
+  }
+
+  @Get(':id')
+  getGoal(@Param('id') id: string, @DbUserId() userId: string) {
+    return this.goalsService.findOneGoal(id, userId);
+  }
+
+  @Patch(':id')
+  patchGoal(
+    @Param('id') id: string,
+    @DbUserId() userId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return this.goalsService.updateGoal(id, userId, body);
   }
 }

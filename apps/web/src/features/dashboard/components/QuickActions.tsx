@@ -24,7 +24,7 @@ export function QuickActions() {
               href="/investment-positions"
               className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-md font-semibold transition-all text-[10px] flex items-center gap-1"
             >
-              <PlusCircle className="w-3 h-3" /> Inversión
+              <PlusCircle className="w-3 h-3" /> Posición
             </Link>
             <Link
               href="/tax"
@@ -46,7 +46,7 @@ export function QuickActions() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-white transition-colors hover:bg-white/20"
           >
             <Settings2 className="w-3 h-3 shrink-0" aria-hidden />
-            Tipos de inversión
+            Categorías de patrimonio
           </Link>
         </div>
       </div>

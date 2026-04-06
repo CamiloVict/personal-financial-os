@@ -61,22 +61,37 @@ export default function GoalsPage() {
   const [targetAmount, setTargetAmount] = useState<string>('');
   const [currentAmount, setCurrentAmount] = useState<string>('');
   const [targetDate, setTargetDate] = useState('');
+  const [currency, setCurrency] = useState('COP');
+  const [utilityMode, setUtilityMode] = useState<'NONE' | 'AMOUNT' | 'PERCENT'>('NONE');
+  const [utilityCadence, setUtilityCadence] = useState<'QUARTERLY' | 'MANUAL'>('MANUAL');
+  const [utilityValue, setUtilityValue] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createGoalMutation.mutate({
-      name,
-      targetAmount: Number(targetAmount) || 0,
-      currentAmount: Number(currentAmount) || 0,
-      targetDate: new Date(targetDate).toISOString()
-    }, {
-      onSuccess: () => {
-        setName('');
-        setTargetAmount('');
-        setCurrentAmount('');
-        setTargetDate('');
-      }
-    });
+    createGoalMutation.mutate(
+      {
+        name,
+        targetAmount: Number(targetAmount) || 0,
+        currentAmount: Number(currentAmount) || 0,
+        targetDate: new Date(targetDate).toISOString(),
+        currency: currency === 'USD' ? 'USD' : 'COP',
+        utilityMode,
+        utilityCadence,
+        utilityValue: Number(utilityValue) || 0,
+      },
+      {
+        onSuccess: () => {
+          setName('');
+          setTargetAmount('');
+          setCurrentAmount('');
+          setTargetDate('');
+          setCurrency('COP');
+          setUtilityMode('NONE');
+          setUtilityCadence('MANUAL');
+          setUtilityValue('');
+        },
+      },
+    );
   };
 
   return (
@@ -120,11 +135,23 @@ export default function GoalsPage() {
       ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
-        <GoalForm 
-          name={name} setName={setName}
-          targetAmount={targetAmount} setTargetAmount={setTargetAmount}
-          currentAmount={currentAmount} setCurrentAmount={setCurrentAmount}
-          targetDate={targetDate} setTargetDate={setTargetDate}
+        <GoalForm
+          name={name}
+          setName={setName}
+          targetAmount={targetAmount}
+          setTargetAmount={setTargetAmount}
+          currentAmount={currentAmount}
+          setCurrentAmount={setCurrentAmount}
+          targetDate={targetDate}
+          setTargetDate={setTargetDate}
+          currency={currency}
+          setCurrency={setCurrency}
+          utilityMode={utilityMode}
+          setUtilityMode={setUtilityMode}
+          utilityCadence={utilityCadence}
+          setUtilityCadence={setUtilityCadence}
+          utilityValue={utilityValue}
+          setUtilityValue={setUtilityValue}
           onSubmit={handleSubmit}
           isPending={createGoalMutation.isPending}
         />

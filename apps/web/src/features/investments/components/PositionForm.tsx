@@ -44,6 +44,16 @@ interface PositionFormProps {
   setDebtDueDate?: Dispatch<SetStateAction<string>>;
   /** Validación al enviar (p. ej. saldo de deuda obligatorio). */
   submitError?: string | null;
+  patrimonyLeg?: 'ASSET' | 'LIABILITY';
+  setPatrimonyLeg?: Dispatch<SetStateAction<'ASSET' | 'LIABILITY'>>;
+  generatesPeriodicIncome?: boolean;
+  setGeneratesPeriodicIncome?: Dispatch<SetStateAction<boolean>>;
+  expectedPeriodicIncomeAmount?: string;
+  setExpectedPeriodicIncomeAmount?: Dispatch<SetStateAction<string>>;
+  incomeFrequency?: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  setIncomeFrequency?: Dispatch<SetStateAction<'MONTHLY' | 'QUARTERLY' | 'ANNUALLY'>>;
+  nextExpectedDate?: string;
+  setNextExpectedDate?: Dispatch<SetStateAction<string>>;
 }
 
 export function PositionForm({
@@ -78,6 +88,16 @@ export function PositionForm({
   debtDueDate = '',
   setDebtDueDate = () => {},
   submitError = null,
+  patrimonyLeg = 'ASSET',
+  setPatrimonyLeg = () => {},
+  generatesPeriodicIncome = false,
+  setGeneratesPeriodicIncome = () => {},
+  expectedPeriodicIncomeAmount = '',
+  setExpectedPeriodicIncomeAmount = () => {},
+  incomeFrequency = 'MONTHLY',
+  setIncomeFrequency = () => {},
+  nextExpectedDate = '',
+  setNextExpectedDate = () => {},
 }: PositionFormProps) {
   const selectedType = types.find((t) => t.id === typeId);
 
@@ -88,15 +108,15 @@ export function PositionForm({
       {types.length === 0 ? (
         <div className="bg-rose-50 text-rose-800 p-4 rounded-lg border border-rose-200 text-sm space-y-3">
           <p>
-            Para registrar una posición necesitas al menos un <strong>tipo de activo</strong> (fondo, ETF,
-            vivienda en arriendo, etc.). Eso se define en la página <strong>Tipos de inversión</strong>, en el menú
-            superior.
+            Para registrar una posición necesitas al menos una <strong>categoría de patrimonio</strong> (la
+            definís vos: activo cotizado, inmueble, caja, etc.). Configurala en{' '}
+            <strong>Categorías de patrimonio</strong> (menú Modelo).
           </p>
           <Link
             href="/investment-types"
             className="inline-flex items-center gap-1.5 font-semibold text-white bg-rose-700 hover:bg-rose-800 px-3 py-2 rounded-lg text-xs transition-colors"
           >
-            Ir a Tipos de inversión
+            Ir a categorías de patrimonio
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -185,6 +205,84 @@ export function PositionForm({
               onChange={(e) => setStartDate(e.target.value)}
               className="glass-input w-full p-2.5 rounded-lg text-sm"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Activo o pasivo (patrimonio)
+            </label>
+            <select
+              value={patrimonyLeg}
+              onChange={(e) =>
+                setPatrimonyLeg(e.target.value === 'LIABILITY' ? 'LIABILITY' : 'ASSET')
+              }
+              className="glass-input w-full p-2.5 rounded-lg text-sm"
+            >
+              <option value="ASSET">Activo (suma al patrimonio)</option>
+              <option value="LIABILITY">Pasivo (resta al patrimonio)</option>
+            </select>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Los pasivos en posiciones no entran en el portafolio financiero (retornos / KPI de inversión).
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer touch-manipulation">
+              <input
+                type="checkbox"
+                checked={generatesPeriodicIncome}
+                onChange={(e) => setGeneratesPeriodicIncome(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-slate-800">
+                Genera ingreso periódico esperado
+              </span>
+            </label>
+            {generatesPeriodicIncome ? (
+              <div className="space-y-3 pt-1 border-t border-slate-200/80">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Monto por período (en {currency})
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={expectedPeriodicIncomeAmount}
+                    onChange={(e) => setExpectedPeriodicIncomeAmount(e.target.value)}
+                    className="glass-input w-full p-2 rounded-lg text-sm"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Frecuencia</label>
+                  <select
+                    value={incomeFrequency}
+                    onChange={(e) =>
+                      setIncomeFrequency(
+                        e.target.value as 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY',
+                      )
+                    }
+                    className="glass-input w-full p-2 rounded-lg text-sm"
+                  >
+                    <option value="MONTHLY">Mensual</option>
+                    <option value="QUARTERLY">Trimestral</option>
+                    <option value="ANNUALLY">Anual</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Próximo pago esperado (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={nextExpectedDate}
+                    onChange={(e) => setNextExpectedDate(e.target.value)}
+                    className="glass-input w-full p-2 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {allowsLinkedDebt && setLinkDebt ? (

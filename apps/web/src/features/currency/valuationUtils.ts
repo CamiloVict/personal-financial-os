@@ -140,26 +140,30 @@ export function linesFromDashboardTaxScenarios(
   });
 }
 
-/** Metas sin moneda en schema: mismos montos que cashflow / simulador (COP). */
+/** Metas: moneda de registro COP o USD según la meta. */
 export function linesFromGoals(
   goals: any[],
   valuationAsOfDate: string,
 ): ValuationLineInput[] {
   const vd = valuationAsOfDate.slice(0, 10);
-  return goals.flatMap((g) => [
-    {
-      id: `${g.id}-target`,
-      amount: Number(g.targetAmount),
-      currency: 'COP',
-      valueDate: vd,
-    },
-    {
-      id: `${g.id}-current`,
-      amount: Number(g.currentAmount || 0),
-      currency: 'COP',
-      valueDate: vd,
-    },
-  ]);
+  return goals.flatMap((g) => {
+    const ccy =
+      g.currency === 'USD' || g.currency === 'COP' ? g.currency : 'COP';
+    return [
+      {
+        id: `${g.id}-target`,
+        amount: Number(g.targetAmount),
+        currency: ccy,
+        valueDate: vd,
+      },
+      {
+        id: `${g.id}-current`,
+        amount: Number(g.currentAmount || 0),
+        currency: ccy,
+        valueDate: vd,
+      },
+    ];
+  });
 }
 
 export function aggregateExpensePieByCategory(

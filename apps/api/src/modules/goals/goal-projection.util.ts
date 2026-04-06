@@ -111,3 +111,21 @@ export const DEFAULT_PROJECTION_SCENARIOS: ProjectionScenarioInput[] = [
     useRequiredMonthly: true,
   },
 ];
+
+/**
+ * Equivalente mensual orientativo de utilidades hacia la meta cuando la cadencia es trimestral.
+ * Con cadencia manual no suma al flujo modelado (se espera ajuste del saldo actual).
+ */
+export function utilityImpliedMonthlySavings(params: {
+  mode: 'NONE' | 'AMOUNT' | 'PERCENT';
+  cadence: 'QUARTERLY' | 'MANUAL';
+  utilityValue: number;
+  currentAmount: number;
+}): number {
+  const { mode, cadence, utilityValue, currentAmount } = params;
+  if (mode === 'NONE' || utilityValue <= 0 || cadence === 'MANUAL') return 0;
+  if (mode === 'AMOUNT') return utilityValue / 3;
+  if (mode === 'PERCENT')
+    return (Math.max(0, currentAmount) * (utilityValue / 100)) / 3;
+  return 0;
+}

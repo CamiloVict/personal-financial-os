@@ -23,7 +23,7 @@ export function TopInvestments({
   return (
     <div className="glass-card rounded-xl p-4 flex-1 flex flex-col">
       <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
-        <h3 className="text-xs font-bold text-slate-800">Top Inversiones</h3>
+        <h3 className="text-xs font-bold text-slate-800">Principales posiciones</h3>
         <div className="flex flex-wrap items-center gap-2">
           <ConfidenceBadge confidence={confidence} />
           <Link href="/investment-positions" className="text-[9px] text-blue-600 hover:underline">Ver todo</Link>
@@ -31,7 +31,7 @@ export function TopInvestments({
       </div>
       <div className="flex-1 overflow-y-auto">
         {positions.length === 0 ? (
-          <div className="text-center text-slate-400 text-[10px] py-4">No hay inversiones</div>
+          <div className="text-center text-slate-400 text-[10px] py-4">No hay posiciones registradas</div>
         ) : (
           <ul className="divide-y divide-slate-100">
             {positions.slice(0, 5).map((pos: any) => (

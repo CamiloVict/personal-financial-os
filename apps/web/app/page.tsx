@@ -50,6 +50,10 @@ import { useGlobalStore } from '@/shared/store/global';
 import { pickFinancialHealthRecommendation } from '@/features/dashboard/model/financialHealthRecommendation';
 import { TrustBadge } from '@/shared/ui/TrustProvenance';
 import { formatApiErrorForUi } from '@/shared/api/api-error';
+import {
+  isFinancialPortfolioPosition,
+  positionPatrimonySignedBookValue,
+} from '@/features/investments/utils/portfolioEligibility';
 
 function hasFinancialSetup(streams: unknown[], positions: unknown[]) {
   return streams.length > 0 || positions.length > 0;
@@ -83,6 +87,10 @@ export default function HomePage() {
   const { data: positionsPayload, isLoading: loadingPositions } =
     useInvestmentPositions();
   const positions = positionsPayload?.positions ?? [];
+  const financialPositions = useMemo(
+    () => positions.filter(isFinancialPortfolioPosition),
+    [positions],
+  );
   const { data: goals = [], isLoading: loadingGoals } = useGoals();
   const {
     data: leverageAnalysis,
@@ -108,19 +116,25 @@ export default function HomePage() {
     router.replace('/cashflow');
   }, [gateReady, hasSetup, router]);
 
-  const totalInvested = positions.reduce(
+  const totalPatrimonyBook = positions.reduce(
+    (acc: number, pos) => acc + positionPatrimonySignedBookValue(pos),
+    0,
+  );
+  const totalInvestedFinancial = financialPositions.reduce(
     (acc: number, pos: { initialCapital?: number | string }) =>
       acc + Number(pos.initialCapital),
     0,
   );
-  const totalEstimatedValue = positions.reduce(
+  const totalEstimatedFinancial = financialPositions.reduce(
     (acc: number, pos: { currentEstimatedValue?: number | string }) =>
       acc + Number(pos.currentEstimatedValue),
     0,
   );
-  const totalReturn = totalEstimatedValue - totalInvested;
+  const totalReturn = totalEstimatedFinancial - totalInvestedFinancial;
   const returnPercentage =
-    totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+    totalInvestedFinancial > 0
+      ? (totalReturn / totalInvestedFinancial) * 100
+      : 0;
 
   const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
@@ -220,12 +234,12 @@ export default function HomePage() {
     (presentedRows?.length ?? 0) > 0;
 
   const { invested: pInv, value: pVal, currency: posPresCcy } =
-    sumPositionPresented(positions, presentedRows);
+    sumPositionPresented(financialPositions, presentedRows);
   const pRet =
     pInv != null && pVal != null ? pVal - pInv : null;
 
   const portfolioValue =
-    pVal != null ? pVal : totalEstimatedValue;
+    pVal != null ? pVal : totalEstimatedFinancial;
 
   const totalDebt =
     leverageAnalysis != null
@@ -233,7 +247,7 @@ export default function HomePage() {
       : null;
 
   const netWorthApprox =
-    totalDebt !== null ? portfolioValue - totalDebt : null;
+    totalDebt !== null ? totalPatrimonyBook - totalDebt : null;
 
   const goalsProgress: GoalProgressRow[] = useMemo(() => {
     return goals.map((g: { id: string; name: string; targetAmount?: unknown; currentAmount?: unknown }) => {
@@ -365,7 +379,7 @@ export default function HomePage() {
             className="glass-card hover:bg-blue-600 hover:text-white hover:border-blue-500 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
           >
             <PlusCircle className="w-3.5 h-3.5" />
-            Nueva inversión
+            Nueva posición
           </Link>
         </div>
       </header>

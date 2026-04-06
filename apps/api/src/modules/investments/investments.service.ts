@@ -1,5 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  InvestmentStatus,
+  PatrimonyLeg,
+  PeriodFrequency,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import {
   bucketEventsByMonth,
@@ -7,6 +16,9 @@ import {
   unionMonthKeys,
   type PositionForHistory,
 } from './portfolio-analytics.util';
+import {
+  positionCountsForFinancialPortfolio,
+} from './portfolio-type.util';
 
 export type PortfolioAnalyticsResponse = {
   generatedAt: string;
@@ -57,46 +69,110 @@ export type PortfolioAnalyticsResponse = {
   disclaimers: string[];
 };
 
+const TYPE_FIELD_KEYS = [
+  'name',
+  'description',
+  'fiscalAssetTreatment',
+  'generatesCashflow',
+  'allowsProfitDistribution',
+  'expectedFrequency',
+  'allowsExtraContributions',
+  'allowsPartialWithdrawals',
+  'allowsLinkedDebt',
+  'hasManualValuation',
+  'hasMaturityDate',
+  'hasPaymentSchedule',
+  'showAsPatrimonialAsset',
+  'countsInFinancialPortfolio',
+] as const;
+
+function pickTypeFields(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of TYPE_FIELD_KEYS) {
+    if (k in body && body[k] !== undefined) out[k] = body[k];
+  }
+  return out;
+}
+
+const POSITION_FIELD_KEYS = [
+  'typeId',
+  'name',
+  'startDate',
+  'initialCapital',
+  'currency',
+  'currentEstimatedValue',
+  'status',
+  'notes',
+  'isIncludedInNetWorth',
+  'assetId',
+  'generatesPeriodicIncome',
+  'expectedPeriodicIncomeAmount',
+  'frequency',
+  'customFrequencyMonths',
+  'nextExpectedDate',
+  'patrimonyLeg',
+] as const;
+
+function pickPositionPayload(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of POSITION_FIELD_KEYS) {
+    if (k in body && body[k] !== undefined) out[k] = body[k];
+  }
+  return out;
+}
+
+function parsePatrimonyLeg(v: unknown): PatrimonyLeg {
+  return v === 'LIABILITY' ? PatrimonyLeg.LIABILITY : PatrimonyLeg.ASSET;
+}
+
 @Injectable()
 export class InvestmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getTypes(userId?: string) {
-    if (!userId) {
-      return this.prisma.investmentTypeDefinition.findMany({
-        orderBy: { name: 'asc' },
-      });
-    }
+  /** Solo tipos creados por el usuario (sin plantillas globales). */
+  getTypes(userId: string) {
     return this.prisma.investmentTypeDefinition.findMany({
-      where: {
-        OR: [{ isSystem: true }, { userId: null }, { userId }],
-      },
+      where: { userId },
       orderBy: { name: 'asc' },
     });
   }
 
-  createType(payload: Record<string, unknown>) {
+  createType(userId: string, body: Record<string, unknown>) {
+    const data = pickTypeFields(body);
     return this.prisma.investmentTypeDefinition.create({
-      data: payload as any,
+      data: {
+        ...data,
+        userId,
+        isSystem: false,
+      } as Prisma.InvestmentTypeDefinitionUncheckedCreateInput,
     });
   }
 
-  async updateType(userId: string, id: string, payload: Record<string, unknown>) {
+  async updateType(userId: string, id: string, body: Record<string, unknown>) {
     const row = await this.prisma.investmentTypeDefinition.findFirst({
-      where: { id, userId, isSystem: false },
+      where: { id, userId },
     });
-    if (!row) throw new NotFoundException('Tipo de inversión no encontrado');
+    if (!row) throw new NotFoundException('Categoría de patrimonio no encontrada');
+    const data = pickTypeFields(body);
     return this.prisma.investmentTypeDefinition.update({
       where: { id },
-      data: payload as any,
+      data: data as Prisma.InvestmentTypeDefinitionUpdateInput,
     });
   }
 
   async deleteType(userId: string, id: string) {
     const row = await this.prisma.investmentTypeDefinition.findFirst({
-      where: { id, userId, isSystem: false },
+      where: { id, userId },
     });
-    if (!row) throw new NotFoundException('Tipo de inversión no encontrado');
+    if (!row) throw new NotFoundException('Categoría de patrimonio no encontrada');
+    const inUse = await this.prisma.investmentPosition.count({
+      where: { userId, typeId: id },
+    });
+    if (inUse > 0) {
+      throw new ConflictException(
+        'No se puede eliminar: hay posiciones de patrimonio que usan esta categoría. Reasigna o borra esas posiciones primero.',
+      );
+    }
     return this.prisma.investmentTypeDefinition.delete({ where: { id } });
   }
 
@@ -112,11 +188,39 @@ export class InvestmentsService {
   }
 
   createPosition(payload: Record<string, unknown>) {
+    const p = pickPositionPayload(payload);
+    const start = (p.startDate as string) ?? new Date().toISOString();
+    const init = Number(p.initialCapital ?? 0);
+    const cur = Number(p.currentEstimatedValue ?? init);
+    const genInc = Boolean(p.generatesPeriodicIncome);
     return this.prisma.investmentPosition.create({
       data: {
-        ...payload,
-        startDate: new Date(payload.startDate as string),
-      } as any,
+        userId: payload.userId as string,
+        typeId: String(p.typeId),
+        name: String(p.name ?? ''),
+        startDate: new Date(start),
+        initialCapital: new Prisma.Decimal(init),
+        currency: String(p.currency ?? 'USD'),
+        currentEstimatedValue: new Prisma.Decimal(cur),
+        status: (p.status as InvestmentStatus) ?? InvestmentStatus.ACTIVE,
+        notes: p.notes != null ? String(p.notes) : null,
+        isIncludedInNetWorth: p.isIncludedInNetWorth !== false,
+        assetId: p.assetId != null ? String(p.assetId) : null,
+        generatesPeriodicIncome: genInc,
+        expectedPeriodicIncomeAmount: new Prisma.Decimal(
+          genInc ? Number(p.expectedPeriodicIncomeAmount ?? 0) : 0,
+        ),
+        frequency:
+          genInc && p.frequency
+            ? (p.frequency as PeriodFrequency)
+            : null,
+        customFrequencyMonths:
+          p.customFrequencyMonths != null ? Number(p.customFrequencyMonths) : null,
+        nextExpectedDate: p.nextExpectedDate
+          ? new Date(p.nextExpectedDate as string)
+          : null,
+        patrimonyLeg: parsePatrimonyLeg(p.patrimonyLeg),
+      },
     });
   }
 
@@ -125,11 +229,46 @@ export class InvestmentsService {
       where: { id, userId },
     });
     if (!existing) throw new NotFoundException('Posición no encontrada');
-    const data: any = { ...payload };
-    if (payload.startDate) data.startDate = new Date(payload.startDate as string);
+    const p = pickPositionPayload(payload);
+    const data: Record<string, unknown> = {};
+    if ('typeId' in p) data.typeId = String(p.typeId);
+    if ('name' in p) data.name = String(p.name);
+    if ('startDate' in p) data.startDate = new Date(p.startDate as string);
+    if ('initialCapital' in p)
+      data.initialCapital = new Prisma.Decimal(Number(p.initialCapital));
+    if ('currency' in p) data.currency = String(p.currency);
+    if ('currentEstimatedValue' in p)
+      data.currentEstimatedValue = new Prisma.Decimal(
+        Number(p.currentEstimatedValue),
+      );
+    if ('status' in p) data.status = p.status;
+    if ('notes' in p) data.notes = p.notes != null ? String(p.notes) : null;
+    if ('isIncludedInNetWorth' in p) data.isIncludedInNetWorth = p.isIncludedInNetWorth;
+    if ('assetId' in p) data.assetId = p.assetId != null ? String(p.assetId) : null;
+    if ('generatesPeriodicIncome' in p)
+      data.generatesPeriodicIncome = Boolean(p.generatesPeriodicIncome);
+    if ('expectedPeriodicIncomeAmount' in p)
+      data.expectedPeriodicIncomeAmount = new Prisma.Decimal(
+        Number(p.expectedPeriodicIncomeAmount),
+      );
+    if ('frequency' in p) data.frequency = p.frequency;
+    if ('customFrequencyMonths' in p)
+      data.customFrequencyMonths =
+        p.customFrequencyMonths != null ? Number(p.customFrequencyMonths) : null;
+    if ('nextExpectedDate' in p)
+      data.nextExpectedDate = p.nextExpectedDate
+        ? new Date(p.nextExpectedDate as string)
+        : null;
+    if ('patrimonyLeg' in p) data.patrimonyLeg = parsePatrimonyLeg(p.patrimonyLeg);
+    if ('generatesPeriodicIncome' in p && !Boolean(p.generatesPeriodicIncome)) {
+      data.expectedPeriodicIncomeAmount = new Prisma.Decimal(0);
+      data.frequency = null;
+      data.nextExpectedDate = null;
+      data.customFrequencyMonths = null;
+    }
     return this.prisma.investmentPosition.update({
       where: { id },
-      data,
+      data: data as any,
     });
   }
 
@@ -238,14 +377,19 @@ export class InvestmentsService {
       }),
     ]);
 
+    const portfolioPositions = positions.filter((p) =>
+      positionCountsForFinancialPortfolio(p),
+    );
+
     const disclaimers: string[] = [
       'Los montos se suman en nominal por posición; si tienes varias monedas, el total es orientativo.',
       'La serie histórica reconstruye el valor desde eventos registrados; ajustes manuales fuera de eventos pueden no verse reflejados.',
+      'Las categorías marcadas como patrimonio de uso (no portafolio financiero) no entran en totales, composición ni serie histórica agregada.',
     ];
 
     let totalEstimatedValue = 0;
     let totalInitialCapital = 0;
-    for (const p of positions) {
+    for (const p of portfolioPositions) {
       totalEstimatedValue += Number(p.currentEstimatedValue ?? 0);
       totalInitialCapital += Number(p.initialCapital ?? 0);
     }
@@ -254,7 +398,7 @@ export class InvestmentsService {
       string,
       { typeId: string; typeName: string; value: number; generatesCashflow: boolean }
     >();
-    for (const p of positions) {
+    for (const p of portfolioPositions) {
       const tid = p.typeId;
       const name = p.type?.name ?? 'Sin tipo';
       const gen = Boolean(p.type?.generatesCashflow);
@@ -280,7 +424,7 @@ export class InvestmentsService {
     const contribEvents: { date: Date; amount: number }[] = [];
     const withdrawalEvents: { date: Date; amount: number }[] = [];
 
-    for (const p of positions) {
+    for (const p of portfolioPositions) {
       for (const e of p.events) {
         const amt = Number(e.amount ?? 0);
         switch (e.type) {
@@ -327,7 +471,7 @@ export class InvestmentsService {
       capitalWithdrawals: months.map((m) => bwd.get(m) ?? 0),
     };
 
-    const forHistory: PositionForHistory[] = positions.map((p) => ({
+    const forHistory: PositionForHistory[] = portfolioPositions.map((p) => ({
       id: p.id,
       startDate: p.startDate,
       currentEstimatedValue: p.currentEstimatedValue,
@@ -341,11 +485,10 @@ export class InvestmentsService {
 
     const valueHistory = mergePortfolioValueSeries(forHistory);
 
-    const posById = new Map(positions.map((p) => [p.id, p]));
     const linkedDebts = debts
       .filter((d) => d.linkedPositionId)
       .map((d) => {
-        const pos = posById.get(d.linkedPositionId!);
+        const pos = positions.find((p) => p.id === d.linkedPositionId);
         const positionEstimatedValue = pos
           ? Number(pos.currentEstimatedValue ?? 0)
           : 0;
@@ -376,7 +519,7 @@ export class InvestmentsService {
     return {
       generatedAt: new Date().toISOString(),
       totals: {
-        positionCount: positions.length,
+        positionCount: portfolioPositions.length,
         totalEstimatedValue,
         totalInitialCapital,
         unrealizedGain,

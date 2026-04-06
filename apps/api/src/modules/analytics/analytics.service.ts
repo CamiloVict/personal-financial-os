@@ -8,6 +8,10 @@ import {
   type InsightSnapshot,
   type ProductInsight,
 } from './insights.engine';
+import {
+  positionCountsForFinancialPortfolio,
+  positionPatrimonySignedValue,
+} from '../investments/portfolio-type.util';
 
 @Injectable()
 export class AnalyticsService {
@@ -93,24 +97,31 @@ export class AnalyticsService {
   async getNetWorthAnalytics(userId: string) {
     const investments = await this.prisma.investmentPosition.findMany({
       where: { userId, status: 'ACTIVE' },
+      include: { type: true },
     });
 
-    const totalInvestments = investments.reduce(
+    const totalPatrimonyBook = investments.reduce(
+      (acc, p) => acc + positionPatrimonySignedValue(p),
+      0,
+    );
+
+    const financial = investments.filter((p) =>
+      positionCountsForFinancialPortfolio(p),
+    );
+    const financialValue = financial.reduce(
       (acc, p) => acc + Number(p.currentEstimatedValue),
       0,
     );
-    const initialCapital = investments.reduce(
+    const financialInitial = financial.reduce(
       (acc, p) => acc + Number(p.initialCapital),
       0,
     );
-    const totalReturn = totalInvestments - initialCapital;
+    const portfolioFinancialReturn = financialValue - financialInitial;
 
-    const types = await this.prisma.investmentTypeDefinition.findMany();
     const composition = investments.reduce(
       (acc: Record<string, number>, curr) => {
-        const t =
-          types.find((ty) => ty.id === curr.typeId)?.name || 'Other';
-        acc[t] = (acc[t] || 0) + Number(curr.currentEstimatedValue);
+        const t = curr.type?.name ?? 'Sin categoría';
+        acc[t] = (acc[t] || 0) + positionPatrimonySignedValue(curr);
         return acc;
       },
       {},
@@ -119,7 +130,7 @@ export class AnalyticsService {
     const explanation = {
       ...emptyFinancialExplanation(
         'analytics.net_worth',
-        'Patrimonio desde posiciones de inversión activas',
+        'Patrimonio desde posiciones activas (composición incluye todo; retorno solo portafolio financiero)',
       ),
       inputs: [
         createNode({
@@ -131,12 +142,15 @@ export class AnalyticsService {
       steps: [
         createNode({
           kind: 'aggregation',
-          label: 'Suma currentEstimatedValue',
-          description: 'No incluye efectivo, bienes fuera del módulo de inversiones ni deudas netas.',
+          label: 'Composición: suma por categoría (activos suman, pasivos en posiciones restan)',
+          description:
+            'Las posiciones marcadas como pasivo patrimonial restan del total. El retorno de portafolio financiero usa solo activos en categorías de portafolio (no pasivos ni solo uso).',
         }),
       ],
       assumptions: [
         'Valoraciones manuales o último evento según datos en cada posición.',
+        'Bienes de uso (ej. auto) suelen ir en categoría sin portafolio financiero: cuentan en composición total pero no en retorno de portafolio.',
+        'Una posición marcada como pasivo patrimonial resta del patrimonio libro y no entra en el portafolio financiero.',
       ],
       missingData: ['Otros activos/pasivos no modelados en InvestmentPosition.'],
       normativeRefs: [],
@@ -146,8 +160,10 @@ export class AnalyticsService {
       await this.confidenceService.evaluateInvestments(userId);
 
     return {
-      netWorth: totalInvestments,
-      totalReturn,
+      /** Suma de valor estimado de todas las posiciones (incl. bienes de uso registrados). */
+      netWorth: totalPatrimonyBook,
+      /** Valor − capital inicial solo en categorías de portafolio financiero. */
+      totalReturn: portfolioFinancialReturn,
       composition: Object.entries(composition).map(([name, value]) => ({
         name,
         value,
@@ -634,12 +650,15 @@ export class AnalyticsService {
       where: { userId, status: 'ACTIVE' },
       include: { type: true },
     });
-    const totalValue = positions.reduce(
+    const financialPositions = positions.filter((p) =>
+      positionCountsForFinancialPortfolio(p),
+    );
+    const totalValue = financialPositions.reduce(
       (a, p) => a + Number(p.currentEstimatedValue),
       0,
     );
     const byType: Record<string, number> = {};
-    for (const p of positions) {
+    for (const p of financialPositions) {
       const n = p.type?.name || 'Otro';
       byType[n] = (byType[n] || 0) + Number(p.currentEstimatedValue);
     }
@@ -727,7 +746,7 @@ export class AnalyticsService {
       },
       goals,
       investments: {
-        positionCount: positions.length,
+        positionCount: financialPositions.length,
         totalValue,
         topTypeShare,
         topTypeName,

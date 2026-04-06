@@ -79,7 +79,7 @@ export function FinancialHealthKpiStrip({
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-        Flujo y patrimonio (modelo mensual + posiciones)
+        Flujo, deudas y patrimonio (pasivos en Deudas; activos en posiciones)
       </p>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi
@@ -121,7 +121,7 @@ export function FinancialHealthKpiStrip({
         <Kpi
           label="Patrimonio neto (est.)"
           value={netWorthApprox === null ? '—' : fmt(netWorthApprox)}
-          sub="Inversiones valor − deuda libro"
+          sub="Todas las posiciones activas − deuda libro (incl. bienes de uso si los registrás)"
           icon={Landmark}
           accent="bg-slate-100 text-slate-700"
           loading={loading}
@@ -129,6 +129,7 @@ export function FinancialHealthKpiStrip({
         <Kpi
           label="Valor portafolio"
           value={portfolioValue === null ? '—' : fmt(portfolioValue)}
+          sub="Solo categorías de portafolio financiero (excl. uso, ej. auto particular)"
           icon={TrendingUp}
           accent="bg-blue-50 text-blue-600"
           loading={loading}

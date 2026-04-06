@@ -1,0 +1,7 @@
+CREATE TYPE "GoalUtilityMode" AS ENUM ('NONE', 'AMOUNT', 'PERCENT');
+CREATE TYPE "GoalUtilityCadence" AS ENUM ('QUARTERLY', 'MANUAL');
+
+ALTER TABLE "SavingGoal" ADD COLUMN "currency" TEXT NOT NULL DEFAULT 'COP';
+ALTER TABLE "SavingGoal" ADD COLUMN "utilityMode" "GoalUtilityMode" NOT NULL DEFAULT 'NONE';
+ALTER TABLE "SavingGoal" ADD COLUMN "utilityValue" DECIMAL(65,30) NOT NULL DEFAULT 0;
+ALTER TABLE "SavingGoal" ADD COLUMN "utilityCadence" "GoalUtilityCadence" NOT NULL DEFAULT 'MANUAL';

@@ -2,12 +2,12 @@ import React from 'react';
 import { AlertTriangle, TrendingUp, TrendingDown, Combine, HelpCircle } from 'lucide-react';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
-const GOAL_BOOK_CCY = 'COP';
-
 interface GoalScenariosProps {
   scenarios: any[];
   isAchievable: boolean;
   currentMonthlySavings: number;
+  /** Moneda nominal de la meta para montos sin presentación FX. */
+  bookCurrency?: string;
   presentedSavings?: number | null;
   presentedSavingsCurrency?: string;
   presentedByScenarioId?: Record<
@@ -21,6 +21,7 @@ export function GoalScenarios({
   scenarios,
   isAchievable,
   currentMonthlySavings,
+  bookCurrency = 'COP',
   presentedSavings,
   presentedSavingsCurrency,
   presentedByScenarioId,
@@ -67,7 +68,7 @@ export function GoalScenarios({
                   )
                 : formatBookAmount(
                     Number(currentMonthlySavings),
-                    GOAL_BOOK_CCY,
+                    bookCurrency,
                   )}
             ), el tiempo estimado quedaría por debajo del plazo objetivo.
           </p>
@@ -119,7 +120,7 @@ export function GoalScenarios({
                             )}`
                           : `+${formatBookAmount(
                               Number(scenario.incomeIncreaseAmount),
-                              GOAL_BOOK_CCY,
+                              bookCurrency,
                             )}`}
                     </span>
                   </div>
@@ -138,7 +139,7 @@ export function GoalScenarios({
                             )}`
                           : `-${formatBookAmount(
                               Number(scenario.expenseReductionAmount),
-                              GOAL_BOOK_CCY,
+                              bookCurrency,
                             )}`}
                     </span>
                   </div>

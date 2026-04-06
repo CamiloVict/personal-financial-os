@@ -22,7 +22,7 @@ export class InvestmentsController {
 
   @Post('types')
   createInvestmentType(@DbUserId() userId: string, @Body() body: Record<string, unknown>) {
-    return this.investmentsService.createType({ ...body, userId });
+    return this.investmentsService.createType(userId, body);
   }
 
   @Put('types/:id')

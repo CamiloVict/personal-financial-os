@@ -276,10 +276,10 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
         severity: 'info',
         title: 'Más utilidades retiradas que reinvertidas',
         detail:
-          'En tus eventos de inversiones hay más retiros de utilidades que reinversiones; podrías evaluar coherencia con tu horizonte.',
+          'En los eventos de tus posiciones hay más retiros de utilidades que reinversiones; podrías evaluar coherencia con tu horizonte.',
         why: 'Regla: suma de PROFIT_DISTRIBUTION > suma de PROFIT_REINVESTMENT en el histórico registrado.',
         action:
-          'Define en Metas o notas si buscas ingreso o acumulación; alinea los próximos eventos con esa decisión.',
+          'Definí en Metas si buscás ingreso corriente o acumulación de patrimonio; alineá los próximos eventos con esa decisión.',
         module: 'investments',
         href: HREF.investments,
       }),
@@ -380,11 +380,11 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
         kind: 'ASSET_CONCENTRATION',
         priority: 64,
         severity: 'attention',
-        title: 'Portafolio concentrado por tipo',
-        detail: `Cerca del ${(inv.topTypeShare * 100).toFixed(0)}% del valor está en «${inv.topTypeName ?? 'un tipo'}».`,
-        why: 'Regla: un tipo de inversión concentra ≥58% del valor y hay al menos dos posiciones.',
+        title: 'Patrimonio concentrado por categoría',
+        detail: `Cerca del ${(inv.topTypeShare * 100).toFixed(0)}% del valor está en «${inv.topTypeName ?? 'una categoría'}».`,
+        why: 'Regla: una categoría de patrimonio concentra ≥58% del valor y hay al menos dos posiciones.',
         action:
-          'Simula en el módulo de inversiones o escenarios qué implica diversificar gradualmente sin forzar costos de salida.',
+          'Revisa en Patrimonio o en el simulador qué implica diversificar gradualmente sin forzar costos de salida.',
         module: 'investments',
         href: HREF.investments,
       }),

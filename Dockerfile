@@ -14,8 +14,10 @@ COPY packages ./packages
 RUN pnpm install --frozen-lockfile
 # Evita emit vacío: Nest borra dist y tsc incremental puede no re-emitir si coló un .tsbuildinfo.
 RUN find apps packages -name '*.tsbuildinfo' -delete 2>/dev/null || true
+# Misma cadena que en local: nest-cli usa tsconfig.build.json (emit completo).
 RUN pnpm exec turbo run build --filter=api \
-  && test -f apps/api/dist/main.js
+  && test -f apps/api/dist/main.js \
+  && test -f apps/api/dist/app.module.js
 
 ENV NODE_ENV=production
 ENV PORT=8080

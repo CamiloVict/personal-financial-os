@@ -81,7 +81,7 @@ function moduleLabel(m: InsightModule): string {
     case 'goals':
       return 'Metas';
     case 'investments':
-      return 'Inversiones';
+      return 'Patrimonio';
     case 'tax':
       return 'Fiscal';
     case 'debts':

@@ -4,6 +4,7 @@ import {
   type FinancialConfidence,
 } from '@personal-finance-os/explanation';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { positionCountsForFinancialPortfolio } from '../investments/portfolio-type.util';
 
 @Injectable()
 export class ConfidenceService {
@@ -152,11 +153,18 @@ export class ConfidenceService {
       where: { userId, status: 'ACTIVE' },
       include: { type: true },
     });
+    const financial = positions.filter((p) =>
+      positionCountsForFinancialPortfolio(p),
+    );
 
-    if (positions.length === 0) {
+    if (financial.length === 0) {
       return buildFinancialConfidence(
         0.52,
-        ['No hay posiciones activas en portafolio.'],
+        positions.length > 0
+          ? [
+              'No hay activos en categorías de portafolio financiero (p. ej. solo pasivos en posiciones, bienes de uso u otras categorías).',
+            ]
+          : ['No hay posiciones activas en portafolio.'],
         'investments',
       );
     }
@@ -164,7 +172,7 @@ export class ConfidenceService {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-    for (const p of positions) {
+    for (const p of financial) {
       if (p.type?.hasManualValuation) {
         const recent = await this.prisma.investmentEvent.count({
           where: {

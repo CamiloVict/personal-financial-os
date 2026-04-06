@@ -26,6 +26,9 @@ export type GoalProjectionResponse = {
   goalName: string;
   cashContext: {
     currentMonthlySavings: number;
+    cashflowMonthlySavings?: number;
+    utilityMonthly?: number;
+    goalCurrency?: string;
     monthlyAmountNeeded: number;
     monthlyShortfall: number;
     monthsRemainingModel: number;

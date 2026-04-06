@@ -6,6 +6,7 @@ import {
   useInvestmentPositions,
   useInvestmentTypes,
   useCreateInvestmentPosition,
+  useUpdateInvestmentPosition,
   useDeleteInvestmentPosition,
   useCreateInvestmentEvent,
   usePortfolioAnalytics,
@@ -18,6 +19,7 @@ import {
   PositionList,
   PositionCharts,
   PositionEventModal,
+  PositionEditModal,
 } from '@/features/investments/components';
 import { useProductInsights } from '@/features/dashboard/api/queries';
 import { InsightsContextStrip } from '@/features/dashboard/components';
@@ -47,6 +49,7 @@ export default function InvestmentPositionsPage() {
     useProductInsights();
 
   const createPositionMutation = useCreateInvestmentPosition();
+  const updatePositionMutation = useUpdateInvestmentPosition();
   const createDebtMutation = useCreateDebt();
   const deletePositionMutation = useDeleteInvestmentPosition();
   const createEventMutation = useCreateInvestmentEvent();
@@ -68,8 +71,16 @@ export default function InvestmentPositionsPage() {
   const [debtType, setDebtType] = useState('MORTGAGE');
   const [debtDueDate, setDebtDueDate] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [patrimonyLeg, setPatrimonyLeg] = useState<'ASSET' | 'LIABILITY'>('ASSET');
+  const [generatesPeriodicIncome, setGeneratesPeriodicIncome] = useState(false);
+  const [expectedPeriodicIncomeAmount, setExpectedPeriodicIncomeAmount] = useState('');
+  const [incomeFrequency, setIncomeFrequency] = useState<
+    'MONTHLY' | 'QUARTERLY' | 'ANNUALLY'
+  >('MONTHLY');
+  const [nextExpectedDate, setNextExpectedDate] = useState('');
 
   const [selectedPosition, setSelectedPosition] = useState<any>(null);
+  const [editPosition, setEditPosition] = useState<any>(null);
   const [eventType, setEventType] = useState('PROFIT_DISTRIBUTION');
   const [eventAmount, setEventAmount] = useState<string>('');
   const [eventDate, setEventDate] = useState('');
@@ -105,6 +116,7 @@ export default function InvestmentPositionsPage() {
       }
     }
 
+    const genInc = generatesPeriodicIncome;
     createPositionMutation.mutate(
       {
         typeId,
@@ -114,6 +126,14 @@ export default function InvestmentPositionsPage() {
         currency,
         currentEstimatedValue: Number(initialCapital) || 0,
         status: 'ACTIVE',
+        patrimonyLeg,
+        generatesPeriodicIncome: genInc,
+        expectedPeriodicIncomeAmount: genInc ? Number(expectedPeriodicIncomeAmount) || 0 : 0,
+        frequency: genInc ? incomeFrequency : null,
+        nextExpectedDate:
+          genInc && nextExpectedDate
+            ? new Date(nextExpectedDate).toISOString()
+            : null,
       },
       {
         onSuccess: (data: unknown) => {
@@ -125,6 +145,11 @@ export default function InvestmentPositionsPage() {
           setName('');
           setInitialCapital('');
           setStartDate('');
+          setPatrimonyLeg('ASSET');
+          setGeneratesPeriodicIncome(false);
+          setExpectedPeriodicIncomeAmount('');
+          setIncomeFrequency('MONTHLY');
+          setNextExpectedDate('');
 
           if (selected?.allowsLinkedDebt && linkDebt && position?.id && rem > 0) {
             createDebtMutation.mutate({
@@ -255,11 +280,11 @@ export default function InvestmentPositionsPage() {
               className="inline-flex items-center gap-1 font-semibold text-slate-700 hover:text-slate-900 underline-offset-2 hover:underline"
             >
               <Settings2 className="w-3.5 h-3.5 shrink-0 text-slate-500" aria-hidden />
-              Tipos de inversión
+              Categorías de patrimonio
             </Link>
             <span className="font-normal text-slate-500">
               {' '}
-              — define las categorías del modelo usadas al crear posiciones.
+              — definí vos las categorías usadas al crear cada posición.
             </span>
           </p>
         </div>
@@ -329,6 +354,16 @@ export default function InvestmentPositionsPage() {
           setCurrency={setCurrency}
           startDate={startDate}
           setStartDate={setStartDate}
+          patrimonyLeg={patrimonyLeg}
+          setPatrimonyLeg={setPatrimonyLeg}
+          generatesPeriodicIncome={generatesPeriodicIncome}
+          setGeneratesPeriodicIncome={setGeneratesPeriodicIncome}
+          expectedPeriodicIncomeAmount={expectedPeriodicIncomeAmount}
+          setExpectedPeriodicIncomeAmount={setExpectedPeriodicIncomeAmount}
+          incomeFrequency={incomeFrequency}
+          setIncomeFrequency={setIncomeFrequency}
+          nextExpectedDate={nextExpectedDate}
+          setNextExpectedDate={setNextExpectedDate}
           onSubmit={handleSubmit}
           isPending={createPositionMutation.isPending || createDebtMutation.isPending}
           allowsLinkedDebt={allowsLinkedDebt}
@@ -353,7 +388,7 @@ export default function InvestmentPositionsPage() {
 
         <div className="lg:col-span-8">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Activos en Portafolio</h3>
+            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Posiciones</h3>
             {loading && <Activity className="w-5 h-5 text-blue-500 animate-spin" />}
           </div>
 
@@ -369,6 +404,7 @@ export default function InvestmentPositionsPage() {
             presentedById={presentedById}
             presentationLoading={posPresLoading}
             onSelectPosition={setSelectedPosition}
+            onEditPosition={setEditPosition}
             onDeletePosition={(id) => deletePositionMutation.mutate(id)}
             isDeleting={deletePositionMutation.isPending}
           />
@@ -376,7 +412,7 @@ export default function InvestmentPositionsPage() {
           {positions.length === 0 && !loading && (
             <div className="glass-card border-dashed border-slate-300 p-12 rounded-xl text-center text-slate-500 flex flex-col items-center gap-3">
               <PieChartIcon className="w-10 h-10 text-slate-300" />
-              <p className="font-semibold text-base">No tienes inversiones registradas.</p>
+              <p className="font-semibold text-base">No tienes posiciones de patrimonio registradas.</p>
             </div>
           )}
         </div>
@@ -392,6 +428,20 @@ export default function InvestmentPositionsPage() {
         eventObs={eventObs} setEventObs={setEventObs}
         onSubmit={handleEventSubmit}
         isPending={createEventMutation.isPending}
+      />
+
+      <PositionEditModal
+        position={editPosition}
+        types={types}
+        onClose={() => setEditPosition(null)}
+        isPending={updatePositionMutation.isPending}
+        onSave={(body) => {
+          if (!editPosition?.id) return;
+          updatePositionMutation.mutate(
+            { id: editPosition.id, body },
+            { onSuccess: () => setEditPosition(null) },
+          );
+        }}
       />
     </div>
   );

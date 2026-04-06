@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Personal Finance OS",
   description:
-    'Tu sistema financiero personal: posición de hoy (flujo, deudas, inversiones, metas), fiscal Colombia (modelo) y herramientas de futuro (simulador y asignación).',
+    'Tu sistema financiero personal: posición de hoy (flujo, deudas, patrimonio y metas), fiscal Colombia (modelo) y herramientas de futuro (simulador y asignación).',
 };
 
 export default function RootLayout({

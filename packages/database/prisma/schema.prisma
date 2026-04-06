@@ -374,6 +374,17 @@ enum BudgetPeriod {
   CUSTOM
 }
 
+enum GoalUtilityMode {
+  NONE
+  AMOUNT
+  PERCENT
+}
+
+enum GoalUtilityCadence {
+  QUARTERLY
+  MANUAL
+}
+
 model SavingGoal {
   id            String    @id @default(uuid())
   userId        String
@@ -383,6 +394,14 @@ model SavingGoal {
   targetDate    DateTime?
   color         String?
   icon          String?
+  /// Moneda de registro de objetivo y saldo (presentación y modelo de utilidades).
+  currency              String              @default("COP")
+  /// Utilidades hacia la meta: ninguna, monto por período, o % del saldo actual por período.
+  utilityMode           GoalUtilityMode     @default(NONE)
+  /// Si AMOUNT: unidades de `currency` por período (cadencia). Si PERCENT: 0–100 por período.
+  utilityValue          Decimal             @default(0)
+  /// Trimestral: el modelo reparte el aporte en ~3 meses; Manual: no suma al flujo automático (actualizás saldo a mano).
+  utilityCadence        GoalUtilityCadence  @default(MANUAL)
   createdAt     DateTime  @default(now())
 
   user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -536,6 +555,8 @@ model InvestmentTypeDefinition {
   hasMaturityDate          Boolean          @default(false)
   hasPaymentSchedule       Boolean          @default(false)
   showAsPatrimonialAsset   Boolean          @default(true)
+  /// Si es false: bien de uso u otro registro patrimonial que no suma a valor/retorno/analytics de portafolio financiero (ej. auto particular).
+  countsInFinancialPortfolio Boolean        @default(true)
   isSystem                 Boolean          @default(false)
 
   createdAt DateTime @default(now())
@@ -558,9 +579,13 @@ model InvestmentPosition {
   status                InvestmentStatus @default(ACTIVE)
   notes                 String?
   isIncludedInNetWorth  Boolean          @default(true)
+  /// Activo patrimonial vs pasivo modelado en posiciones (resta en patrimonio neto).
+  patrimonyLeg          PatrimonyLeg     @default(ASSET)
 
   // Frequency overrides
   generatesPeriodicIncome Boolean          @default(false)
+  /// Monto que la inversión genera por período (en `currency`), según `frequency`.
+  expectedPeriodicIncomeAmount Decimal     @default(0.00)
   frequency               PeriodFrequency?
   customFrequencyMonths   Int?
   nextExpectedDate        DateTime?
@@ -681,6 +706,11 @@ enum PeriodFrequency {
   SEMIANNUALLY
   ANNUALLY
   CUSTOM
+}
+
+enum PatrimonyLeg {
+  ASSET
+  LIABILITY
 }
 
 enum InvestmentStatus {

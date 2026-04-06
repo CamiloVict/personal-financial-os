@@ -2,8 +2,6 @@ import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
-const GOAL_BOOK_CCY = 'COP';
-
 interface GoalSnapshotProps {
   monthlyAmountNeeded: number;
   targetAmount: number;
@@ -12,6 +10,7 @@ interface GoalSnapshotProps {
   isAchievable: boolean;
   currentProjectedMonths: number | null;
   monthsRemaining: number;
+  bookCurrency?: string;
   presented?: {
     monthlyAmountNeeded: number;
     targetAmount: number;
@@ -30,6 +29,7 @@ export function GoalSnapshot({
   isAchievable,
   currentProjectedMonths,
   monthsRemaining,
+  bookCurrency = 'COP',
   presented,
   presentationLoading,
 }: GoalSnapshotProps) {
@@ -37,7 +37,7 @@ export function GoalSnapshot({
   const fmt = (n: number) =>
     useP
       ? formatPresentedAmount(n, presented!.currency)
-      : formatBookAmount(n, GOAL_BOOK_CCY);
+      : formatBookAmount(n, bookCurrency);
   const needed = useP ? presented!.monthlyAmountNeeded : monthlyAmountNeeded;
   const target = useP ? presented!.targetAmount : targetAmount;
   const savings = useP ? presented!.currentMonthlySavings : currentMonthlySavings;
@@ -60,11 +60,11 @@ export function GoalSnapshot({
                       Para llegar a {fmt(target)}
                       <span className="block text-[9px] mt-0.5">
                         Nom.:{' '}
-                        {formatBookAmount(Number(targetAmount), GOAL_BOOK_CCY)}
+                        {formatBookAmount(Number(targetAmount), bookCurrency)}
                       </span>
                     </>
                   )
-                : `Para llegar a ${formatBookAmount(Number(targetAmount), GOAL_BOOK_CCY)}`}
+                : `Para llegar a ${formatBookAmount(Number(targetAmount), bookCurrency)}`}
           </p>
         </div>
         <div className="glass-card rounded-xl p-4">
@@ -76,7 +76,7 @@ export function GoalSnapshot({
           {useP ? (
             <p className="text-[9px] text-slate-400 mt-0.5">
               Nom.:{' '}
-              {formatBookAmount(Number(currentMonthlySavings), GOAL_BOOK_CCY)}
+              {formatBookAmount(Number(currentMonthlySavings), bookCurrency)}
             </p>
           ) : null}
         </div>
@@ -97,7 +97,7 @@ export function GoalSnapshot({
           {useP && !isAchievable ? (
             <p className="text-[9px] text-slate-400 mt-0.5">
               Nom.:{' '}
-              {formatBookAmount(Number(monthlyShortfall), GOAL_BOOK_CCY)}
+              {formatBookAmount(Number(monthlyShortfall), bookCurrency)}
             </p>
           ) : null}
         </div>
