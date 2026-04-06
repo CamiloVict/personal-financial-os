@@ -64,13 +64,16 @@ export class ConversionService {
     amount: number,
     from: string,
     date: Date,
-    warnings: string[],
+    _warnings: string[],
   ): Promise<number> {
     if (from === COP) return amount;
+    if (amount === 0) return 0;
     const r = await this.getCopPerUnit(from, date);
     if (r == null) {
-      warnings.push(`Sin FX ${from}/COP en o antes de ${date.toISOString().slice(0, 10)}; se usa 1 (equivale a COP).`);
-      return amount;
+      const d = date.toISOString().slice(0, 10);
+      throw new BadRequestException(
+        `Sin cotización ${from}/COP en o antes de ${d}. Carga FX en la base de datos o elige una fecha de valuación con cotización disponible.`,
+      );
     }
     return amount * r;
   }
