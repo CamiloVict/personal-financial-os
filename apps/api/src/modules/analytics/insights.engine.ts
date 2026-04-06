@@ -7,9 +7,12 @@ export type InsightKind =
   | 'LOW_SAVINGS'
   | 'HIGH_FIXED_DEPENDENCY'
   | 'GOAL_BEHIND'
+  | 'GOAL_MONTHLY_GAP'
+  | 'GOAL_EARLIER_OPPORTUNITY'
   | 'REINVESTMENT_OPPORTUNITY'
   | 'LIQUIDITY_ALERT'
   | 'TAX_OPPORTUNITY'
+  | 'TAX_VALIDATION_REMINDER'
   | 'ASSET_CONCENTRATION'
   | 'CASHFLOW_IMPROVEMENT';
 
@@ -31,6 +34,8 @@ export type ProductInsight = {
   detail: string;
   /** Por qué aparece este insight (regla / datos). */
   why: string;
+  /** Acción concreta sugerida (opcional). */
+  action?: string;
   module: InsightModule;
   href: string;
 };
@@ -54,6 +59,10 @@ export type InsightSnapshot = {
     name: string;
     progress: number;
     expectedProgress: number | null;
+    targetAmount: number;
+    currentAmount: number;
+    /** ISO date o null si la meta no tiene fecha. */
+    targetDate: string | null;
   }>;
   investments: {
     positionCount: number;
@@ -92,6 +101,16 @@ function insight(
   return { ...partial, id };
 }
 
+/** Meses hasta la fecha objetivo (mín. 1 si el plazo es futuro). */
+function monthsFromNowToTarget(iso: string): number | null {
+  const end = new Date(iso).getTime();
+  if (!Number.isFinite(end)) return null;
+  const now = Date.now();
+  if (end <= now) return null;
+  const msPerMonth = 30.44 * 24 * 60 * 60 * 1000;
+  return Math.max(1, Math.ceil((end - now) / msPerMonth));
+}
+
 export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] {
   const out: ProductInsight[] = [];
   const { cashflow: cf, goals, investments: inv, debts, tax } = s;
@@ -107,9 +126,11 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
         kind: 'EXCESS_CATEGORY_SPEND',
         priority: 72,
         severity: 'attention',
-        title: 'Gasto concentrado en una categoría',
-        detail: `«${cf.topExpenseCategory.name}» representa alrededor del ${(cf.topExpenseCategory.share * 100).toFixed(0)}% de tus gastos modelados.`,
+        title: `Estás concentrando mucho gasto en «${cf.topExpenseCategory.name}»`,
+        detail: `Esa categoría representa alrededor del ${(cf.topExpenseCategory.share * 100).toFixed(0)}% de tus gastos modelados en streams.`,
         why: 'Regla: categoría con participación ≥ 28% en gastos mensuales esperados.',
+        action:
+          'Revisa si hay suscripciones o montos duplicados en esa categoría y ajusta streams o presupuesto.',
         module: 'cashflow',
         href: HREF.cashflow,
       }),
@@ -126,12 +147,16 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
         title:
           cf.savingsRate < 0
             ? 'Flujo modelado en déficit'
-            : 'Tasa de ahorro baja en el modelo',
+            : 'Tu ahorro “en papel” del modelo es bajo',
         detail:
           cf.savingsRate < 0
             ? 'Con los montos actuales, los gastos superan los ingresos esperados.'
-            : `La tasa de ahorro implícita es ~${(cf.savingsRate * 100).toFixed(0)}% de los ingresos.`,
+            : `La tasa de ahorro implícita es ~${(cf.savingsRate * 100).toFixed(0)}% de los ingresos (ingresos − gastos en streams).`,
         why: 'Regla: tasa de ahorro (ingresos − gastos) / ingresos < 8%.',
+        action:
+          cf.savingsRate < 0
+            ? 'Prioriza cuadrar ingresos vs gastos fijos o revisa montos en Flujo.'
+            : 'Identifica un gasto variable a recortar o un ingreso recurrente a fortalecer; automatiza un ahorro pequeño fijo.',
         module: 'cashflow',
         href: HREF.cashflow,
       }),
@@ -151,6 +176,8 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
         title: 'Mucho compromiso en gastos fijos',
         detail: `Los gastos fijos modelados absorben ~${(cf.fixedExpenseShareOfIncome * 100).toFixed(0)}% de tus ingresos.`,
         why: 'Regla: gastos fijos / ingresos ≥ 48%.',
+        action:
+          'Revisa contratos renegociables (telecom, seguros) y evita nuevos compromisos fijos hasta mejorar el margen.',
         module: 'cashflow',
         href: HREF.cashflow,
       }),
@@ -172,11 +199,71 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
           title: `Meta «${g.name}» va rezagada`,
           detail: `Llevas ~${(g.progress * 100).toFixed(0)}% del objetivo y el calendario sugería ~${(g.expectedProgress * 100).toFixed(0)}%.`,
           why: 'Regla: progreso actual al menos 12 puntos porcentuales por debajo del avance temporal lineal hasta la fecha objetivo.',
+          action:
+            'Aumenta el aporte mensual automatizado a esa meta o mueve una partida puntual desde Flujo.',
           module: 'goals',
           href: HREF.goals,
         }),
       );
       break;
+    }
+  }
+
+  // 4b. Meta con fecha: ritmo mensual vs margen modelado / oportunidad de adelantar
+  const monthlyModelSurplus = cf.incomeTotal - cf.expenseTotal;
+  if (monthlyModelSurplus > 0 && goals.length > 0) {
+    const dated = goals
+      .filter((g) => g.targetDate && g.targetAmount > g.currentAmount)
+      .sort((a, b) => {
+        const ta = a.targetDate ? new Date(a.targetDate).getTime() : Infinity;
+        const tb = b.targetDate ? new Date(b.targetDate).getTime() : Infinity;
+        return ta - tb;
+      });
+    for (const g of dated) {
+      if (!g.targetDate) continue;
+      const gap = g.targetAmount - g.currentAmount;
+      const mLeft = monthsFromNowToTarget(g.targetDate);
+      if (mLeft === null) continue;
+      const requiredMonthly = gap / mLeft;
+      if (requiredMonthly > monthlyModelSurplus * 1.08) {
+        out.push(
+          insight({
+            kind: 'GOAL_MONTHLY_GAP',
+            priority: 74,
+            severity: 'attention',
+            title: `La meta «${g.name}» exige más ritmo mensual que tu margen modelado`,
+            detail: `Para la fecha objetivo, harían falta ~${Math.round(requiredMonthly).toLocaleString('es-CO')} COP/mes hacia la meta; el flujo modelado deja ~${Math.round(monthlyModelSurplus).toLocaleString('es-CO')} COP/mes de margen.`,
+            why: 'Regla: (objetivo − ahorrado) / meses restantes > 8% por encima del margen mensual (ingresos − gastos en streams).',
+            action:
+              'Amplía plazo, reduce el monto objetivo o busca ingreso adicional; registra el cambio en Metas o Flujo.',
+            module: 'goals',
+            href: HREF.goals,
+          }),
+        );
+        break;
+      }
+      if (
+        requiredMonthly > 0 &&
+        requiredMonthly < monthlyModelSurplus * 0.72 &&
+        g.expectedProgress !== null &&
+        g.progress + 0.08 >= g.expectedProgress
+      ) {
+        out.push(
+          insight({
+            kind: 'GOAL_EARLIER_OPPORTUNITY',
+            priority: 60,
+            severity: 'info',
+            title: `Podrías acercarte antes a «${g.name}»`,
+            detail: `El mínimo orientativo para llegar a tiempo es ~${Math.round(requiredMonthly).toLocaleString('es-CO')} COP/mes; tu margen modelado es mayor, así que un aporte constante podría adelantar el cierre (ilustrativo).`,
+            why: 'Regla: ritmo requerido < 72% del margen mensual modelado y progreso ≥ avance temporal esperado − 8 pp.',
+            action:
+              'Programa un aporte automático recurrente a la meta por encima del mínimo y revisa cada trimestre.',
+            module: 'goals',
+            href: HREF.goals,
+          }),
+        );
+        break;
+      }
     }
   }
 
@@ -191,6 +278,8 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
         detail:
           'En tus eventos de inversiones hay más retiros de utilidades que reinversiones; podrías evaluar coherencia con tu horizonte.',
         why: 'Regla: suma de PROFIT_DISTRIBUTION > suma de PROFIT_REINVESTMENT en el histórico registrado.',
+        action:
+          'Define en Metas o notas si buscas ingreso o acumulación; alinea los próximos eventos con esa decisión.',
         module: 'investments',
         href: HREF.investments,
       }),
@@ -216,6 +305,8 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
           detail:
             'Tras gastos fijos modelados y cuotas de deuda, queda poco colchón respecto a tus ingresos.',
           why: 'Regla: (ingresos − fijos − cuotas deuda) < 5% de ingresos o menor que el promedio de flujo neto reciente.',
+          action:
+            'Evita asignar capital ilíquido hasta tener colchón; prioriza cuotas o metas de liquidez en Asignador y Deudas.',
           module: 'debts',
           href: HREF.debts,
         }),
@@ -238,6 +329,23 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
           title: 'Espacio orientativo entre escenarios fiscales',
           detail: `El plan guardado muestra ~${Math.round(tax.taxSavingsPotential).toLocaleString('es-CO')} COP de diferencia entre escenario prudente y con beneficios del perfil (validar con soportes y norma vigente).`,
           why: 'Regla: impuesto neto escenario CONSERVATIVE menos OPTIMIZED del último TaxPlan.',
+          action:
+            'Actualiza el perfil fiscal con montos reales y revisa la sección de escenarios con un asesor si la brecha es material.',
+          module: 'tax',
+          href: HREF.tax,
+        }),
+      );
+      out.push(
+        insight({
+          kind: 'TAX_VALIDATION_REMINDER',
+          priority: 54,
+          severity: 'info',
+          title: 'Este escenario fiscal requiere validación',
+          detail:
+            'Cualquier brecha entre escenarios en la app es modelo + supuestos: no sustituye declaración ni dictamen.',
+          why: 'Regla: existe TaxPlan con escenarios CONSERVATIVE y OPTIMIZED y brecha estimada > 0.',
+          action:
+            'Cruza cifras con comprobantes y norma del año gravable antes de tomar decisiones de caja.',
           module: 'tax',
           href: HREF.tax,
         }),
@@ -252,6 +360,8 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
           detail:
             'Varios beneficios frecuentes no están marcados; si aplican a tu caso, actualizar el perfil mejora la proyección.',
           why: 'Regla: ≥3 banderas de beneficio (AFC, FPV, etc.) sin activar en TaxProfile.',
+          action:
+            'Marca solo lo que aplica y carga montos aproximados para que el modelo refleje tu caso.',
           module: 'tax',
           href: HREF.tax,
         }),
@@ -273,6 +383,8 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
         title: 'Portafolio concentrado por tipo',
         detail: `Cerca del ${(inv.topTypeShare * 100).toFixed(0)}% del valor está en «${inv.topTypeName ?? 'un tipo'}».`,
         why: 'Regla: un tipo de inversión concentra ≥58% del valor y hay al menos dos posiciones.',
+        action:
+          'Simula en el módulo de inversiones o escenarios qué implica diversificar gradualmente sin forzar costos de salida.',
         module: 'investments',
         href: HREF.investments,
       }),
@@ -296,6 +408,9 @@ export function buildInsightsFromSnapshot(s: InsightSnapshot): ProductInsight[] 
           ? 'El último mes con eventos muestra un neto por encima de tu media de 3 meses; podrías aprovechar el margen con prioridades claras.'
           : 'El último mes con eventos está por debajo de la media de 3 meses; conviene revisar gastos o ingresos extraordinarios.',
         why: 'Regla: variación del último neto mensual vs. media móvil de 3 meses > 12%.',
+        action: up
+          ? 'Canaliza el excedente a meta o deuda según tu plan; evita que se diluya en gasto discrecional.'
+          : 'Revisa categorías que subieron el último mes y normaliza ingresos extraordinarios en Flujo.',
         module: 'global',
         href: HREF.dashboard,
       }),

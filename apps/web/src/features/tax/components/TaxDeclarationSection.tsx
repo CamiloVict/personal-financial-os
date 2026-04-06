@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { Calculator, Info } from 'lucide-react';
 import { ErrorState } from '@/shared/ui/ErrorState';
+import { TrustBadge } from '@/shared/ui/TrustProvenance';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 import type { TaxDeclarationPreview } from '../api/queries';
 import {
@@ -204,9 +205,12 @@ export function TaxDeclarationSection({
         id="tax-declaration-projection"
         className="scroll-mt-24 rounded-xl border border-indigo-200 bg-linear-to-br from-indigo-50 to-white p-4 shadow-sm"
       >
-        <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-slate-900">
-          <Calculator className="h-5 w-5 text-indigo-600" />
-          Proyección declaración de renta (aprox.)
+        <h2 className="mb-2 flex flex-wrap items-center gap-2 text-base font-bold text-slate-900">
+          <Calculator className="h-5 w-5 text-indigo-600 shrink-0" />
+          <span>Proyección declaración de renta (aprox.)</span>
+          <TrustBadge kind="FISCAL_MODEL" />
+          <TrustBadge kind="ESTIMATED" />
+          {selectedLeverIds.length > 0 ? <TrustBadge kind="SCENARIO_PREVIEW" /> : null}
         </h2>
         <div className="flex gap-2 text-[11px] text-slate-600 leading-relaxed mb-3">
           <Info className="w-4 h-4 shrink-0 text-indigo-500 mt-0.5" />

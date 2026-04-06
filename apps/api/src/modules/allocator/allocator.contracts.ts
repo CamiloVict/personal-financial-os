@@ -30,6 +30,8 @@ export interface AllocationScenario {
 export interface AllocatorResult {
   userId: string;
   availableCapital: number;
+  /** Notas del motor (liquidez vs prioridad fiscal, etc.). */
+  engineNotes?: string[];
   unallocatedCapital: number;
   scenarios: AllocationScenario[];
   explanation: FinancialExplanation;

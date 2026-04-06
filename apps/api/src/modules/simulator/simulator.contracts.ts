@@ -12,12 +12,21 @@ export interface SimulationYearData {
   [key: string]: any;
 }
 
+/** Señal explícita cuando patrimonio y flujo corto plazo divergen en el modelo. */
+export interface SimulationOutcomeTradeOff {
+  wealthImproves: boolean;
+  cashflowWorsens: boolean;
+  summary: string;
+}
+
 export interface SimulationResult {
   userId: string;
   // Textual Insights
   primaryInsight: string;
   secondaryInsight: string;
   tertiaryInsight: string;
+  /** Presente en escenarios donde el modelo expresa tensión patrimonio vs flujo. */
+  outcomeTradeOff?: SimulationOutcomeTradeOff | null;
   // Projections
   years: SimulationYearData[];
   // Summary after N years

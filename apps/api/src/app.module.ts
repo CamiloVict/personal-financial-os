@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -18,10 +19,14 @@ import { SimulatorModule } from './modules/simulator/simulator.module';
 import { DebtsModule } from './modules/debts/debts.module';
 import { ConfidenceModule } from './modules/confidence/confidence.module';
 import { CurrencyModule } from './modules/currency/currency.module';
+import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
+    }),
     AuthModule,
     PrismaModule,
     ConfidenceModule,
@@ -38,7 +43,13 @@ import { CurrencyModule } from './modules/currency/currency.module';
   controllers: [AppController],
   providers: [
     AppService,
+    RequestContextMiddleware,
     { provide: APP_GUARD, useClass: ClerkAuthGuard },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}

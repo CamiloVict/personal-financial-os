@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query';
 import { useAuth } from '@clerk/nextjs';
 import type { NormalizedTaxFinancials } from '@personal-finance-os/tax-engine';
+import { ApiRequestError } from '../../../shared/api/api-error';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
 import { ME_SCOPE } from '../../../shared/api/query-scope';
@@ -26,7 +27,7 @@ export function useTaxProfile() {
         // v5: query data must not be undefined (empty body → parseJson returns undefined).
         return raw ?? null;
       } catch (e) {
-        if (e instanceof Error && /\b404\b/.test(e.message)) {
+        if (e instanceof ApiRequestError && e.status === 404) {
           return null;
         }
         throw e;
@@ -63,19 +64,15 @@ export function useTaxClassifications(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.tax.classifications(),
     queryFn: async (): Promise<TaxClassificationsPayload> => {
-      try {
-        const res = await apiClient.get<any>('/tax/classifications');
-        if (Array.isArray(res)) {
-          return { classifications: res, explanation: undefined };
-        }
-        return {
-          classifications: res.classifications ?? [],
-          explanation: res.explanation,
-          confidence: res.confidence,
-        };
-      } catch {
-        return { classifications: [] };
+      const res = await apiClient.get<any>('/tax/classifications');
+      if (Array.isArray(res)) {
+        return { classifications: res, explanation: undefined };
       }
+      return {
+        classifications: res.classifications ?? [],
+        explanation: res.explanation,
+        confidence: res.confidence,
+      };
     },
     enabled,
   });
@@ -96,11 +93,8 @@ export function useTaxPlan(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.tax.plan(),
     queryFn: async (): Promise<TaxPlanPayload | null> => {
-      try {
-        return await apiClient.get<TaxPlanPayload>('/tax/plan');
-      } catch {
-        return null;
-      }
+      const raw = await apiClient.get<TaxPlanPayload | null>('/tax/plan');
+      return raw ?? null;
     },
     enabled,
   });
@@ -143,13 +137,7 @@ export function useTaxDeclarationPreview(enabled: boolean, leverIds: string[]) {
 export function useTaxAnalytics() {
   return useQuery({
     queryKey: queryKeys.tax.analytics(),
-    queryFn: async () => {
-      try {
-        return await apiClient.get<any>('/analytics/tax');
-      } catch {
-        return null;
-      }
-    },
+    queryFn: () => apiClient.get<any>('/analytics/tax'),
   });
 }
 

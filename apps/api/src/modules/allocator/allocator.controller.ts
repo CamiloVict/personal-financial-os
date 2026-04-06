@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { DbUserId } from '../../auth/db-user.decorator';
 import { AllocatorService } from './allocator.service';
 import { AllocatorInput, AllocatorResult } from './allocator.contracts';
@@ -9,6 +10,7 @@ export class AllocatorController {
 
   /** Simula escenarios de asignación a partir del capital indicado (salida ilustrativa). */
   @Post('scenarios/simulate')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async simulateScenarios(
     @DbUserId() userId: string,
     @Body() input: AllocatorInput,

@@ -24,6 +24,8 @@ import {
   SimulatorResultsEmpty,
   SimulatorResultsPanel,
   SimulatorSnapshotBar,
+  SimulatorFramingBanner,
+  SimulatorPresetChips,
 } from '@/features/simulator/components';
 import {
   applySimulatorSavedInputs,
@@ -37,6 +39,8 @@ import {
   presentedCurrencyFromRows,
 } from '@/features/currency/valuationUtils';
 import { useGlobalStore } from '@/shared/store/global';
+import { getPropertyPresetValues } from '@/features/simulator/utils/propertyPresets';
+import { getDebtPresetValues } from '@/features/simulator/utils/debtPresets';
 
 export default function SimulatorPage() {
   const simProperty = useSimulatePropertyPurchase();
@@ -290,9 +294,41 @@ export default function SimulatorPage() {
 
       <SimulatorScenarioTabs activeScenario={activeScenario} onSelect={selectScenario} />
 
+      <SimulatorFramingBanner />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         <div className="lg:col-span-4 glass-card p-3 rounded-lg shadow-sm self-start">
           <form onSubmit={handleSimulate} className="space-y-2.5">
+            {activeScenario === 'PROPERTY' ? (
+              <SimulatorPresetChips
+                variant="property"
+                onSelect={(id) => {
+                  const v = getPropertyPresetValues(id);
+                  setPropertyValue(v.propertyValue);
+                  setDownPayment(v.downPayment);
+                  setInterestRateAnnual(v.interestRateAnnual);
+                  setLoanTermYears(v.loanTermYears);
+                  setExpectedMonthlyRent(v.expectedMonthlyRent);
+                  setExpectedAnnualAppreciation(v.expectedAnnualAppreciation);
+                  setMaintenanceAnnualPercentage(v.maintenanceAnnualPercentage);
+                  setBaselineInvestmentReturn(v.baselineInvestmentReturn);
+                }}
+              />
+            ) : null}
+            {activeScenario === 'DEBT_VS_INVEST' ? (
+              <SimulatorPresetChips
+                variant="debt"
+                onSelect={(id) => {
+                  const v = getDebtPresetValues(id);
+                  setDebtBalance(v.debtBalance);
+                  setDebtInterestRateAnnual(v.debtInterestRateAnnual);
+                  setMinimumMonthlyPayment(v.minimumMonthlyPayment);
+                  setMonthlyExtraCapital(v.monthlyExtraCapital);
+                  setInvestmentReturnAnnual(v.investmentReturnAnnual);
+                  setYearsToSimulateDebt(v.yearsToSimulateDebt);
+                }}
+              />
+            ) : null}
             {activeScenario === 'PROPERTY' && (
               <SimulatorPropertyFields
                 propertyValue={propertyValue}

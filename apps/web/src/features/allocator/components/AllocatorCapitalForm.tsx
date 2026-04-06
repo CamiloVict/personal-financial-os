@@ -17,10 +17,11 @@ export function AllocatorCapitalForm({
     <div className="glass-card max-w-2xl mx-auto rounded-xl p-4 md:p-5 shadow-sm">
       <div className="text-center mb-4">
         <h2 className="text-sm font-bold text-slate-800 mb-1">
-          Monto a simular (hipotético)
+          ¿Cuánto capital querés repartir?
         </h2>
         <p className="text-[10px] text-slate-500">
-          Usa un monto que quieras contrastar en el modelo; no tiene que ser tu efectivo real.
+          Un solo número para esta corrida. Podés probar varios montos y comparar distribuciones sugeridas; no
+          mueve tu dinero real.
         </p>
       </div>
 

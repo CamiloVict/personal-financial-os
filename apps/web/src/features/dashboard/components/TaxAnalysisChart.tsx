@@ -35,6 +35,7 @@ interface TaxAnalysisChartProps {
   chartData?: TaxScenarioChartRow[];
   chartCurrency?: string;
   presentationLoading?: boolean;
+  errorMessage?: string;
 }
 
 export function TaxAnalysisChart({
@@ -43,6 +44,7 @@ export function TaxAnalysisChart({
   chartData,
   chartCurrency = 'COP',
   presentationLoading,
+  errorMessage,
 }: TaxAnalysisChartProps) {
   const data =
     chartData && chartData.length > 0
@@ -63,7 +65,8 @@ export function TaxAnalysisChart({
       description="Base gravable, impuesto bruto y neto por escenario."
       chartClassName="h-40"
       isLoading={isLoading}
-      isEmpty={!isLoading && data.length === 0}
+      errorMessage={errorMessage}
+      isEmpty={!isLoading && !errorMessage && data.length === 0}
       emptyTitle="Sin simulaciones fiscales"
       emptyDescription="Genera escenarios en el plan fiscal para comparar montos aquí."
       headerRight={

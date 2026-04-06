@@ -8,6 +8,7 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { DbUserId } from '../../auth/db-user.decorator';
 import { Public } from '../../auth/public.decorator';
 import { DebtsService } from './debts.service';
@@ -43,6 +44,7 @@ export class DebtsController {
 
   /** Cron externo (Fly Machines sleep, etc.): `CRON_SECRET` en header `x-cron-secret`. */
   @Public()
+  @SkipThrottle()
   @Post('internal/run-monthly-amortization')
   async runMonthlyAmortization(
     @Headers('x-cron-secret') secret: string | undefined,

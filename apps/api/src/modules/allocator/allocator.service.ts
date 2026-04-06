@@ -197,6 +197,17 @@ export class AllocatorService {
     const confidence =
       await this.confidenceService.evaluateAllocator(userId);
 
+    const engineNotes: string[] = [];
+    const primary = scenarios[0];
+    if (primary && availableCapital > 0) {
+      const share = primary.modeledAmount / availableCapital;
+      if (primary.type === 'IMPACT_TAX_SHELTER' && share >= 0.42) {
+        engineNotes.push(
+          'La asignación sugerida concentra buena parte del capital en ahorro fiscal (AFC/FPV en el modelo), con menor liquidez inmediata: contrasta con tu colchón en Flujo y cuotas en Deudas antes de ejecutar.',
+        );
+      }
+    }
+
     return {
       userId,
       availableCapital,
@@ -204,6 +215,7 @@ export class AllocatorService {
       scenarios,
       explanation,
       confidence,
+      engineNotes: engineNotes.length ? engineNotes : undefined,
     };
   }
 

@@ -37,6 +37,10 @@ export function SimulatorCustomFields({
 }: SimulatorCustomFieldsProps) {
   return (
     <>
+      <p className="text-[10px] text-slate-600 leading-snug mb-2 rounded-md border border-slate-200 bg-white px-2 py-1.5">
+        <strong className="font-semibold text-slate-800">Baseline obligatorio:</strong> el bloque superior es la línea
+        base; el inferior es el escenario alternativo. El gráfico y el delta comparan ambos.
+      </p>
       <div className="bg-slate-50 border border-slate-100 p-2 rounded">
         <h3 className="text-[9px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">Línea Base (Opción A)</h3>
         <div className="grid grid-cols-2 gap-2 mb-2">

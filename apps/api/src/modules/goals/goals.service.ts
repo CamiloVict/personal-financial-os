@@ -30,7 +30,11 @@ export class GoalsService {
     });
   }
 
-  async getLatestScenarioSnapshot(goalId: string) {
+  async getLatestScenarioSnapshot(goalId: string, userId: string) {
+    const goal = await this.prisma.savingGoal.findFirst({
+      where: { id: goalId, userId },
+    });
+    if (!goal) throw new NotFoundException('Meta no encontrada');
     const rec = await this.prisma.goalRecommendation.findFirst({
       where: { goalId },
       orderBy: { generatedAt: 'desc' },
@@ -261,11 +265,11 @@ export class GoalsService {
     };
   }
 
-  async simulateGoalScenarios(goalId: string) {
-    const goal = await this.prisma.savingGoal.findUnique({
-      where: { id: goalId },
+  async simulateGoalScenarios(goalId: string, userId: string) {
+    const goal = await this.prisma.savingGoal.findFirst({
+      where: { id: goalId, userId },
     });
-    if (!goal) throw new Error('Goal not found');
+    if (!goal) throw new NotFoundException('Meta no encontrada');
 
     const streams = await this.prisma.cashflowStream.findMany({
       where: { userId: goal.userId },
@@ -307,7 +311,7 @@ export class GoalsService {
       monthsRemaining,
     );
 
-    return this.getLatestScenarioSnapshot(goalId);
+    return this.getLatestScenarioSnapshot(goalId, userId);
   }
 
   private async generateScenarios(

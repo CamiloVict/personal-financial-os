@@ -21,4 +21,5 @@ export interface AllocatorPlan {
   scenarios: AllocatorScenario[];
   explanation: FinancialExplanation;
   confidence: FinancialConfidence;
+  engineNotes?: string[];
 }

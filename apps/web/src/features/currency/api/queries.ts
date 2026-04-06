@@ -81,5 +81,6 @@ export function usePresentLinesQuery(
       }),
     enabled: enabled && lines.length > 0,
     staleTime: 30_000,
+    retry: 1,
   });
 }

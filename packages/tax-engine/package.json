@@ -6,10 +6,14 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w",
+    "test": "vitest run",
     "export-regulatory-snapshot": "npm run build && node scripts/export-regulatory-snapshot.cjs"
   },
   "dependencies": {
     "@personal-finance-os/explanation": "workspace:*",
     "typescript": "^5.4.5"
+  },
+  "devDependencies": {
+    "vitest": "2.1.9"
   }
 }

@@ -24,11 +24,18 @@ export interface SimulationMetric {
   color: string;
 }
 
+export interface SimulationOutcomeTradeOff {
+  wealthImproves: boolean;
+  cashflowWorsens: boolean;
+  summary: string;
+}
+
 export interface SimulationResult {
   userId: string;
   primaryInsight: string;
   secondaryInsight: string;
   tertiaryInsight: string;
+  outcomeTradeOff?: SimulationOutcomeTradeOff | null;
   years: SimulationYearData[];
   finalScenarioNetWorth: number;
   finalBaselineNetWorth: number;

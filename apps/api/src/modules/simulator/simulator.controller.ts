@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Post, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { DbUserId } from '../../auth/db-user.decorator';
 import { SimulatorService } from './simulator.service';
 import {
@@ -27,6 +28,7 @@ export class SimulatorController {
   }
 
   @Post('saved')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   saveSnapshot(
     @DbUserId() userId: string,
     @Body()
@@ -56,6 +58,7 @@ export class SimulatorController {
   }
 
   @Post('what-if/property')
+  @Throttle({ default: { limit: 25, ttl: 60_000 } })
   async simulatePropertyPurchase(
     @DbUserId() userId: string,
     @Body() input: SimulatePropertyPurchaseInput,
@@ -64,6 +67,7 @@ export class SimulatorController {
   }
 
   @Post('what-if/debt-vs-invest')
+  @Throttle({ default: { limit: 25, ttl: 60_000 } })
   async simulateDebtVsInvest(
     @DbUserId() userId: string,
     @Body() input: SimulateDebtVsInvestInput,
@@ -72,6 +76,7 @@ export class SimulatorController {
   }
 
   @Post('what-if/tax-advantaged')
+  @Throttle({ default: { limit: 25, ttl: 60_000 } })
   async simulateTaxAdvantaged(
     @DbUserId() userId: string,
     @Body() input: SimulateTaxAdvantagedInput,
@@ -80,6 +85,7 @@ export class SimulatorController {
   }
 
   @Post('what-if/business')
+  @Throttle({ default: { limit: 25, ttl: 60_000 } })
   async simulateBusiness(
     @DbUserId() userId: string,
     @Body() input: SimulateBusinessInput,
@@ -88,6 +94,7 @@ export class SimulatorController {
   }
 
   @Post('what-if/custom')
+  @Throttle({ default: { limit: 25, ttl: 60_000 } })
   async simulateCustom(
     @DbUserId() userId: string,
     @Body() input: SimulateCustomInput,
