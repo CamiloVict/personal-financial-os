@@ -17,6 +17,18 @@ import {
   TopInvestments,
   QuickActions,
 } from '@/features/dashboard/components';
+import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
+import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
+import {
+  linesFromStreams,
+  linesFromPositions,
+  rowsToMap,
+  aggregateExpensePieByCategory,
+  aggregateIncomeBarByType,
+  sumPositionPresented,
+  presentedCurrencyFromRows,
+} from '@/features/currency/valuationUtils';
+import { useGlobalStore } from '@/shared/store/global';
 
 /** Al menos un flujo de caja (ingreso o gasto) o una inversión */
 function hasFinancialSetup(
@@ -32,8 +44,9 @@ export default function HomePage() {
   const { data: cashflowAnalytics, isLoading: isLoadingCashflow } =
     useCashflowAnalytics();
   const { data: taxAnalytics, isLoading: isLoadingTax } = useTaxAnalytics();
-  const { data: positions = [], isLoading: loadingPositions } =
+  const { data: positionsPayload, isLoading: loadingPositions } =
     useInvestmentPositions();
+  const positions = positionsPayload?.positions ?? [];
 
   const gateReady = !loadingStreams && !loadingPositions;
   const hasSetup = useMemo(
@@ -59,6 +72,61 @@ export default function HomePage() {
   const totalReturn = totalEstimatedValue - totalInvested;
   const returnPercentage =
     totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+
+  const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
+  const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
+
+  const valuationLines = useMemo(() => {
+    const fromStreams = linesFromStreams(streams);
+    const fromPos = linesFromPositions(positions, valuationAsOfDate);
+    return [...fromStreams, ...fromPos];
+  }, [streams, positions, valuationAsOfDate]);
+
+  const { data: presentedRows, isLoading: presentationLoading } =
+    useValuationPresentation(valuationLines, valuationLines.length > 0);
+
+  const rowMap = useMemo(() => rowsToMap(presentedRows), [presentedRows]);
+  const expenseChartData = useMemo(
+    () => aggregateExpensePieByCategory(streams, rowMap),
+    [streams, rowMap],
+  );
+  const incomeChartData = useMemo(
+    () => aggregateIncomeBarByType(streams, rowMap),
+    [streams, rowMap],
+  );
+  const chartCurrency = presentedCurrencyFromRows(
+    presentedRows,
+    displayValuationMode,
+  );
+
+  const hasStreamPresentation =
+    streams.length > 0 &&
+    !presentationLoading &&
+    (presentedRows?.length ?? 0) > 0;
+
+  const { invested: pInv, value: pVal, currency: posPresCcy } =
+    sumPositionPresented(positions, presentedRows);
+  const pRet =
+    pInv != null && pVal != null ? pVal - pInv : null;
+
+  const presentedById = useMemo(() => {
+    if (!presentedRows?.length || positions.length === 0) return undefined;
+    const ccy = presentedRows[0]?.presentedCurrency ?? posPresCcy;
+    const m: Record<string, { capital: number; value: number; currency: string }> =
+      {};
+    for (const p of positions) {
+      const c = presentedRows.find((r) => r.id === `${p.id}-cap`);
+      const v = presentedRows.find((r) => r.id === `${p.id}-val`);
+      if (c && v) {
+        m[p.id] = {
+          capital: c.presentedAmount,
+          value: v.presentedAmount,
+          currency: ccy,
+        };
+      }
+    }
+    return Object.keys(m).length ? m : undefined;
+  }, [presentedRows, positions, posPresCcy]);
 
   const showDashboard = gateReady && hasSetup;
 
@@ -100,12 +168,31 @@ export default function HomePage() {
           totalEstimatedValue={totalEstimatedValue}
           totalReturn={totalReturn}
           returnPercentage={returnPercentage}
+          presentedInvested={
+            positions.length > 0 ? pInv : undefined
+          }
+          presentedValue={positions.length > 0 ? pVal : undefined}
+          presentedReturn={positions.length > 0 ? pRet : undefined}
+          presentedCurrency={posPresCcy}
+          presentationLoading={
+            positions.length > 0 && presentationLoading
+          }
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <CashflowCharts
             isLoading={isLoadingCashflow}
             analytics={cashflowAnalytics}
+            expenseChartData={
+              hasStreamPresentation ? expenseChartData : undefined
+            }
+            incomeChartData={
+              hasStreamPresentation ? incomeChartData : undefined
+            }
+            chartCurrency={hasStreamPresentation ? chartCurrency : 'USD'}
+            presentationLoading={
+              streams.length > 0 && presentationLoading
+            }
           />
 
           <div className="lg:col-span-5 flex flex-col gap-4">
@@ -113,11 +200,19 @@ export default function HomePage() {
               isLoading={isLoadingTax}
               analytics={taxAnalytics}
             />
+            <ExplanationPanel explanation={taxAnalytics?.explanation} defaultOpen={false} />
             <QuickActions />
           </div>
 
           <div className="lg:col-span-3">
-            <TopInvestments positions={positions} />
+            <TopInvestments
+              positions={positions}
+              confidence={positionsPayload?.confidence}
+              presentedById={presentedById}
+              presentationLoading={
+                positions.length > 0 && presentationLoading
+              }
+            />
           </div>
         </div>
       </>

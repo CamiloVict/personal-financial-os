@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Activity } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 interface TaxAnalysisChartProps {
   isLoading: boolean;
@@ -11,9 +12,12 @@ interface TaxAnalysisChartProps {
 export function TaxAnalysisChart({ isLoading, analytics }: TaxAnalysisChartProps) {
   return (
     <div className="glass-card rounded-xl p-4 flex-1">
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
         <h3 className="text-xs font-bold text-slate-800">Comparativa Fiscal (Escenarios)</h3>
-        <Link href="/tax" className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded">Ver plan</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <ConfidenceBadge confidence={analytics?.confidence} />
+          <Link href="/tax" className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded">Ver plan</Link>
+        </div>
       </div>
       {isLoading ? (
           <div className="h-40 flex justify-center items-center"><Activity className="w-4 h-4 animate-spin text-slate-400" /></div>

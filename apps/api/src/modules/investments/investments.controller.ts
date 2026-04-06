@@ -1,10 +1,14 @@
 import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
 import { DbUserId } from '../../auth/db-user.decorator';
+import { ConfidenceService } from '../confidence/confidence.service';
 import { InvestmentsService } from './investments.service';
 
 @Controller('investments')
 export class InvestmentsController {
-  constructor(private readonly investmentsService: InvestmentsService) {}
+  constructor(
+    private readonly investmentsService: InvestmentsService,
+    private readonly confidenceService: ConfidenceService,
+  ) {}
 
   @Get('types')
   getInvestmentTypes(@DbUserId() userId: string) {
@@ -27,8 +31,12 @@ export class InvestmentsController {
   }
 
   @Get('positions')
-  getInvestmentPositions(@DbUserId() userId: string) {
-    return this.investmentsService.getPositions(userId);
+  async getInvestmentPositions(@DbUserId() userId: string) {
+    const [positions, confidence] = await Promise.all([
+      this.investmentsService.getPositions(userId),
+      this.confidenceService.evaluateInvestments(userId),
+    ]);
+    return { positions, confidence };
   }
 
   @Post('positions')

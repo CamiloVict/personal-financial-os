@@ -1,14 +1,24 @@
 import React from 'react';
 import { Banknote, TrendingUp, TrendingDown, CheckCircle2, Trash2, Activity } from 'lucide-react';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface CashflowListProps {
   streams: any[];
   isLoading: boolean;
   onSelectStream: (stream: any) => void;
   onDeleteStream: (id: string) => void;
+  presentedByStreamId?: Record<string, { amount: number; currency: string }>;
+  presentationLoading?: boolean;
 }
 
-export function CashflowList({ streams, isLoading, onSelectStream, onDeleteStream }: CashflowListProps) {
+export function CashflowList({
+  streams,
+  isLoading,
+  onSelectStream,
+  onDeleteStream,
+  presentedByStreamId,
+  presentationLoading,
+}: CashflowListProps) {
   return (
     <div className="lg:col-span-8">
       <div className="glass-card rounded-xl flex flex-col h-full min-h-[300px]">
@@ -50,10 +60,37 @@ export function CashflowList({ streams, isLoading, onSelectStream, onDeleteStrea
                     </div>
                     
                     <div className="text-right">
-                      <p className={`text-base font-bold tracking-tight ${stream.flowType === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {stream.flowType === 'INCOME' ? '+' : '-'}${Number(stream.expectedAmount).toLocaleString()}
+                      {presentedByStreamId?.[stream.id] && !presentationLoading ? (
+                        <>
+                          <p
+                            className={`text-base font-bold tracking-tight ${stream.flowType === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}
+                          >
+                            {stream.flowType === 'INCOME' ? '+' : '-'}
+                            {formatPresentedAmount(
+                              presentedByStreamId[stream.id].amount,
+                              presentedByStreamId[stream.id].currency,
+                            )}
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Nom.: {stream.flowType === 'INCOME' ? '+' : '-'}$
+                            {Number(stream.expectedAmount).toLocaleString()}{' '}
+                            {stream.currency}
+                          </p>
+                        </>
+                      ) : (
+                        <p
+                          className={`text-base font-bold tracking-tight ${stream.flowType === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}
+                        >
+                          {stream.flowType === 'INCOME' ? '+' : '-'}$
+                          {Number(stream.expectedAmount).toLocaleString()}{' '}
+                          <span className="text-slate-400 font-normal text-xs">
+                            {stream.currency}
+                          </span>
+                        </p>
+                      )}
+                      <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mt-0.5">
+                        {stream.frequency}
                       </p>
-                      <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mt-0.5">{stream.frequency}</p>
                     </div>
                   </div>
 

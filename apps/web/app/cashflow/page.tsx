@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Banknote } from 'lucide-react';
 
 import {
@@ -21,11 +21,23 @@ import {
   CashflowList,
   CashflowEventModal,
 } from '@/features/cashflow/components';
+import { valuationModeFootnote } from '@/features/currency/format';
+import { useGlobalStore } from '@/shared/store/global';
+import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
+import {
+  linesFromStreams,
+  rowsToMap,
+  aggregateExpensePieByCategory,
+  aggregateIncomeBarByType,
+  presentedCurrencyFromRows,
+} from '@/features/currency/valuationUtils';
 
 export default function CashflowPage() {
   const { data: categories = [], isLoading: isLoadingCat } = useCategories();
   const { data: streams = [], isLoading: isLoadingStreams } = useCashflowStreams();
-  const { data: positions = [], isLoading: isLoadingPositions } = useInvestmentPositions();
+  const { data: positionsPayload, isLoading: isLoadingPositions } =
+    useInvestmentPositions();
+  const positions = positionsPayload?.positions ?? [];
   const { data: cashflowAnalytics, isLoading: isLoadingAnalytics } = useCashflowAnalytics();
 
   const setupHelpLoading = isLoadingStreams || isLoadingPositions;
@@ -84,10 +96,70 @@ export default function CashflowPage() {
   // Calculations
   const incomeStreams = streams.filter((s: any) => s.flowType === 'INCOME');
   const expenseStreams = streams.filter((s: any) => s.flowType === 'EXPENSE');
-  
-  const totalExpectedIncome = incomeStreams.reduce((acc: number, s: any) => acc + Number(s.expectedAmount), 0);
-  const totalExpectedExpense = expenseStreams.reduce((acc: number, s: any) => acc + Number(s.expectedAmount), 0);
+
+  const totalExpectedIncome = incomeStreams.reduce(
+    (acc: number, s: any) => acc + Number(s.expectedAmount),
+    0,
+  );
+  const totalExpectedExpense = expenseStreams.reduce(
+    (acc: number, s: any) => acc + Number(s.expectedAmount),
+    0,
+  );
   const remainingExpected = totalExpectedIncome - totalExpectedExpense;
+
+  const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
+
+  const streamLineInputs = useMemo(() => linesFromStreams(streams), [streams]);
+
+  const { data: presentedRows, isLoading: presentationLoading } =
+    useValuationPresentation(streamLineInputs, streamLineInputs.length > 0);
+
+  const sumPresented = (ids: string[]) => {
+    if (!presentedRows) return null;
+    let t = 0;
+    for (const id of ids) {
+      const r = presentedRows.find((x) => x.id === id);
+      if (!r) return null;
+      t += r.presentedAmount;
+    }
+    return t;
+  };
+
+  const incomeIds = incomeStreams.map((s: any) => s.id);
+  const expenseIds = expenseStreams.map((s: any) => s.id);
+  const pInc = sumPresented(incomeIds);
+  const pExp = sumPresented(expenseIds);
+  const pRem = pInc != null && pExp != null ? pInc - pExp : null;
+  const presCcy = presentedCurrencyFromRows(
+    presentedRows,
+    displayValuationMode,
+  );
+
+  const rowMap = useMemo(() => rowsToMap(presentedRows), [presentedRows]);
+  const expenseChartData = useMemo(
+    () => aggregateExpensePieByCategory(streams, rowMap),
+    [streams, rowMap],
+  );
+  const incomeChartData = useMemo(
+    () => aggregateIncomeBarByType(streams, rowMap),
+    [streams, rowMap],
+  );
+  const hasPresentedCharts =
+    streams.length > 0 &&
+    !presentationLoading &&
+    (presentedRows?.length ?? 0) > 0;
+
+  const presentedByStreamId = useMemo(() => {
+    if (!presentedRows?.length) return undefined;
+    const ccy =
+      presentedRows[0]?.presentedCurrency ??
+      (displayValuationMode === 'NOMINAL_USD' ? 'USD' : 'COP');
+    const m: Record<string, { amount: number; currency: string }> = {};
+    for (const r of presentedRows) {
+      m[r.id] = { amount: r.presentedAmount, currency: ccy };
+    }
+    return m;
+  }, [presentedRows, displayValuationMode]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -110,17 +182,33 @@ export default function CashflowPage() {
         </div>
       </header>
 
-      <CashflowMetrics 
+      <CashflowMetrics
         totalExpectedIncome={totalExpectedIncome}
         totalExpectedExpense={totalExpectedExpense}
         remainingExpected={remainingExpected}
         incomeStreamsCount={incomeStreams.length}
         expenseStreamsCount={expenseStreams.length}
+        presentedIncome={pInc}
+        presentedExpense={pExp}
+        presentedRemaining={pRem}
+        presentedCurrency={presCcy}
+        presentationLoading={presentationLoading}
+        presentationLabel={valuationModeFootnote(displayValuationMode)}
       />
 
-      <CashflowCharts 
+      <CashflowCharts
         isLoadingAnalytics={isLoadingAnalytics}
         cashflowAnalytics={cashflowAnalytics}
+        expenseChartData={
+          hasPresentedCharts ? expenseChartData : undefined
+        }
+        incomeChartData={
+          hasPresentedCharts ? incomeChartData : undefined
+        }
+        chartCurrency={hasPresentedCharts ? presCcy : 'USD'}
+        presentationLoading={
+          streams.length > 0 && presentationLoading
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -141,11 +229,13 @@ export default function CashflowPage() {
           startDate={startDate} setStartDate={setStartDate}
         />
 
-        <CashflowList 
+        <CashflowList
           streams={streams}
           isLoading={isLoadingStreams}
           onSelectStream={setSelectedStream}
           onDeleteStream={(id) => deleteStreamMutation.mutate(id)}
+          presentedByStreamId={presentedByStreamId}
+          presentationLoading={presentationLoading}
         />
 
       </div>

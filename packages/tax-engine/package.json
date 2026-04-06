@@ -8,6 +8,7 @@
     "dev": "tsc -w"
   },
   "dependencies": {
+    "@personal-finance-os/explanation": "workspace:*",
     "typescript": "^5.4.5"
   }
 }

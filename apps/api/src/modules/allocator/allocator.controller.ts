@@ -7,11 +7,15 @@ import { AllocatorInput, AllocatorResult } from './allocator.contracts';
 export class AllocatorController {
   constructor(private readonly allocatorService: AllocatorService) {}
 
-  @Post('plan')
-  async generatePlan(
+  /** Simula escenarios de asignación a partir del capital indicado (salida ilustrativa). */
+  @Post('scenarios/simulate')
+  async simulateScenarios(
     @DbUserId() userId: string,
     @Body() input: AllocatorInput,
   ): Promise<AllocatorResult> {
-    return this.allocatorService.generateAllocationPlan(userId, input.availableCapital);
+    return this.allocatorService.simulateCapitalAllocation(
+      userId,
+      input.availableCapital,
+    );
   }
 }

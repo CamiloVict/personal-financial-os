@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PieChart as PieChartIcon, Activity } from 'lucide-react';
 import {
   useInvestmentPositions,
@@ -16,9 +16,16 @@ import {
   PositionCharts,
   PositionEventModal
 } from '@/features/investments/components';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
+import { useGlobalStore } from '@/shared/store/global';
+import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
+import { linesFromPositions, presentedCurrencyFromRows } from '@/features/currency/valuationUtils';
 
 export default function InvestmentPositionsPage() {
-  const { data: positions = [], isLoading: isLoadingPos } = useInvestmentPositions();
+  const { data: positionsPayload, isLoading: isLoadingPos } =
+    useInvestmentPositions();
+  const positions = positionsPayload?.positions ?? [];
+  const positionsConfidence = positionsPayload?.confidence;
   const { data: types = [], isLoading: isLoadingTypes } = useInvestmentTypes();
 
   const createPositionMutation = useCreateInvestmentPosition();
@@ -151,18 +158,69 @@ export default function InvestmentPositionsPage() {
     });
   };
 
-  const positionsPieData = positions.reduce((acc: any[], curr: any) => {
-    const typeName = curr.type?.name || 'Otro';
-    const amount = Number(curr.currentEstimatedValue);
-    const existing = acc.find(item => item.name === typeName);
-    if (existing) existing.value += amount;
-    else acc.push({ name: typeName, value: amount });
-    return acc;
-  }, []);
+  const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
+  const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
+
+  const positionLineInputs = useMemo(
+    () => linesFromPositions(positions, valuationAsOfDate),
+    [positions, valuationAsOfDate],
+  );
+
+  const { data: posPresRows, isLoading: posPresLoading } = useValuationPresentation(
+    positionLineInputs,
+    positionLineInputs.length > 0,
+  );
+
+  const chartCurrency = presentedCurrencyFromRows(
+    posPresRows,
+    displayValuationMode,
+  );
+
+  const presentedById = useMemo(() => {
+    if (!posPresRows) return undefined;
+    const m: Record<string, { capital: number; value: number; currency: string }> =
+      {};
+    for (const p of positions) {
+      const c = posPresRows.find((r) => r.id === `${p.id}-cap`);
+      const v = posPresRows.find((r) => r.id === `${p.id}-val`);
+      if (c && v) {
+        m[p.id] = {
+          capital: c.presentedAmount,
+          value: v.presentedAmount,
+          currency: c.presentedCurrency,
+        };
+      }
+    }
+    return m;
+  }, [posPresRows, positions]);
+
+  const positionsPieData = useMemo(() => {
+    return positions.reduce((acc: any[], curr: any) => {
+      const typeName = curr.type?.name || 'Otro';
+      const presented = presentedById?.[curr.id]?.value;
+      const amount =
+        presented != null ? presented : Number(curr.currentEstimatedValue);
+      const existing = acc.find((item) => item.name === typeName);
+      if (existing) existing.value += amount;
+      else acc.push({ name: typeName, value: amount });
+      return acc;
+    }, []);
+  }, [positions, presentedById]);
+
+  const positionBarChartData = useMemo(() => {
+    return positions.map((p: any) => {
+      const pres = presentedById?.[p.id];
+      return {
+        name: p.name,
+        capital: pres != null ? pres.capital : Number(p.initialCapital),
+        valor: pres != null ? pres.value : Number(p.currentEstimatedValue),
+      };
+    });
+  }, [positions, presentedById]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <header className="flex justify-between items-end border-b border-slate-200/50 pb-6 mb-8">
+      <header className="flex flex-wrap justify-between items-end gap-3 border-b border-slate-200/50 pb-6 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <div className="p-1.5 bg-blue-100 rounded-lg">
@@ -174,6 +232,7 @@ export default function InvestmentPositionsPage() {
             Registra tus activos y realiza un seguimiento detallado de capital, valorización y flujo.
           </p>
         </div>
+        <ConfidenceBadge confidence={positionsConfidence} />
       </header>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
@@ -218,13 +277,17 @@ export default function InvestmentPositionsPage() {
             {loading && <Activity className="w-5 h-5 text-blue-500 animate-spin" />}
           </div>
 
-          <PositionCharts 
+          <PositionCharts
             pieData={positionsPieData}
             positions={positions}
+            barChartData={positionBarChartData}
+            chartCurrency={chartCurrency}
           />
           
           <PositionList 
             positions={positions}
+            presentedById={presentedById}
+            presentationLoading={posPresLoading}
             onSelectPosition={setSelectedPosition}
             onDeletePosition={(id) => deletePositionMutation.mutate(id)}
             isDeleting={deletePositionMutation.isPending}

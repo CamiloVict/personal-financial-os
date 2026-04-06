@@ -1,15 +1,38 @@
 import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
 
 interface PositionChartsProps {
   pieData: any[];
   positions: any[];
+  /** Filas del gráfico de barras; si no se pasa, se arma desde `positions` en nominal. */
+  barChartData?: { name: string; capital: number; valor: number }[];
+  chartCurrency?: string;
 }
 
-export function PositionCharts({ pieData, positions }: PositionChartsProps) {
+export function PositionCharts({
+  pieData,
+  positions,
+  barChartData,
+  chartCurrency = 'USD',
+}: PositionChartsProps) {
   if (pieData.length === 0) return null;
+
+  const bars =
+    barChartData && barChartData.length > 0
+      ? barChartData
+      : positions.map((p) => ({
+          name: p.name,
+          capital: Number(p.initialCapital),
+          valor: Number(p.currentEstimatedValue),
+        }));
+
+  const fmt = (v: unknown) =>
+    formatPresentedAmount(Number(v ?? 0), chartCurrency);
+  const yTick = (val: number) =>
+    chartCurrency === 'USD' ? `$${val / 1000}k` : `${(val / 1e6).toFixed(1)}M`;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -21,7 +44,7 @@ export function PositionCharts({ pieData, positions }: PositionChartsProps) {
               <Pie data={pieData} innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value" nameKey="name">
                 {pieData.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
+              <Tooltip formatter={(value: unknown) => fmt(value)} />
               <Legend wrapperStyle={{fontSize: '10px'}} />
             </PieChart>
           </ResponsiveContainer>
@@ -32,11 +55,11 @@ export function PositionCharts({ pieData, positions }: PositionChartsProps) {
         <h3 className="text-sm font-bold text-slate-800 mb-3 tracking-tight">Rendimiento (Capital vs Valor)</h3>
         <div className="h-40">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={positions.map(p => ({ name: p.name, capital: Number(p.initialCapital), valor: Number(p.currentEstimatedValue) }))} margin={{top: 0, right: 0, left: -20, bottom: 0}}>
+            <BarChart data={bars} margin={{top: 0, right: 0, left: -20, bottom: 0}}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 9}} />
-              <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 9}} tickFormatter={(val) => `$${val/1000}k`} />
-              <Tooltip cursor={{fill: '#f8fafc'}} formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
+              <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 9}} tickFormatter={(val) => yTick(val)} />
+              <Tooltip cursor={{fill: '#f8fafc'}} formatter={(value: unknown) => fmt(value)} />
               <Legend wrapperStyle={{fontSize: '10px', paddingTop: '5px'}} />
               <Bar dataKey="capital" name="Aportado" fill="#94a3b8" radius={[2, 2, 0, 0]} maxBarSize={20} />
               <Bar dataKey="valor" name="Estimado" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={20} />

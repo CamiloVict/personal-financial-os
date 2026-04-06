@@ -1,11 +1,18 @@
 import { Building, TrendingUp } from 'lucide-react';
 import type { GoodDebtRow } from '../types';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface DebtsGoodDebtPanelProps {
   goodDebts: GoodDebtRow[];
+  presentedByDebtId?: Record<string, { amount: number; currency: string }>;
+  presentationLoading?: boolean;
 }
 
-export function DebtsGoodDebtPanel({ goodDebts }: DebtsGoodDebtPanelProps) {
+export function DebtsGoodDebtPanel({
+  goodDebts,
+  presentedByDebtId,
+  presentationLoading,
+}: DebtsGoodDebtPanelProps) {
   return (
     <div className="glass-card rounded-xl p-4 shadow-sm border border-emerald-100">
       <h3 className="text-sm font-bold text-emerald-800 mb-1 flex items-center gap-1.5">
@@ -31,9 +38,30 @@ export function DebtsGoodDebtPanel({ goodDebts }: DebtsGoodDebtPanelProps) {
                   <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                     <Building className="w-3.5 h-3.5 text-emerald-600" /> {gd.name}
                   </h4>
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mt-0.5">
-                    Saldo: ${Number(gd.remainingAmount).toLocaleString()}
-                  </p>
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mt-0.5 space-y-0.5">
+                    <p className="text-slate-600 normal-case font-bold text-[11px]">
+                      {presentedByDebtId?.[gd.id] && !presentationLoading ? (
+                        <>
+                          Saldo:{' '}
+                          {formatPresentedAmount(
+                            presentedByDebtId[gd.id].amount,
+                            presentedByDebtId[gd.id].currency,
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          Saldo: $
+                          {Number(gd.remainingAmount).toLocaleString()}
+                        </>
+                      )}
+                    </p>
+                    {presentedByDebtId?.[gd.id] && !presentationLoading ? (
+                      <p className="text-[8px] text-slate-400 font-normal normal-case">
+                        Nom.: $
+                        {Number(gd.remainingAmount).toLocaleString()}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="text-right">
                   <span

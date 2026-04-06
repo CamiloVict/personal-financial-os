@@ -1,5 +1,7 @@
 import { ME_SCOPE } from './query-scope';
 
+const currencyRoot = ['currency'] as const;
+
 export const queryKeys = {
   cashflow: {
     all: ['cashflow'] as const,
@@ -19,8 +21,8 @@ export const queryKeys = {
     all: ['goals'] as const,
     list: () => [...queryKeys.goals.all, 'list', ME_SCOPE] as const,
     detail: (id: string) => [...queryKeys.goals.all, 'detail', id] as const,
-    recommendations: (id: string) =>
-      [...queryKeys.goals.detail(id), 'recommendations'] as const,
+    scenarios: (id: string) =>
+      [...queryKeys.goals.detail(id), 'scenarios'] as const,
   },
   tax: {
     all: ['tax'] as const,
@@ -32,5 +34,11 @@ export const queryKeys = {
       [...queryKeys.tax.all, 'declaration-insights', ME_SCOPE] as const,
     declarationPreview: (leverKey: string) =>
       [...queryKeys.tax.all, 'declaration-preview', ME_SCOPE, leverKey] as const,
+  },
+  currency: {
+    all: currencyRoot,
+    preferences: () => [...currencyRoot, 'preferences', ME_SCOPE] as const,
+    presentLines: (fingerprint: string) =>
+      [...currencyRoot, 'present-lines', ME_SCOPE, fingerprint] as const,
   },
 };

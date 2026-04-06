@@ -1,24 +1,37 @@
+import type {
+  FinancialConfidence,
+  FinancialExplanation,
+} from '@personal-finance-os/explanation';
+
 export interface AllocatorInput {
   /** Ignored by the API; usuario viene del token. Opcional por compatibilidad con clientes antiguos. */
   userId?: string;
   availableCapital: number;
 }
 
-export interface AllocationRecommendation {
+/** Escenario hipotético de asignación de capital (no es asesoría ni instrucción de actuar). */
+export interface AllocationScenario {
   id: string;
-  type: 'TAX_OPTIMIZATION' | 'DEBT_REDUCTION' | 'GOAL_ACCELERATION' | 'INVESTMENT_OPPORTUNITY';
+  type:
+    | 'IMPACT_TAX_SHELTER'
+    | 'IMPACT_DEBT_PAYDOWN'
+    | 'IMPACT_GOAL_FUNDING'
+    | 'INVESTMENT_OPPORTUNITY';
   title: string;
   description: string;
-  suggestedAmount: number;
-  expectedReturnAmount: number; // e.g. Tax saved, interest saved, or expected profit
-  returnPercentage: number; // e.g. 35% ROI
-  priorityScore: number; // 1 to 100, higher is more important
-  actionData?: any; // Metadata for the UI to trigger an action
+  /** Monto usado en el modelo para este escenario. */
+  modeledAmount: number;
+  expectedReturnAmount: number;
+  returnPercentage: number;
+  priorityScore: number;
+  actionData?: any;
 }
 
 export interface AllocatorResult {
   userId: string;
   availableCapital: number;
   unallocatedCapital: number;
-  recommendations: AllocationRecommendation[];
+  scenarios: AllocationScenario[];
+  explanation: FinancialExplanation;
+  confidence: FinancialConfidence;
 }

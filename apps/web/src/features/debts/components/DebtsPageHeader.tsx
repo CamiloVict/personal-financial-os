@@ -1,8 +1,14 @@
+import type { FinancialConfidence } from '@personal-finance-os/explanation';
 import { Scale } from 'lucide-react';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
-export function DebtsPageHeader() {
+export function DebtsPageHeader({
+  confidence,
+}: {
+  confidence?: FinancialConfidence | null;
+}) {
   return (
-    <header className="flex justify-between items-end border-b border-slate-200/50 pb-3 mb-4">
+    <header className="flex flex-wrap justify-between items-end gap-3 border-b border-slate-200/50 pb-3 mb-4">
       <div>
         <h1 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
           <div className="p-1 bg-indigo-100 rounded-md">
@@ -15,6 +21,7 @@ export function DebtsPageHeader() {
           tu ROI real (&quot;Cash-on-Cash&quot;) y tu salud de endeudamiento.
         </p>
       </div>
+      <ConfidenceBadge confidence={confidence} />
     </header>
   );
 }

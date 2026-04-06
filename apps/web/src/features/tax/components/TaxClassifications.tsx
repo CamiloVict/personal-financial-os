@@ -59,7 +59,9 @@ export function TaxClassifications({ classifications, pieData }: TaxClassificati
             <div className="flex justify-between items-start mb-2">
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">{cls.stream?.name || 'Ingreso Desconocido'}</h4>
-                <p className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">Sugerencia: {cls.suggestedCedula.replace(/_/g, ' ')}</p>
+                <p className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">
+                  Clasificación modelada: {cls.suggestedCedula.replace(/_/g, ' ')}
+                </p>
               </div>
               {renderConfidenceBadge(cls.confidenceLevel)}
             </div>

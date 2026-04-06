@@ -4,6 +4,7 @@ import {
   useQueryClient,
   keepPreviousData,
 } from '@tanstack/react-query';
+import type { NormalizedTaxFinancials } from '@personal-finance-os/tax-engine';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
 import { ME_SCOPE } from '../../../shared/api/query-scope';
@@ -17,26 +18,51 @@ export function useTaxProfile() {
   });
 }
 
+export type TaxClassificationsPayload = {
+  classifications: any[];
+  explanation?: import('@personal-finance-os/explanation').FinancialExplanation;
+  confidence?: import('@personal-finance-os/explanation').FinancialConfidence;
+};
+
 export function useTaxClassifications(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.tax.classifications(),
-    queryFn: async () => {
+    queryFn: async (): Promise<TaxClassificationsPayload> => {
       try {
-        return await apiClient.get<any[]>('/tax/classifications');
+        const res = await apiClient.get<any>('/tax/classifications');
+        if (Array.isArray(res)) {
+          return { classifications: res, explanation: undefined };
+        }
+        return {
+          classifications: res.classifications ?? [],
+          explanation: res.explanation,
+          confidence: res.confidence,
+        };
       } catch {
-        return [];
+        return { classifications: [] };
       }
     },
     enabled,
   });
 }
 
+/** Plan almacenado + explicación; `normalizedForTax` existe tras migración y un análisis reciente. */
+export type TaxPlanPayload = {
+  id: string;
+  profileId: string;
+  generatedAt: string;
+  scenarios: unknown[];
+  normalizedForTax?: NormalizedTaxFinancials | null;
+  explanation?: import('@personal-finance-os/explanation').FinancialExplanation;
+  confidence?: import('@personal-finance-os/explanation').FinancialConfidence;
+};
+
 export function useTaxPlan(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.tax.plan(),
-    queryFn: async () => {
+    queryFn: async (): Promise<TaxPlanPayload | null> => {
       try {
-        return await apiClient.get<any>('/tax/plan');
+        return await apiClient.get<TaxPlanPayload>('/tax/plan');
       } catch {
         return null;
       }
@@ -61,6 +87,7 @@ export type TaxDeclarationPreview = {
   estimatedNetTaxPayable: number;
   savingsVsConservative: number;
   label: string;
+  explanation?: import('@personal-finance-os/explanation').FinancialExplanation;
 };
 
 /** Vista previa del impuesto con varias palancas activas a la vez (POST /tax/declaration-preview). */
@@ -109,10 +136,15 @@ export function useSaveTaxProfile() {
   });
 }
 
+export type TaxAnalyzeResponse = {
+  normalizedForTax?: NormalizedTaxFinancials;
+  [key: string]: unknown;
+};
+
 export function useAnalyzeTax() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => apiClient.post('/tax/analyze', {}),
+    mutationFn: () => apiClient.post<TaxAnalyzeResponse>('/tax/analyze', {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tax.classifications() });
       queryClient.invalidateQueries({ queryKey: queryKeys.tax.plan() });

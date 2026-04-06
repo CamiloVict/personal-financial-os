@@ -17,7 +17,10 @@ import {
   TaxScenarios,
   TaxMissedOpportunities,
   TaxDeclarationSection,
+  TaxNormalizationPanel,
 } from '@/features/tax/components';
+import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 export default function TaxDashboard() {
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'PLAN'>('PROFILE');
@@ -30,7 +33,10 @@ export default function TaxDashboard() {
     error: profileErrorDetail,
     refetch: refetchProfile,
   } = useTaxProfile();
-  const { data: classifications = [] } = useTaxClassifications(!!profile);
+  const { data: classificationPayload } = useTaxClassifications(!!profile);
+  const classifications = classificationPayload?.classifications ?? [];
+  const classificationsExplanation = classificationPayload?.explanation;
+  const classificationsConfidence = classificationPayload?.confidence;
   const { data: plan, isLoading: loadingPlan } = useTaxPlan(!!profile);
   const { data: declarationInsights, isLoading: loadingDeclaration } = useTaxDeclarationInsights(!!profile);
 
@@ -78,6 +84,9 @@ export default function TaxDashboard() {
 
   const saveProfileMutation = useSaveTaxProfile();
   const analyzeMutation = useAnalyzeTax();
+
+  const normalizedForTax =
+    analyzeMutation.data?.normalizedForTax ?? plan?.normalizedForTax ?? null;
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,18 +226,17 @@ export default function TaxDashboard() {
               <FileWarning className="w-4 h-4" /> Importante
             </h3>
             <p className="text-xs leading-relaxed mb-3">
-              Este módulo utiliza un motor de reglas (TaxEngine) para sugerirte{' '}
-              <strong>planeación tributaria legal</strong> basándose exclusivamente en los datos registrados en esta
-              plataforma.
+              Este módulo utiliza un motor de reglas (TaxEngine) para{' '}
+              <strong>simular escenarios tributarios</strong> con base en los datos que registres en la plataforma.
             </p>
             <ul className="list-disc pl-4 space-y-1 text-[11px]">
               <li>
-                El motor <strong>no es un contador público</strong>. Las recomendaciones son sugerencias para optimizar
-                tu carga tributaria.
+                El motor <strong>no es contador ni asesor</strong>. La salida es ilustrativa; la obligación de declarar y
+                soportar corresponde al contribuyente.
               </li>
               <li>
-                Toda recomendación incluye un <strong>nivel de confianza</strong>. Si el nivel es bajo o medio,
-                requerirás aportar documentos soporte.
+                Cada vista incluye un <strong>nivel de confianza</strong> sobre la completitud de datos; si es bajo o
+                medio, conviene validar con documentos y un profesional.
               </li>
               <li>Las simulaciones asumen la Unidad de Valor Tributario (UVT) proyectada.</li>
             </ul>
@@ -281,6 +289,15 @@ export default function TaxDashboard() {
             </div>
           </div>
 
+          <TaxNormalizationPanel
+            data={normalizedForTax}
+            emptyHint={
+              plan
+                ? 'Este plan puede haberse generado antes de guardar la normalización fiscal, o no hay aún gastos/deudas/inversiones que el modelo use. Pulsa Recalcular motor.'
+                : undefined
+            }
+          />
+
           {loadingDeclaration ? (
             <div className="h-32 rounded-xl bg-slate-100 animate-pulse border border-slate-200" aria-hidden />
           ) : null}
@@ -298,7 +315,26 @@ export default function TaxDashboard() {
             />
           ) : null}
 
+          <ExplanationPanel
+            explanation={
+              selectedLeverIds.length > 0
+                ? comboPreview?.explanation ?? declarationInsights?.explanation
+                : declarationInsights?.explanation
+            }
+            defaultOpen={false}
+          />
+
+          <div className="flex justify-end">
+            <ConfidenceBadge confidence={classificationsConfidence} />
+          </div>
           <TaxClassifications classifications={classifications} pieData={classificationsPieData} />
+
+          <ExplanationPanel explanation={classificationsExplanation} defaultOpen={false} />
+
+          <div className="flex justify-end">
+            <ConfidenceBadge confidence={plan?.confidence} />
+          </div>
+          <ExplanationPanel explanation={plan?.explanation} defaultOpen={false} />
 
           {loadingPlan ? (
             <div className="h-40 rounded-xl bg-slate-100 animate-pulse border border-slate-200" aria-hidden />

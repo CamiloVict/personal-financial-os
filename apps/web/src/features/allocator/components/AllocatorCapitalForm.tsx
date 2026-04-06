@@ -17,10 +17,10 @@ export function AllocatorCapitalForm({
     <div className="glass-card max-w-2xl mx-auto rounded-xl p-4 md:p-5 shadow-sm">
       <div className="text-center mb-4">
         <h2 className="text-sm font-bold text-slate-800 mb-1">
-          ¿Cuánto capital disponible tienes?
+          Monto a simular (hipotético)
         </h2>
         <p className="text-[10px] text-slate-500">
-          Capital libre después de tus gastos fijos y variables.
+          Usa un monto que quieras contrastar en el modelo; no tiene que ser tu efectivo real.
         </p>
       </div>
 
@@ -48,7 +48,7 @@ export function AllocatorCapitalForm({
             ) : (
               <Zap className="w-3.5 h-3.5" />
             )}
-            {isPending ? 'Procesando cruce...' : 'Generar Plan'}
+            {isPending ? 'Simulando…' : 'Simular escenarios'}
           </button>
         </div>
       </form>

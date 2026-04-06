@@ -67,7 +67,8 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: '/allocator',
-    label: 'Allocator',
+    label: 'Asignación',
+    shortDescription: 'Simulación de escenarios',
     icon: Network,
     variant: 'allocator',
   },

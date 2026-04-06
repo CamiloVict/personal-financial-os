@@ -17,6 +17,7 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
     "@personal-finance-os/database": "workspace:*",
+    "@personal-finance-os/explanation": "workspace:*",
     "@personal-finance-os/tax-engine": "workspace:^",
     "@personal-finance-os/types": "workspace:*",
     "@personal-finance-os/validation": "workspace:*",

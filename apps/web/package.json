@@ -11,6 +11,8 @@
   "dependencies": {
     "@clerk/nextjs": "^7.0.8",
     "@personal-finance-os/database": "workspace:*",
+    "@personal-finance-os/explanation": "workspace:*",
+    "@personal-finance-os/tax-engine": "workspace:*",
     "@personal-finance-os/types": "workspace:*",
     "@personal-finance-os/validation": "workspace:*",
     "@tanstack/react-query": "^5.96.2",

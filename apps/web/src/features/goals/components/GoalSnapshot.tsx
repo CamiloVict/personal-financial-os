@@ -1,5 +1,6 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface GoalSnapshotProps {
   monthlyAmountNeeded: number;
@@ -9,6 +10,14 @@ interface GoalSnapshotProps {
   isAchievable: boolean;
   currentProjectedMonths: number | null;
   monthsRemaining: number;
+  presented?: {
+    monthlyAmountNeeded: number;
+    targetAmount: number;
+    currentMonthlySavings: number;
+    monthlyShortfall: number;
+    currency: string;
+  } | null;
+  presentationLoading?: boolean;
 }
 
 export function GoalSnapshot({
@@ -18,29 +27,72 @@ export function GoalSnapshot({
   monthlyShortfall,
   isAchievable,
   currentProjectedMonths,
-  monthsRemaining
+  monthsRemaining,
+  presented,
+  presentationLoading,
 }: GoalSnapshotProps) {
+  const useP = presented != null && !presentationLoading;
+  const fmt = (n: number) =>
+    useP ? formatPresentedAmount(n, presented!.currency) : `$${n.toLocaleString()}`;
+  const needed = useP ? presented!.monthlyAmountNeeded : monthlyAmountNeeded;
+  const target = useP ? presented!.targetAmount : targetAmount;
+  const savings = useP ? presented!.currentMonthlySavings : currentMonthlySavings;
+  const shortfall = useP ? presented!.monthlyShortfall : monthlyShortfall;
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         <div className="glass-card rounded-xl p-4">
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Ahorro Mensual Requerido</p>
-          <p className="text-xl font-bold text-slate-800 tracking-tight">${Number(monthlyAmountNeeded).toLocaleString()}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Para llegar a ${Number(targetAmount).toLocaleString()}</p>
+          <p className="text-xl font-bold text-slate-800 tracking-tight">
+            {presentationLoading ? '…' : fmt(needed)}
+          </p>
+          <p className="text-[10px] text-slate-400 mt-1">
+            {presentationLoading
+              ? '…'
+              : useP
+                ? (
+                    <>
+                      Para llegar a {fmt(target)}
+                      <span className="block text-[9px] mt-0.5">
+                        Nom.: ${Number(targetAmount).toLocaleString()}
+                      </span>
+                    </>
+                  )
+                : `Para llegar a $${Number(targetAmount).toLocaleString()}`}
+          </p>
         </div>
         <div className="glass-card rounded-xl p-4">
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Tu Capacidad de Ahorro Actual</p>
-          <p className="text-xl font-bold text-slate-800 tracking-tight">${Number(currentMonthlySavings).toLocaleString()}</p>
+          <p className="text-xl font-bold text-slate-800 tracking-tight">
+            {presentationLoading ? '…' : fmt(savings)}
+          </p>
           <p className="text-[10px] text-slate-400 mt-1">Basado en tus ingresos menos gastos fijos/variables</p>
+          {useP ? (
+            <p className="text-[9px] text-slate-400 mt-0.5">
+              Nom.: ${Number(currentMonthlySavings).toLocaleString()}
+            </p>
+          ) : null}
         </div>
         <div className={`glass-card rounded-xl p-4 border-l-4 ${isAchievable ? 'border-l-emerald-500 bg-emerald-50/10' : 'border-l-amber-500 bg-amber-50/10'}`}>
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Brecha Mensual (Faltante)</p>
           <p className={`text-xl font-bold tracking-tight ${isAchievable ? 'text-emerald-600' : 'text-amber-600'}`}>
-            ${isAchievable ? '0' : Number(monthlyShortfall).toLocaleString()}
+            {presentationLoading
+              ? '…'
+              : isAchievable
+                ? fmt(0)
+                : fmt(shortfall)}
           </p>
           <p className="text-[10px] text-slate-400 mt-1">
-            {isAchievable ? 'Estás en camino de lograrlo.' : 'Lo que necesitas ajustar cada mes.'}
+            {isAchievable
+              ? 'El modelo no muestra brecha mensual.'
+              : 'Diferencia mensual que el modelo usa para armar escenarios.'}
           </p>
+          {useP && !isAchievable ? (
+            <p className="text-[9px] text-slate-400 mt-0.5">
+              Nom.: ${Number(monthlyShortfall).toLocaleString()}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -52,8 +104,10 @@ export function GoalSnapshot({
               ¿Qué pasa si no hago ningún ajuste?
             </h3>
             <p className="text-blue-800/80 text-[11px] leading-relaxed">
-              Al ritmo actual de ${Number(currentMonthlySavings).toLocaleString()}/mes, alcanzarás la meta en <strong className="text-blue-900">{currentProjectedMonths} meses</strong> 
-              (eso es {currentProjectedMonths - monthsRemaining} meses más tarde de tu objetivo original).
+              Si el ahorro se mantuviera en{' '}
+              {presentationLoading ? '…' : fmt(savings)}
+              /mes, el modelo proyecta cubrir el faltante en{' '}
+              <strong className="text-blue-900">{currentProjectedMonths} meses</strong> ({currentProjectedMonths - monthsRemaining} meses después del plazo objetivo del modelo).
             </p>
           </div>
         </div>

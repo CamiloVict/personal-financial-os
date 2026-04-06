@@ -16,13 +16,13 @@ export class GoalsController {
     return this.goalsService.createGoal({ ...body, userId });
   }
 
-  @Get(':id/recommendations')
-  getRecommendations(@Param('id') id: string) {
-    return this.goalsService.getGoalRecommendations(id);
+  @Get(':id/scenarios')
+  getScenarios(@Param('id') id: string) {
+    return this.goalsService.getLatestScenarioSnapshot(id);
   }
 
-  @Post(':id/recommendations/recalculate')
-  recalculateRecommendations(@Param('id') id: string) {
-    return this.goalsService.recalculateRecommendations(id);
+  @Post(':id/scenarios/simulate')
+  simulateScenarios(@Param('id') id: string, @Body() _input: Record<string, unknown>) {
+    return this.goalsService.simulateGoalScenarios(id);
   }
 }

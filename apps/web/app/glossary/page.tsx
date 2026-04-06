@@ -26,7 +26,8 @@ export default function GlossaryPage() {
         {
           term: 'Tasa de Oportunidad (Línea Base)',
           definition: 'Es el rendimiento que dejarías de ganar si no invirtieras tu dinero en tu opción más segura y pasiva (ej. un CDT al 8%). Toda nueva inversión (ej. un negocio o un inmueble) debería rentar MÁS que tu tasa de oportunidad para que valga la pena el riesgo.',
-          example: 'Si un CDT te da 10% sin hacer nada, tu "Tasa de Oportunidad" es 10%. No deberías montar un negocio que rinda el 5%.'
+          example:
+            'Si un CDT te diera 10% sin hacer nada, tu "Tasa de Oportunidad" sería 10%; un negocio que rindiera 5% quedaría por debajo de esa línea base en el modelo de comparación.'
         },
         {
           term: 'Valorización (Appreciation)',
