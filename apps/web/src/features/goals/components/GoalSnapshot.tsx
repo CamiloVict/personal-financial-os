@@ -1,6 +1,8 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+
+const GOAL_BOOK_CCY = 'USD';
 
 interface GoalSnapshotProps {
   monthlyAmountNeeded: number;
@@ -33,7 +35,9 @@ export function GoalSnapshot({
 }: GoalSnapshotProps) {
   const useP = presented != null && !presentationLoading;
   const fmt = (n: number) =>
-    useP ? formatPresentedAmount(n, presented!.currency) : `$${n.toLocaleString()}`;
+    useP
+      ? formatPresentedAmount(n, presented!.currency)
+      : formatBookAmount(n, GOAL_BOOK_CCY);
   const needed = useP ? presented!.monthlyAmountNeeded : monthlyAmountNeeded;
   const target = useP ? presented!.targetAmount : targetAmount;
   const savings = useP ? presented!.currentMonthlySavings : currentMonthlySavings;
@@ -55,11 +59,12 @@ export function GoalSnapshot({
                     <>
                       Para llegar a {fmt(target)}
                       <span className="block text-[9px] mt-0.5">
-                        Nom.: ${Number(targetAmount).toLocaleString()}
+                        Nom.:{' '}
+                        {formatBookAmount(Number(targetAmount), GOAL_BOOK_CCY)}
                       </span>
                     </>
                   )
-                : `Para llegar a $${Number(targetAmount).toLocaleString()}`}
+                : `Para llegar a ${formatBookAmount(Number(targetAmount), GOAL_BOOK_CCY)}`}
           </p>
         </div>
         <div className="glass-card rounded-xl p-4">
@@ -70,7 +75,8 @@ export function GoalSnapshot({
           <p className="text-[10px] text-slate-400 mt-1">Basado en tus ingresos menos gastos fijos/variables</p>
           {useP ? (
             <p className="text-[9px] text-slate-400 mt-0.5">
-              Nom.: ${Number(currentMonthlySavings).toLocaleString()}
+              Nom.:{' '}
+              {formatBookAmount(Number(currentMonthlySavings), GOAL_BOOK_CCY)}
             </p>
           ) : null}
         </div>
@@ -90,7 +96,8 @@ export function GoalSnapshot({
           </p>
           {useP && !isAchievable ? (
             <p className="text-[9px] text-slate-400 mt-0.5">
-              Nom.: ${Number(monthlyShortfall).toLocaleString()}
+              Nom.:{' '}
+              {formatBookAmount(Number(monthlyShortfall), GOAL_BOOK_CCY)}
             </p>
           ) : null}
         </div>

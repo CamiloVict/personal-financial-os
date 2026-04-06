@@ -1,13 +1,49 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { SimulationResult } from '../types';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import type { SimulationResult, SimulationYearData } from '../types';
 import { getMetricClasses } from '../utils/metricStyles';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface SimulatorResultsPanelProps {
   result: SimulationResult;
+  /** Serie ya presentada (barra global); si no, se usa `result.years` en COP nominal. */
+  presentedYears?: SimulationYearData[];
+  presentedFinalBaseline?: number;
+  presentedFinalScenario?: number;
+  chartCurrency?: string;
+  presentationLoading?: boolean;
 }
 
-export function SimulatorResultsPanel({ result }: SimulatorResultsPanelProps) {
+export function SimulatorResultsPanel({
+  result,
+  presentedYears,
+  presentedFinalBaseline,
+  presentedFinalScenario,
+  chartCurrency = 'COP',
+  presentationLoading,
+}: SimulatorResultsPanelProps) {
+  const years = presentedYears ?? result.years;
+  const finalBase =
+    presentedFinalBaseline ?? result.finalBaselineNetWorth;
+  const finalScen =
+    presentedFinalScenario ?? result.finalScenarioNetWorth;
+
+  const yTick = (val: number) =>
+    chartCurrency === 'USD'
+      ? `$${(val / 1_000_000).toFixed(0)}M`
+      : `${(val / 1e6).toFixed(1)}M`;
+  const tooltipFmt = (v: unknown) =>
+    formatPresentedAmount(Number(v ?? 0), chartCurrency);
+
   return (
     <div className="space-y-3 animate-in slide-in-from-right-8 duration-500 h-full flex flex-col">
       <div className="flex justify-end">
@@ -48,9 +84,14 @@ export function SimulatorResultsPanel({ result }: SimulatorResultsPanelProps) {
           Línea Amarilla (Escenario Acción) vs Línea Gris (Línea Base / Inacción).
         </p>
 
-        <div className="flex-1 min-h-[180px]">
+        <div className="relative flex-1 min-h-[180px]">
+          {presentationLoading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70 text-[10px] font-medium text-slate-500">
+              Aplicando valuación…
+            </div>
+          ) : null}
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={result.years} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
+            <LineChart data={years} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis
                 dataKey="year"
@@ -63,11 +104,11 @@ export function SimulatorResultsPanel({ result }: SimulatorResultsPanelProps) {
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: '#64748b', fontSize: 8 }}
-                tickFormatter={(val) => `$${(val / 1000000).toFixed(0)}M`}
+                tickFormatter={(val) => yTick(Number(val))}
               />
               <Tooltip
                 formatter={(value, name) => [
-                  `$${Number(value ?? 0).toLocaleString()}`,
+                  tooltipFmt(value),
                   String(name) === 'scenarioNetWorth' ? 'Escenario Acción' : 'Línea Base',
                 ]}
                 labelFormatter={(label) => `Año ${label}`}
@@ -80,7 +121,14 @@ export function SimulatorResultsPanel({ result }: SimulatorResultsPanelProps) {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: '9px', paddingTop: '0px' }} iconSize={8} />
-              <Line type="monotone" dataKey="baselineNetWorth" name="Línea Base" stroke="#cbd5e1" strokeWidth={2} dot={false} />
+              <Line
+                type="monotone"
+                dataKey="baselineNetWorth"
+                name="Línea Base"
+                stroke="#cbd5e1"
+                strokeWidth={2}
+                dot={false}
+              />
               <Line
                 type="monotone"
                 dataKey="scenarioNetWorth"
@@ -96,10 +144,12 @@ export function SimulatorResultsPanel({ result }: SimulatorResultsPanelProps) {
 
         <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-[10px]">
           <div className="text-slate-600 font-medium">
-            Final Base: <strong className="text-slate-900">${result.finalBaselineNetWorth.toLocaleString()}</strong>
+            Final Base:{' '}
+            <strong className="text-slate-900">{tooltipFmt(finalBase)}</strong>
           </div>
           <div className="text-slate-600 font-medium">
-            Final Acción: <strong className="text-amber-600">${result.finalScenarioNetWorth.toLocaleString()}</strong>
+            Final Acción:{' '}
+            <strong className="text-amber-600">{tooltipFmt(finalScen)}</strong>
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import React from 'react';
 import { AlertTriangle, TrendingUp, TrendingDown, Combine, HelpCircle } from 'lucide-react';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+
+const GOAL_BOOK_CCY = 'USD';
 
 interface GoalScenariosProps {
   scenarios: any[];
@@ -55,14 +57,18 @@ export function GoalScenarios({
           <h3 className="text-emerald-800 font-bold text-base tracking-tight mb-2">Según el modelo, la meta encaja en el plazo.</h3>
           <p className="text-emerald-700/80 text-xs mb-4">
             Si se mantuviera el ahorro mensual modelado (
-            {presentedSavings != null &&
-            presentedSavingsCurrency &&
-            !presentationLoading
-              ? formatPresentedAmount(
-                  presentedSavings,
-                  presentedSavingsCurrency,
-                )
-              : `$${Number(currentMonthlySavings).toLocaleString()}`}
+            {presentationLoading &&
+            (presentedSavings == null || !presentedSavingsCurrency)
+              ? '…'
+              : presentedSavings != null && presentedSavingsCurrency
+                ? formatPresentedAmount(
+                    presentedSavings,
+                    presentedSavingsCurrency,
+                  )
+                : formatBookAmount(
+                    Number(currentMonthlySavings),
+                    GOAL_BOOK_CCY,
+                  )}
             ), el tiempo estimado quedaría por debajo del plazo objetivo.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
@@ -103,13 +109,18 @@ export function GoalScenarios({
                   <div className="flex justify-between items-center text-[11px] mb-1.5">
                     <span className="text-slate-600">Nuevos Ingresos:</span>
                     <span className="font-bold text-emerald-600">
-                      {presentedByScenarioId?.[scenario.id]?.income != null &&
-                      !presentationLoading
-                        ? `+${formatPresentedAmount(
-                            presentedByScenarioId[scenario.id].income!,
-                            presentedByScenarioId[scenario.id].currency,
-                          )}`
-                        : `+$${Number(scenario.incomeIncreaseAmount).toLocaleString()}`}
+                      {presentationLoading &&
+                      presentedByScenarioId?.[scenario.id]?.income == null
+                        ? '…'
+                        : presentedByScenarioId?.[scenario.id]?.income != null
+                          ? `+${formatPresentedAmount(
+                              presentedByScenarioId[scenario.id].income!,
+                              presentedByScenarioId[scenario.id].currency,
+                            )}`
+                          : `+${formatBookAmount(
+                              Number(scenario.incomeIncreaseAmount),
+                              GOAL_BOOK_CCY,
+                            )}`}
                     </span>
                   </div>
                 )}
@@ -117,13 +128,18 @@ export function GoalScenarios({
                   <div className="flex justify-between items-center text-[11px] mb-1.5">
                     <span className="text-slate-600">Reducción Gastos:</span>
                     <span className="font-bold text-blue-600">
-                      {presentedByScenarioId?.[scenario.id]?.expense != null &&
-                      !presentationLoading
-                        ? `-${formatPresentedAmount(
-                            presentedByScenarioId[scenario.id].expense!,
-                            presentedByScenarioId[scenario.id].currency,
-                          )}`
-                        : `-$${Number(scenario.expenseReductionAmount).toLocaleString()}`}
+                      {presentationLoading &&
+                      presentedByScenarioId?.[scenario.id]?.expense == null
+                        ? '…'
+                        : presentedByScenarioId?.[scenario.id]?.expense != null
+                          ? `-${formatPresentedAmount(
+                              presentedByScenarioId[scenario.id].expense!,
+                              presentedByScenarioId[scenario.id].currency,
+                            )}`
+                          : `-${formatBookAmount(
+                              Number(scenario.expenseReductionAmount),
+                              GOAL_BOOK_CCY,
+                            )}`}
                     </span>
                   </div>
                 )}

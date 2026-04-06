@@ -6,10 +6,12 @@ import type {
   FinancialExplanation,
 } from '@personal-finance-os/explanation';
 import { BookOpen, ChevronRight, HelpCircle, Info } from 'lucide-react';
+import { formatBookAmount } from '@/features/currency/format';
 
+/** Valores en COP en explicaciones de motor fiscal / analytics (dominio CO). */
 function fmtMoney(n: number | undefined): string | null {
   if (n === undefined || Number.isNaN(n)) return null;
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  return formatBookAmount(n, 'COP');
 }
 
 function NodeTree({ node, depth }: { node: ExplanationNode; depth: number }) {

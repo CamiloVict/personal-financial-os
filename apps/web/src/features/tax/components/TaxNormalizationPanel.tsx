@@ -56,9 +56,17 @@ export type TaxNormalizationPanelProps = {
   data: unknown | null | undefined;
   /** Texto cuando aún no hay snapshot (plan anterior a migración o sin recalcular). */
   emptyHint?: string;
+  /** Presentación según barra global (COP/USD/real); montos del motor en COP. */
+  taxFmt?: (id: string, copAmount: number) => string;
+  taxPresentationLoading?: boolean;
 };
 
-export function TaxNormalizationPanel({ data, emptyHint }: TaxNormalizationPanelProps) {
+export function TaxNormalizationPanel({
+  data,
+  emptyHint,
+  taxFmt,
+  taxPresentationLoading,
+}: TaxNormalizationPanelProps) {
   const [open, setOpen] = useState(true);
   const normalized = useMemo(() => (isNormalizedPayload(data) ? data : null), [data]);
 
@@ -109,8 +117,11 @@ export function TaxNormalizationPanel({ data, emptyHint }: TaxNormalizationPanel
 
   if (!normalized) return null;
 
+  const line = (id: string, cop: number) =>
+    taxFmt ? taxFmt(id, cop) : copFmt.format(cop);
+
   return (
-    <div className="glass-card rounded-xl border border-slate-200/80 overflow-hidden">
+    <div className="glass-card rounded-xl border border-slate-200/80 overflow-hidden relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -134,21 +145,28 @@ export function TaxNormalizationPanel({ data, emptyHint }: TaxNormalizationPanel
 
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t border-slate-100">
+          {taxPresentationLoading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-xl bg-white/70 text-[11px] font-medium text-slate-500">
+              Aplicando valuación…
+            </div>
+          ) : null}
           {totals && (totals.ded > 0 || totals.liab > 0 || totals.cred > 0) ? (
             <div className="flex flex-wrap gap-3 pt-3 text-[11px]">
               {totals.ded > 0 ? (
                 <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">
-                  Deducciones anualizadas: <strong>{copFmt.format(totals.ded)}</strong>
+                  Deducciones anualizadas:{' '}
+                  <strong>{line('tax-norm-total-ded', totals.ded)}</strong>
                 </span>
               ) : null}
               {totals.liab > 0 ? (
                 <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">
-                  Intereses deuda (estim.): <strong>{copFmt.format(totals.liab)}</strong>
+                  Intereses deuda (estim.):{' '}
+                  <strong>{line('tax-norm-total-liab', totals.liab)}</strong>
                 </span>
               ) : null}
               {totals.cred > 0 ? (
                 <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">
-                  Créditos (modelo): <strong>{copFmt.format(totals.cred)}</strong>
+                  Créditos (modelo): <strong>{line('tax-norm-total-cred', totals.cred)}</strong>
                 </span>
               ) : null}
             </div>
@@ -197,7 +215,7 @@ export function TaxNormalizationPanel({ data, emptyHint }: TaxNormalizationPanel
                       </span>
                     </span>
                     <span className="font-mono text-slate-800 shrink-0">
-                      {copFmt.format(d.annualAmountCOP)}
+                      {line(`tax-norm-ded-${d.id}`, d.annualAmountCOP)}
                     </span>
                   </li>
                 ))}
@@ -220,7 +238,7 @@ export function TaxNormalizationPanel({ data, emptyHint }: TaxNormalizationPanel
                       {LIABILITY_KIND_LABEL[l.kind] ?? l.kind}: {l.label}
                     </span>
                     <span className="font-mono text-slate-800 shrink-0">
-                      {copFmt.format(l.estimatedAnnualInterestCOP)}
+                      {line(`tax-norm-liab-${l.id}`, l.estimatedAnnualInterestCOP)}
                     </span>
                   </li>
                 ))}
@@ -241,7 +259,7 @@ export function TaxNormalizationPanel({ data, emptyHint }: TaxNormalizationPanel
                   >
                     <span className="text-slate-700">{c.label}</span>
                     <span className="font-mono text-slate-800 shrink-0">
-                      {copFmt.format(c.annualAmountCOP)}
+                      {line(`tax-norm-cred-${c.id}`, c.annualAmountCOP)}
                     </span>
                   </li>
                 ))}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp, DollarSign, Activity, AlertCircle } from 'lucide-react';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
 interface DashboardMetricsProps {
   totalInvested: number;
@@ -12,6 +12,8 @@ interface DashboardMetricsProps {
   presentedReturn?: number | null;
   presentedCurrency?: string;
   presentationLoading?: boolean;
+  /** Moneda del libro para totales sin presentación (evita prefijo $ en COP). */
+  bookCurrencyFallback?: string;
 }
 
 export function DashboardMetrics({
@@ -24,6 +26,7 @@ export function DashboardMetrics({
   presentedReturn,
   presentedCurrency = 'COP',
   presentationLoading,
+  bookCurrencyFallback = 'COP',
 }: DashboardMetricsProps) {
   const useP =
     presentedInvested != null &&
@@ -31,7 +34,9 @@ export function DashboardMetrics({
     presentedReturn != null &&
     !presentationLoading;
   const fmt = (n: number) =>
-    useP ? formatPresentedAmount(n, presentedCurrency) : `$${n.toLocaleString()}`;
+    useP
+      ? formatPresentedAmount(n, presentedCurrency)
+      : formatBookAmount(n, bookCurrencyFallback);
   const inv = useP ? presentedInvested! : totalInvested;
   const val = useP ? presentedValue! : totalEstimatedValue;
   const ret = useP ? presentedReturn! : totalReturn;
@@ -71,7 +76,7 @@ export function DashboardMetrics({
               {ret >= 0 ? '+' : '-'}
               {useP
                 ? formatPresentedAmount(Math.abs(ret), presentedCurrency)
-                : `$${Math.abs(ret).toLocaleString()}`}
+                : formatBookAmount(Math.abs(ret), bookCurrencyFallback)}
             </>
           )}
         </p>

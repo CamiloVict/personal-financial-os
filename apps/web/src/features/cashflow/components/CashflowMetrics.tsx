@@ -39,7 +39,7 @@ export function CashflowMetrics({
   const fmt = (n: number) =>
     usePres
       ? formatPresentedAmount(n, presentedCurrency)
-      : `$${n.toLocaleString()}`;
+      : n.toLocaleString('es-CO', { maximumFractionDigits: 0 });
 
   const inc = usePres ? presentedIncome! : totalExpectedIncome;
   const exp = usePres ? presentedExpense! : totalExpectedExpense;
@@ -60,7 +60,8 @@ export function CashflowMetrics({
           </p>
           {usePres ? (
             <p className="text-[9px] text-slate-400 mt-1">
-              Nominal en libro: ${totalExpectedIncome.toLocaleString()}
+              Suma nominal en libro:{' '}
+              {totalExpectedIncome.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
             </p>
           ) : null}
         </div>
@@ -73,7 +74,8 @@ export function CashflowMetrics({
           </p>
           {usePres ? (
             <p className="text-[9px] text-slate-400 mt-1">
-              Nominal en libro: ${totalExpectedExpense.toLocaleString()}
+              Suma nominal en libro:{' '}
+              {totalExpectedExpense.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
             </p>
           ) : null}
         </div>

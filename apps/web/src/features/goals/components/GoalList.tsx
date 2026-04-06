@@ -1,7 +1,9 @@
 import React from 'react';
 import { Target, Activity, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+
+const GOAL_BOOK_CCY = 'USD';
 
 interface GoalListProps {
   goals: any[];
@@ -39,10 +41,8 @@ export function GoalList({
                 const targetNom = Number(goal.targetAmount);
                 const currentNom = Number(goal.currentAmount || 0);
                 const pres = presentedByGoalId?.[goal.id];
-                const target =
-                  pres && !presentationLoading ? pres.target : targetNom;
-                const current =
-                  pres && !presentationLoading ? pres.current : currentNom;
+                const target = pres ? pres.target : targetNom;
+                const current = pres ? pres.current : currentNom;
                 const progress =
                   target > 0 ? Math.min(100, (current / target) * 100) : 0;
 
@@ -59,7 +59,9 @@ export function GoalList({
                         </p>
                       </div>
                       <div className="text-right">
-                        {pres && !presentationLoading ? (
+                        {presentationLoading && !pres ? (
+                          <p className="text-base font-bold text-slate-500">…</p>
+                        ) : pres ? (
                           <>
                             <p className="text-base font-bold tracking-tight text-blue-600">
                               {formatPresentedAmount(
@@ -72,17 +74,19 @@ export function GoalList({
                               {formatPresentedAmount(current, pres.currency)}
                             </p>
                             <p className="text-[8px] text-slate-400 mt-0.5">
-                              Nom. obj.: ${targetNom.toLocaleString()} · Actual: $
-                              {currentNom.toLocaleString()}
+                              Nom. obj.:{' '}
+                              {formatBookAmount(targetNom, GOAL_BOOK_CCY)} · Actual:{' '}
+                              {formatBookAmount(currentNom, GOAL_BOOK_CCY)}
                             </p>
                           </>
                         ) : (
                           <>
                             <p className="text-base font-bold tracking-tight text-blue-600">
-                              ${targetNom.toLocaleString()}
+                              {formatBookAmount(targetNom, GOAL_BOOK_CCY)}
                             </p>
                             <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                              Actual: ${currentNom.toLocaleString()}
+                              Actual:{' '}
+                              {formatBookAmount(currentNom, GOAL_BOOK_CCY)}
                             </p>
                           </>
                         )}

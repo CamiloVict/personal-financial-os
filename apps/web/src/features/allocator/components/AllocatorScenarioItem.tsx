@@ -1,7 +1,9 @@
 import { ArrowRight } from 'lucide-react';
 import type { AllocatorScenario } from '../types';
 import { scenarioCardClass, scenarioIcon } from './scenarioMeta';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+
+const ALLOC_BOOK_CCY = 'USD';
 
 interface AllocatorScenarioItemProps {
   scenario: AllocatorScenario;
@@ -54,11 +56,18 @@ export function AllocatorScenarioItem({
                       presentedModeled,
                       presentedCurrency,
                     )
-                  : `$${Number(scenario.modeledAmount).toLocaleString()}`}
+                  : formatBookAmount(
+                      Number(scenario.modeledAmount),
+                      ALLOC_BOOK_CCY,
+                    )}
             </p>
             {presentedModeled != null && !presentationLoading ? (
               <p className="text-[8px] text-slate-400 mt-0.5">
-                Nom.: ${Number(scenario.modeledAmount).toLocaleString()}
+                Nom.:{' '}
+                {formatBookAmount(
+                  Number(scenario.modeledAmount),
+                  ALLOC_BOOK_CCY,
+                )}
               </p>
             ) : null}
           </div>
@@ -75,7 +84,10 @@ export function AllocatorScenarioItem({
                         presentedReturn,
                         presentedCurrency,
                       )} `
-                    : `+$${Number(scenario.expectedReturnAmount).toLocaleString()} `}
+                    : `+${formatBookAmount(
+                        Number(scenario.expectedReturnAmount),
+                        ALLOC_BOOK_CCY,
+                      )} `}
                 <span className="text-[9px]">({scenario.returnPercentage}%)</span>
               </p>
             ) : (
@@ -87,8 +99,11 @@ export function AllocatorScenarioItem({
             !presentationLoading &&
             scenario.expectedReturnAmount > 0 ? (
               <p className="text-[8px] text-slate-400 mt-0.5">
-                Nom.: +$
-                {Number(scenario.expectedReturnAmount).toLocaleString()}
+                Nom.: +
+                {formatBookAmount(
+                  Number(scenario.expectedReturnAmount),
+                  ALLOC_BOOK_CCY,
+                )}
               </p>
             ) : null}
           </div>

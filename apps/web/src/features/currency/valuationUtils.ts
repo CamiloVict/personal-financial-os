@@ -54,6 +54,92 @@ export function linesFromDebts(debts: any[]): ValuationLineInput[] {
   }));
 }
 
+/** Resultado del simulador (montos en COP según formularios del producto). */
+export function linesFromSimulationResult(
+  result: {
+    finalBaselineNetWorth: number;
+    finalScenarioNetWorth: number;
+    years: Array<{
+      year: number;
+      baselineNetWorth: number;
+      scenarioNetWorth: number;
+    }>;
+  } | null
+  | undefined,
+  valueDate: string,
+): ValuationLineInput[] {
+  if (!result) return [];
+  const lines: ValuationLineInput[] = [
+    {
+      id: 'sim-final-base',
+      amount: Number(result.finalBaselineNetWorth),
+      currency: 'COP',
+      valueDate,
+    },
+    {
+      id: 'sim-final-scen',
+      amount: Number(result.finalScenarioNetWorth),
+      currency: 'COP',
+      valueDate,
+    },
+  ];
+  for (const y of result.years) {
+    lines.push(
+      {
+        id: `sim-y${y.year}-base`,
+        amount: Number(y.baselineNetWorth),
+        currency: 'COP',
+        valueDate,
+      },
+      {
+        id: `sim-y${y.year}-scen`,
+        amount: Number(y.scenarioNetWorth),
+        currency: 'COP',
+        valueDate,
+      },
+    );
+  }
+  return lines;
+}
+
+/** Escenarios fiscales del dashboard (montos motor en COP). */
+export function linesFromDashboardTaxScenarios(
+  scenarios:
+    | Array<{
+        taxableBase: number;
+        taxLiability: number;
+        netTaxPayable: number;
+      }>
+    | null
+    | undefined,
+  valueDate: string,
+): ValuationLineInput[] {
+  if (!scenarios?.length) return [];
+  return scenarios.flatMap((s, i) => {
+    const prefix = `dash-tax-${i}`;
+    return [
+      {
+        id: `${prefix}-taxableBase`,
+        amount: Number(s.taxableBase),
+        currency: 'COP',
+        valueDate,
+      },
+      {
+        id: `${prefix}-taxLiability`,
+        amount: Number(s.taxLiability),
+        currency: 'COP',
+        valueDate,
+      },
+      {
+        id: `${prefix}-netTaxPayable`,
+        amount: Number(s.netTaxPayable),
+        currency: 'COP',
+        valueDate,
+      },
+    ];
+  });
+}
+
 /** Metas sin moneda en schema: se tratan como USD (convención del producto). */
 export function linesFromGoals(goals: any[]): ValuationLineInput[] {
   return goals.flatMap((g) => {

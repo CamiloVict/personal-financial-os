@@ -2,7 +2,7 @@ import type { FinancialConfidence } from '@personal-finance-os/explanation';
 import React from 'react';
 import Link from 'next/link';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
 interface TopInvestmentsProps {
   positions: any[];
@@ -41,7 +41,9 @@ export function TopInvestments({
                   <p className="text-[9px] text-slate-500 mt-0.5">{pos.type?.name}</p>
                 </div>
                 <div className="text-right">
-                  {presentedById?.[pos.id] && !presentationLoading ? (
+                  {presentationLoading && !presentedById?.[pos.id] ? (
+                    <p className="font-bold text-slate-500 text-xs">…</p>
+                  ) : presentedById?.[pos.id] ? (
                     <>
                       <p className="font-bold text-slate-900 text-xs">
                         {formatPresentedAmount(
@@ -50,25 +52,34 @@ export function TopInvestments({
                         )}
                       </p>
                       <p className="text-[9px] text-slate-400 mt-0.5">
-                        Nom.: $
-                        {Number(pos.currentEstimatedValue).toLocaleString()}{' '}
-                        {pos.currency}
+                        Nom.:{' '}
+                        {formatBookAmount(
+                          Number(pos.currentEstimatedValue),
+                          pos.currency ?? 'USD',
+                        )}
                       </p>
                       <p className="text-[9px] text-slate-400">
-                        Cap nom.: $
-                        {Number(pos.initialCapital).toLocaleString()}
+                        Cap nom.:{' '}
+                        {formatBookAmount(
+                          Number(pos.initialCapital),
+                          pos.currency ?? 'USD',
+                        )}
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="font-bold text-slate-900 text-xs">
-                        ${Number(pos.currentEstimatedValue).toLocaleString()}{' '}
-                        <span className="text-slate-400 font-normal">
-                          {pos.currency}
-                        </span>
+                        {formatBookAmount(
+                          Number(pos.currentEstimatedValue),
+                          pos.currency ?? 'USD',
+                        )}
                       </p>
                       <p className="text-[9px] text-slate-400">
-                        Cap: ${Number(pos.initialCapital).toLocaleString()}
+                        Cap:{' '}
+                        {formatBookAmount(
+                          Number(pos.initialCapital),
+                          pos.currency ?? 'USD',
+                        )}
                       </p>
                     </>
                   )}

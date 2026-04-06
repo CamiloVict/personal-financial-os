@@ -1,6 +1,6 @@
 import { CreditCard, TrendingDown } from 'lucide-react';
 import type { BadDebtRow } from '../types';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
 interface DebtsBadDebtPanelProps {
   badDebts: BadDebtRow[];
@@ -34,10 +34,12 @@ export function DebtsBadDebtPanel({
                 <h4 className="font-bold text-slate-800 text-xs">{bd.name}</h4>
               </div>
               <div className="flex justify-between items-end mt-3 pt-2 border-t border-rose-50/50">
-                <div>
+                  <div>
                   <p className="text-[8px] text-slate-400 font-bold uppercase mb-0.5">Saldo Pendiente</p>
                   <div>
-                    {presentedByDebtId?.[bd.id] && !presentationLoading ? (
+                    {presentationLoading && !presentedByDebtId?.[bd.id] ? (
+                      <p className="text-base font-bold text-slate-500">…</p>
+                    ) : presentedByDebtId?.[bd.id] ? (
                       <>
                         <p className="text-base font-bold text-slate-800">
                           {formatPresentedAmount(
@@ -46,13 +48,19 @@ export function DebtsBadDebtPanel({
                           )}
                         </p>
                         <p className="text-[9px] text-slate-400 mt-0.5">
-                          Nom.: $
-                          {Number(bd.remainingAmount).toLocaleString()}
+                          Nom.:{' '}
+                          {formatBookAmount(
+                            Number(bd.remainingAmount),
+                            bd.currency ?? 'COP',
+                          )}
                         </p>
                       </>
                     ) : (
                       <p className="text-base font-bold text-slate-800">
-                        ${Number(bd.remainingAmount).toLocaleString()}
+                        {formatBookAmount(
+                          Number(bd.remainingAmount),
+                          bd.currency ?? 'COP',
+                        )}
                       </p>
                     )}
                   </div>

@@ -14,6 +14,7 @@ import {
   Cell,
 } from 'recharts';
 import { Calculator, Info } from 'lucide-react';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 import type { TaxDeclarationPreview } from '../api/queries';
 
 export type LeverRow = {
@@ -44,6 +45,11 @@ interface TaxDeclarationSectionProps {
   /** True si el valor de combinación corresponde a una selección anterior (refetch en curso). */
   combinedPreviewStale?: boolean;
   onClearSelection: () => void;
+  /** Valuación global: montos del motor (COP) presentados en COP/USD/real según barra. */
+  taxFmt?: (id: string, copAmount: number) => string;
+  taxNum?: (id: string, copAmount: number) => number;
+  taxChartCurrency?: string;
+  taxPresentationLoading?: boolean;
 }
 
 function shortChartName(id: string, label: string): string {
@@ -65,8 +71,15 @@ export function TaxDeclarationSection({
   combinedPreviewError,
   combinedPreviewStale,
   onClearSelection,
+  taxFmt,
+  taxNum,
+  taxChartCurrency = 'COP',
+  taxPresentationLoading,
 }: TaxDeclarationSectionProps) {
   const rows = data.leverComparison ?? [];
+
+  const netPresented = (leverId: string, raw: number) =>
+    taxNum ? taxNum(`tax-decl-lever-${leverId}-net`, raw) : raw;
 
   const chartData = useMemo(() => {
     const conservative = rows.find((r) => r.id === 'CONSERVATIVE');
@@ -76,12 +89,12 @@ export function TaxDeclarationSection({
     const basePair = [
       {
         name: shortChartName('CONSERVATIVE', conservative.label),
-        impuesto: Number(conservative.estimatedNetTaxPayable),
+        impuesto: netPresented('CONSERVATIVE', Number(conservative.estimatedNetTaxPayable)),
         key: 'CONSERVATIVE',
       },
       {
         name: shortChartName('OPTIMIZED_ACTUAL', optimized.label),
-        impuesto: Number(optimized.estimatedNetTaxPayable),
+        impuesto: netPresented('OPTIMIZED_ACTUAL', Number(optimized.estimatedNetTaxPayable)),
         key: 'OPTIMIZED_ACTUAL',
       },
     ];
@@ -101,11 +114,12 @@ export function TaxDeclarationSection({
     }
 
     const n = selectedLeverIds.length;
+    const comboRaw = Number(combinedPreview.estimatedNetTaxPayable);
     return [
       basePair[0],
       {
         name: n === 1 ? '1 beneficio' : `${n} beneficios`,
-        impuesto: Number(combinedPreview.estimatedNetTaxPayable),
+        impuesto: taxNum ? taxNum('tax-combo-net', comboRaw) : comboRaw,
         key: 'COMBINED_PREVIEW',
       },
       basePair[1],
@@ -116,6 +130,7 @@ export function TaxDeclarationSection({
     combinedPreview,
     combinedPreviewLoading,
     combinedPreviewError,
+    taxNum,
   ]);
 
   const barColors = ['#94a3b8', '#f97316', '#4f46e5'];
@@ -124,12 +139,52 @@ export function TaxDeclarationSection({
 
   const conservative = rows.find((r) => r.id === 'CONSERVATIVE');
   const optimized = rows.find((r) => r.id === 'OPTIMIZED_ACTUAL');
+  const consRaw = conservative ? Number(conservative.estimatedNetTaxPayable) : 0;
+  const optRaw = optimized ? Number(optimized.estimatedNetTaxPayable) : 0;
+  const comboRaw =
+    combinedPreview != null ? Number(combinedPreview.estimatedNetTaxPayable) : null;
+
+  const consP = taxNum ? taxNum('tax-decl-lever-CONSERVATIVE-net', consRaw) : consRaw;
+  const optP = taxNum ? taxNum('tax-decl-lever-OPTIMIZED_ACTUAL-net', optRaw) : optRaw;
+  const comboP =
+    comboRaw != null && taxNum ? taxNum('tax-combo-net', comboRaw) : comboRaw;
+
   const saving =
-    conservative && optimized
-      ? Math.max(0, Number(conservative.estimatedNetTaxPayable) - Number(optimized.estimatedNetTaxPayable))
-      : 0;
+    selectedLeverIds.length > 0 && comboP != null
+      ? Math.max(0, consP - comboP)
+      : conservative && optimized
+        ? Math.max(0, consP - optP)
+        : 0;
 
   const showComboChart = selectedLeverIds.length > 0 && combinedPreview != null;
+
+  const fmtIncome = taxFmt
+    ? taxFmt('tax-decl-total-income', Number(data.totalAnnualIncomeEstimated))
+    : formatBookAmount(Number(data.totalAnnualIncomeEstimated), 'COP');
+  const fmtCons = conservative
+    ? taxFmt
+      ? taxFmt('tax-decl-lever-CONSERVATIVE-net', consRaw)
+      : formatBookAmount(consRaw, 'COP')
+    : '—';
+  const fmtOpt = optimized
+    ? taxFmt
+      ? taxFmt('tax-decl-lever-OPTIMIZED_ACTUAL-net', optRaw)
+      : formatBookAmount(optRaw, 'COP')
+    : '—';
+  const fmtCombo =
+    showComboChart && combinedPreview
+      ? taxFmt
+        ? taxFmt('tax-combo-net', Number(combinedPreview.estimatedNetTaxPayable))
+        : formatBookAmount(
+            Number(combinedPreview.estimatedNetTaxPayable),
+            'COP',
+          )
+      : null;
+
+  const yTick = (val: number) =>
+    taxChartCurrency === 'USD' ? `$${val / 1000}k` : `${(val / 1e6).toFixed(1)}M`;
+  const tooltipFmt = (v: unknown) =>
+    formatPresentedAmount(Number(v ?? 0), taxChartCurrency);
 
   return (
     <div className="space-y-4">
@@ -169,29 +224,33 @@ export function TaxDeclarationSection({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <div
+          className={`grid gap-2 mb-4 grid-cols-2 ${showComboChart ? 'sm:grid-cols-3 lg:grid-cols-5' : 'sm:grid-cols-4'}`}
+        >
           <div className="bg-white/80 rounded-lg border border-slate-100 p-2.5">
             <p className="text-[9px] font-bold text-slate-500 uppercase">Ingreso anual est.</p>
-            <p className="text-sm font-bold text-slate-900">
-              ${Number(data.totalAnnualIncomeEstimated).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </p>
+            <p className="text-sm font-bold text-slate-900">{fmtIncome}</p>
           </div>
           <div className="bg-white/80 rounded-lg border border-slate-100 p-2.5">
             <p className="text-[9px] font-bold text-slate-500 uppercase">Imp. conservador</p>
-            <p className="text-sm font-bold text-rose-700">
-              ${conservative ? Number(conservative.estimatedNetTaxPayable).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
-            </p>
+            <p className="text-sm font-bold text-rose-700">{fmtCons}</p>
           </div>
+          {fmtCombo != null ? (
+            <div className="bg-white/80 rounded-lg border border-amber-100 p-2.5">
+              <p className="text-[9px] font-bold text-amber-800 uppercase">Imp. combinación</p>
+              <p className="text-sm font-bold text-amber-900">{fmtCombo}</p>
+            </div>
+          ) : null}
           <div className="bg-white/80 rounded-lg border border-slate-100 p-2.5">
             <p className="text-[9px] font-bold text-slate-500 uppercase">Imp. tu perfil</p>
-            <p className="text-sm font-bold text-indigo-700">
-              ${optimized ? Number(optimized.estimatedNetTaxPayable).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
-            </p>
+            <p className="text-sm font-bold text-indigo-700">{fmtOpt}</p>
           </div>
           <div className="bg-white/80 rounded-lg border border-emerald-100 p-2.5">
-            <p className="text-[9px] font-bold text-emerald-700 uppercase">Ahorro vs conserv.</p>
+            <p className="text-[9px] font-bold text-emerald-700 uppercase">
+              {selectedLeverIds.length > 0 ? 'Ahorro vs conserv. (comb.)' : 'Ahorro vs conserv.'}
+            </p>
             <p className="text-sm font-bold text-emerald-800">
-              ${saving.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              {formatPresentedAmount(saving, taxChartCurrency)}
             </p>
           </div>
         </div>
@@ -226,8 +285,13 @@ export function TaxDeclarationSection({
         ) : null}
 
         <div
-          className={`h-52 sm:h-56 bg-white rounded-lg border border-slate-100 p-2 ${combinedPreviewStale ? 'opacity-80' : ''}`}
+          className={`relative h-52 sm:h-56 bg-white rounded-lg border border-slate-100 p-2 ${combinedPreviewStale ? 'opacity-80' : ''}`}
         >
+          {taxPresentationLoading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70 text-[11px] font-medium text-slate-500">
+              Aplicando valuación…
+            </div>
+          ) : null}
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -245,13 +309,9 @@ export function TaxDeclarationSection({
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: '#64748b', fontSize: 10 }}
-                tickFormatter={(v) => `$${Math.round(v / 1000)}k`}
+                tickFormatter={(v) => yTick(Number(v))}
               />
-              <Tooltip
-                formatter={(v) =>
-                  `$${Number(v ?? 0).toLocaleString()}`
-                }
-              />
+              <Tooltip formatter={(v) => tooltipFmt(v)} />
               <Legend wrapperStyle={{ fontSize: '10px' }} />
               <Bar dataKey="impuesto" name="Impuesto a pagar (aprox.)" radius={[4, 4, 0, 0]} maxBarSize={56}>
                 {chartData.map((entry, i) => (

@@ -1,15 +1,23 @@
 import React from 'react';
-import { FileSpreadsheet, ShieldAlert } from 'lucide-react';
+import { FileSpreadsheet, ShieldAlert, Activity } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 const CHART_COLORS = ['#4f46e5', '#06b6d4', '#0ea5e9', '#3b82f6', '#8b5cf6'];
 
 interface TaxClassificationsProps {
   classifications: any[];
   pieData: any[];
+  pieChartCurrency?: string;
+  piePresentationLoading?: boolean;
 }
 
-export function TaxClassifications({ classifications, pieData }: TaxClassificationsProps) {
+export function TaxClassifications({
+  classifications,
+  pieData,
+  pieChartCurrency = 'COP',
+  piePresentationLoading,
+}: TaxClassificationsProps) {
   const renderConfidenceBadge = (level: string) => {
     switch (level) {
       case 'HIGH': return <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-md font-bold uppercase tracking-wider">Confianza Alta</span>;
@@ -29,7 +37,13 @@ export function TaxClassifications({ classifications, pieData }: TaxClassificati
       {pieData.length > 0 && (
         <div className="glass-card rounded-xl shadow-sm p-4 mb-4">
           <h3 className="text-sm font-bold text-slate-800 mb-2">Composición del Ingreso Anual por Cédula Fiscal</h3>
-          <div className="h-40">
+          <div className="relative h-40">
+            {piePresentationLoading ? (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-lg bg-white/80 text-[11px] font-medium text-slate-500">
+                <Activity className="w-5 h-5 animate-spin text-slate-400" />
+                Aplicando valuación…
+              </div>
+            ) : null}
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -44,8 +58,12 @@ export function TaxClassifications({ classifications, pieData }: TaxClassificati
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
-                <Legend wrapperStyle={{fontSize: '10px'}} />
+                <Tooltip
+                  formatter={(value: any) =>
+                    formatPresentedAmount(Number(value ?? 0), pieChartCurrency)
+                  }
+                />
+                <Legend wrapperStyle={{ fontSize: '10px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

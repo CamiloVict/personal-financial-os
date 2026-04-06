@@ -22,6 +22,7 @@ import { useValuationPresentation } from '@/features/currency/hooks/useValuation
 import {
   linesFromStreams,
   linesFromPositions,
+  linesFromDashboardTaxScenarios,
   rowsToMap,
   aggregateExpensePieByCategory,
   aggregateIncomeBarByType,
@@ -76,16 +77,42 @@ export default function HomePage() {
   const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
 
+  const taxScenarioLines = useMemo(
+    () =>
+      linesFromDashboardTaxScenarios(
+        taxAnalytics?.scenariosComparison,
+        valuationAsOfDate,
+      ),
+    [taxAnalytics?.scenariosComparison, valuationAsOfDate],
+  );
+
   const valuationLines = useMemo(() => {
     const fromStreams = linesFromStreams(streams);
     const fromPos = linesFromPositions(positions, valuationAsOfDate);
-    return [...fromStreams, ...fromPos];
-  }, [streams, positions, valuationAsOfDate]);
+    return [...fromStreams, ...fromPos, ...taxScenarioLines];
+  }, [streams, positions, valuationAsOfDate, taxScenarioLines]);
 
   const { data: presentedRows, isLoading: presentationLoading } =
     useValuationPresentation(valuationLines, valuationLines.length > 0);
 
   const rowMap = useMemo(() => rowsToMap(presentedRows), [presentedRows]);
+
+  const presentedTaxComparison = useMemo(() => {
+    const sc = taxAnalytics?.scenariosComparison;
+    if (!sc?.length) return null;
+    return sc.map((s: any, i: number) => ({
+      name: s.name,
+      taxableBase:
+        rowMap.get(`dash-tax-${i}-taxableBase`)?.presentedAmount ??
+        Number(s.taxableBase),
+      taxLiability:
+        rowMap.get(`dash-tax-${i}-taxLiability`)?.presentedAmount ??
+        Number(s.taxLiability),
+      netTaxPayable:
+        rowMap.get(`dash-tax-${i}-netTaxPayable`)?.presentedAmount ??
+        Number(s.netTaxPayable),
+    }));
+  }, [taxAnalytics?.scenariosComparison, rowMap]);
   const expenseChartData = useMemo(
     () => aggregateExpensePieByCategory(streams, rowMap),
     [streams, rowMap],
@@ -177,6 +204,7 @@ export default function HomePage() {
           presentationLoading={
             positions.length > 0 && presentationLoading
           }
+          bookCurrencyFallback={positions[0]?.currency ?? 'COP'}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -199,6 +227,11 @@ export default function HomePage() {
             <TaxAnalysisChart
               isLoading={isLoadingTax}
               analytics={taxAnalytics}
+              chartData={presentedTaxComparison ?? undefined}
+              chartCurrency={chartCurrency}
+              presentationLoading={
+                taxScenarioLines.length > 0 && presentationLoading
+              }
             />
             <ExplanationPanel explanation={taxAnalytics?.explanation} defaultOpen={false} />
             <QuickActions />

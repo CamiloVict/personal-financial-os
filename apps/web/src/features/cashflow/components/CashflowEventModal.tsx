@@ -1,5 +1,6 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import { X } from 'lucide-react';
+import { formatBookAmount } from '@/features/currency/format';
 
 interface CashflowEventModalProps {
   selectedStream: any;
@@ -36,7 +37,13 @@ export function CashflowEventModal({
         
         <form onSubmit={onSubmit} className="p-6 space-y-4">
           <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl text-xs text-blue-800/90 mb-2 backdrop-blur-sm shadow-inner shadow-blue-500/5">
-            Monto proyectado: <strong className="text-blue-900 text-sm">${Number(selectedStream.expectedAmount).toLocaleString()}</strong>
+            Monto proyectado:{' '}
+            <strong className="text-blue-900 text-sm">
+              {formatBookAmount(
+                Number(selectedStream.expectedAmount),
+                selectedStream.currency ?? 'USD',
+              )}
+            </strong>
             <br/><span className="text-[10px] text-blue-800/60 mt-1 block">Puedes ajustarlo si la realidad fue diferente.</span>
           </div>
 

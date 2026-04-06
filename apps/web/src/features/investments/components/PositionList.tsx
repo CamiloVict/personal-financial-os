@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calendar, ListPlus, Trash2 } from 'lucide-react';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
 interface PositionListProps {
   positions: any[];
@@ -45,7 +45,9 @@ export function PositionList({
           <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>
               <div className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wide">Capital Base</div>
-              {presentedById?.[pos.id] && !presentationLoading ? (
+              {presentationLoading && !presentedById?.[pos.id] ? (
+                <div className="text-lg font-bold text-slate-500 tracking-tight">…</div>
+              ) : presentedById?.[pos.id] ? (
                 <>
                   <div className="text-lg font-bold text-slate-700 tracking-tight">
                     {formatPresentedAmount(
@@ -54,23 +56,27 @@ export function PositionList({
                     )}
                   </div>
                   <div className="text-[10px] text-slate-400 mt-0.5">
-                    Nom.: $
-                    {Number(pos.initialCapital).toLocaleString()}{' '}
-                    {pos.currency}
+                    Nom.:{' '}
+                    {formatBookAmount(
+                      Number(pos.initialCapital),
+                      pos.currency ?? 'USD',
+                    )}
                   </div>
                 </>
               ) : (
                 <div className="text-lg font-bold text-slate-700 tracking-tight">
-                  ${Number(pos.initialCapital).toLocaleString()}{' '}
-                  <span className="text-xs font-normal text-slate-400">
-                    {pos.currency}
-                  </span>
+                  {formatBookAmount(
+                    Number(pos.initialCapital),
+                    pos.currency ?? 'USD',
+                  )}
                 </div>
               )}
             </div>
             <div>
               <div className="text-xs text-blue-600 font-semibold mb-1 uppercase tracking-wide">Valorización Actual</div>
-              {presentedById?.[pos.id] && !presentationLoading ? (
+              {presentationLoading && !presentedById?.[pos.id] ? (
+                <div className="text-lg font-bold text-blue-400 tracking-tight">…</div>
+              ) : presentedById?.[pos.id] ? (
                 <>
                   <div className="text-lg font-bold text-blue-600 tracking-tight">
                     {formatPresentedAmount(
@@ -79,17 +85,19 @@ export function PositionList({
                     )}
                   </div>
                   <div className="text-[10px] text-blue-400/80 mt-0.5">
-                    Nom.: $
-                    {Number(pos.currentEstimatedValue).toLocaleString()}{' '}
-                    {pos.currency}
+                    Nom.:{' '}
+                    {formatBookAmount(
+                      Number(pos.currentEstimatedValue),
+                      pos.currency ?? 'USD',
+                    )}
                   </div>
                 </>
               ) : (
                 <div className="text-lg font-bold text-blue-600 tracking-tight">
-                  ${Number(pos.currentEstimatedValue).toLocaleString()}{' '}
-                  <span className="text-xs font-normal text-blue-400">
-                    {pos.currency}
-                  </span>
+                  {formatBookAmount(
+                    Number(pos.currentEstimatedValue),
+                    pos.currency ?? 'USD',
+                  )}
                 </div>
               )}
             </div>

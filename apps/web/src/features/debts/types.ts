@@ -22,6 +22,7 @@ export interface BadDebtRow {
   name: string;
   remainingAmount: number;
   interestRate: number;
+  currency?: string;
 }
 
 export interface GoodDebtRow extends BadDebtRow {

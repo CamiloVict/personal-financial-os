@@ -41,7 +41,7 @@ export default function DebtsPage() {
   }, [presRows, displayValuationMode]);
 
   const presentedTotalsForAnalysis = useMemo(() => {
-    if (!analysis || !presentedByDebtId || presLoading) return null;
+    if (!analysis || !presentedByDebtId) return null;
     const a = analysis as LeverageAnalysis;
     const sumIds = (ids: string[]) =>
       ids.reduce((acc, id) => acc + (presentedByDebtId[id]?.amount ?? 0), 0);
@@ -57,14 +57,7 @@ export default function DebtsPage() {
       badDebtTotal: sumIds(badIds),
       currency: ccy,
     };
-  }, [
-    analysis,
-    presentedByDebtId,
-    presLoading,
-    presRows,
-    displayValuationMode,
-    debtsList,
-  ]);
+  }, [analysis, presentedByDebtId, presRows, displayValuationMode, debtsList]);
 
   if (isLoading) {
     return (
@@ -92,6 +85,7 @@ export default function DebtsPage() {
             analysis={a}
             presentedTotals={presentedTotalsForAnalysis}
             presentationLoading={presLoading && debtLines.length > 0}
+            fallbackBookCurrency={debtsList[0]?.currency ?? 'COP'}
           />
           <div className="lg:col-span-8 space-y-4">
             <DebtsGoodDebtPanel

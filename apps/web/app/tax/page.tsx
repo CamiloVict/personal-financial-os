@@ -19,6 +19,7 @@ import {
   TaxDeclarationSection,
   TaxNormalizationPanel,
 } from '@/features/tax/components';
+import { useTaxPageValuation } from '@/features/tax/hooks/useTaxPageValuation';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
@@ -88,6 +89,18 @@ export default function TaxDashboard() {
   const normalizedForTax =
     analyzeMutation.data?.normalizedForTax ?? plan?.normalizedForTax ?? null;
 
+  const taxVal = useTaxPageValuation({
+    enabled: Boolean(profile && activeTab === 'PLAN'),
+    declarationInsights: declarationInsights ?? null,
+    combinedPreview:
+      selectedLeverIds.length > 0 && comboPreview
+        ? comboPreview
+        : null,
+    plan: plan ?? null,
+    normalizedForTax,
+    classifications,
+  });
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     saveProfileMutation.mutate(
@@ -112,17 +125,32 @@ export default function TaxDashboard() {
     analyzeMutation.mutate(undefined, { onSuccess: () => setActiveTab('PLAN') });
   };
 
-  const classificationsPieData = classifications.reduce((acc: any[], curr: any) => {
-    const cedula = curr.suggestedCedula.replace(/_/g, ' ');
-    const amount = Number(curr.stream?.expectedAmount || 0) * 12;
-    const existing = acc.find((item) => item.name === cedula);
-    if (existing) {
-      existing.value += amount;
-    } else {
-      acc.push({ name: cedula, value: amount });
-    }
-    return acc;
-  }, []);
+  const classificationsPieData = React.useMemo(() => {
+    return classifications.reduce((acc: any[], curr: any) => {
+      const cedula = curr.suggestedCedula.replace(/_/g, ' ');
+      const rawAnnual = Number(curr.stream?.expectedAmount || 0) * 12;
+      const pieId = curr.referenceId
+        ? `tax-pie-${curr.referenceId}`
+        : null;
+      const amount =
+        profile && activeTab === 'PLAN' && pieId && taxVal.linesCount > 0
+          ? taxVal.num(pieId, rawAnnual)
+          : rawAnnual;
+      const existing = acc.find((item) => item.name === cedula);
+      if (existing) {
+        existing.value += amount;
+      } else {
+        acc.push({ name: cedula, value: amount });
+      }
+      return acc;
+    }, []);
+  }, [
+    classifications,
+    profile,
+    activeTab,
+    taxVal.linesCount,
+    taxVal,
+  ]);
 
   if (loadingProfile) {
     return (
@@ -296,6 +324,8 @@ export default function TaxDashboard() {
                 ? 'Este plan puede haberse generado antes de guardar la normalización fiscal, o no hay aún gastos/deudas/inversiones que el modelo use. Pulsa Recalcular motor.'
                 : undefined
             }
+            taxFmt={taxVal.fmt}
+            taxPresentationLoading={taxVal.isLoading}
           />
 
           {loadingDeclaration ? (
@@ -312,6 +342,10 @@ export default function TaxDashboard() {
               combinedPreviewError={selectedLeverIds.length > 0 && comboError}
               combinedPreviewStale={Boolean(comboStale)}
               onClearSelection={() => setSelectedLeverIds([])}
+              taxFmt={taxVal.fmt}
+              taxNum={taxVal.num}
+              taxChartCurrency={taxVal.chartCurrency}
+              taxPresentationLoading={taxVal.isLoading}
             />
           ) : null}
 
@@ -327,7 +361,12 @@ export default function TaxDashboard() {
           <div className="flex justify-end">
             <ConfidenceBadge confidence={classificationsConfidence} />
           </div>
-          <TaxClassifications classifications={classifications} pieData={classificationsPieData} />
+          <TaxClassifications
+            classifications={classifications}
+            pieData={classificationsPieData}
+            pieChartCurrency={taxVal.chartCurrency}
+            piePresentationLoading={taxVal.isLoading}
+          />
 
           <ExplanationPanel explanation={classificationsExplanation} defaultOpen={false} />
 
@@ -339,7 +378,13 @@ export default function TaxDashboard() {
           {loadingPlan ? (
             <div className="h-40 rounded-xl bg-slate-100 animate-pulse border border-slate-200" aria-hidden />
           ) : null}
-          <TaxScenarios plan={plan} />
+          <TaxScenarios
+            plan={plan}
+            taxFmt={taxVal.fmt}
+            taxNum={taxVal.num}
+            taxChartCurrency={taxVal.chartCurrency}
+            taxPresentationLoading={taxVal.isLoading}
+          />
 
           {!plan && !loadingPlan ? (
             <div className="text-center text-xs text-slate-500 py-4 border border-dashed border-slate-200 rounded-lg">

@@ -1,7 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { LeverageAnalysis } from '../types';
 import { leverageHealthBadgeClass, leverageHealthLabel } from '../utils';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
 interface DebtsOverviewSidebarProps {
   analysis: LeverageAnalysis;
@@ -13,12 +13,15 @@ interface DebtsOverviewSidebarProps {
     currency: string;
   } | null;
   presentationLoading?: boolean;
+  /** Moneda nominal para totales del API cuando aún no hay presentación (evita mostrar COP con prefijo $). */
+  fallbackBookCurrency?: string;
 }
 
 export function DebtsOverviewSidebar({
   analysis,
   presentedTotals,
   presentationLoading,
+  fallbackBookCurrency = 'COP',
 }: DebtsOverviewSidebarProps) {
   const {
     totalDebt,
@@ -29,8 +32,7 @@ export function DebtsOverviewSidebar({
     leverageHealthStatus,
   } = analysis;
 
-  const usePresented =
-    presentedTotals != null && !presentationLoading;
+  const usePresented = presentedTotals != null;
 
   const displayTotal = usePresented
     ? presentedTotals.totalDebt
@@ -43,12 +45,12 @@ export function DebtsOverviewSidebar({
     : badDebtTotal;
   const displayCcy = usePresented
     ? presentedTotals.currency
-    : 'USD';
+    : fallbackBookCurrency;
 
   const fmtMoney = (n: number) =>
     usePresented
       ? formatPresentedAmount(n, displayCcy)
-      : `$${n.toLocaleString()}`;
+      : formatBookAmount(n, fallbackBookCurrency);
 
   const pieData = [
     { name: 'Deuda Buena (Apalancamiento)', value: displayGood, color: '#10b981' },

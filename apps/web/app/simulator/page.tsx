@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   useSimulatePropertyPurchase,
   useSimulateDebtVsInvest,
@@ -22,6 +22,13 @@ import {
   SimulatorResultsPanel,
 } from '@/features/simulator/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
+import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
+import {
+  linesFromSimulationResult,
+  rowsToMap,
+  presentedCurrencyFromRows,
+} from '@/features/currency/valuationUtils';
+import { useGlobalStore } from '@/shared/store/global';
 
 export default function SimulatorPage() {
   const simProperty = useSimulatePropertyPurchase();
@@ -32,6 +39,50 @@ export default function SimulatorPage() {
 
   const [activeScenario, setActiveScenario] = useState<ScenarioType>('PROPERTY');
   const [result, setResult] = useState<SimulationResult | null>(null);
+
+  const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
+  const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
+
+  const simLines = useMemo(
+    () => linesFromSimulationResult(result, valuationAsOfDate),
+    [result, valuationAsOfDate],
+  );
+
+  const { data: simPresRows, isLoading: simPresLoading } = useValuationPresentation(
+    simLines,
+    simLines.length > 0,
+  );
+
+  const simRowMap = useMemo(() => rowsToMap(simPresRows), [simPresRows]);
+
+  const simChartCurrency = presentedCurrencyFromRows(
+    simPresRows,
+    displayValuationMode,
+  );
+
+  const presentedSimYears = useMemo(() => {
+    if (!result?.years?.length) return undefined;
+    return result.years.map((y) => ({
+      year: y.year,
+      baselineNetWorth:
+        simRowMap.get(`sim-y${y.year}-base`)?.presentedAmount ??
+        y.baselineNetWorth,
+      scenarioNetWorth:
+        simRowMap.get(`sim-y${y.year}-scen`)?.presentedAmount ??
+        y.scenarioNetWorth,
+    }));
+  }, [result, simRowMap]);
+
+  const presentedFinalBaseline =
+    result != null
+      ? simRowMap.get('sim-final-base')?.presentedAmount ??
+        result.finalBaselineNetWorth
+      : undefined;
+  const presentedFinalScenario =
+    result != null
+      ? simRowMap.get('sim-final-scen')?.presentedAmount ??
+        result.finalScenarioNetWorth
+      : undefined;
 
   const [propertyValue, setPropertyValue] = useState('500000000');
   const [downPayment, setDownPayment] = useState('150000000');
@@ -251,7 +302,18 @@ export default function SimulatorPage() {
         </div>
 
         <div className="lg:col-span-8 space-y-4">
-          {!result ? <SimulatorResultsEmpty /> : <SimulatorResultsPanel result={result} />}
+          {!result ? (
+            <SimulatorResultsEmpty />
+          ) : (
+            <SimulatorResultsPanel
+              result={result}
+              presentedYears={presentedSimYears}
+              presentedFinalBaseline={presentedFinalBaseline}
+              presentedFinalScenario={presentedFinalScenario}
+              chartCurrency={simChartCurrency}
+              presentationLoading={simPresLoading && simLines.length > 0}
+            />
+          )}
           {result ? (
             <ExplanationPanel explanation={result.explanation} defaultOpen={false} />
           ) : null}

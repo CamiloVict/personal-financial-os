@@ -1,6 +1,6 @@
 import { Building, TrendingUp } from 'lucide-react';
 import type { GoodDebtRow } from '../types';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
 interface DebtsGoodDebtPanelProps {
   goodDebts: GoodDebtRow[];
@@ -40,7 +40,9 @@ export function DebtsGoodDebtPanel({
                   </h4>
                   <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mt-0.5 space-y-0.5">
                     <p className="text-slate-600 normal-case font-bold text-[11px]">
-                      {presentedByDebtId?.[gd.id] && !presentationLoading ? (
+                      {presentationLoading && !presentedByDebtId?.[gd.id] ? (
+                        <>Saldo: …</>
+                      ) : presentedByDebtId?.[gd.id] ? (
                         <>
                           Saldo:{' '}
                           {formatPresentedAmount(
@@ -50,15 +52,21 @@ export function DebtsGoodDebtPanel({
                         </>
                       ) : (
                         <>
-                          Saldo: $
-                          {Number(gd.remainingAmount).toLocaleString()}
+                          Saldo:{' '}
+                          {formatBookAmount(
+                            Number(gd.remainingAmount),
+                            gd.currency ?? 'COP',
+                          )}
                         </>
                       )}
                     </p>
-                    {presentedByDebtId?.[gd.id] && !presentationLoading ? (
+                    {presentedByDebtId?.[gd.id] ? (
                       <p className="text-[8px] text-slate-400 font-normal normal-case">
-                        Nom.: $
-                        {Number(gd.remainingAmount).toLocaleString()}
+                        Nom.:{' '}
+                        {formatBookAmount(
+                          Number(gd.remainingAmount),
+                          gd.currency ?? 'COP',
+                        )}
                       </p>
                     ) : null}
                   </div>

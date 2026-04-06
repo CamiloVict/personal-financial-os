@@ -1,6 +1,6 @@
 import React from 'react';
 import { Banknote, TrendingUp, TrendingDown, CheckCircle2, Trash2, Activity } from 'lucide-react';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
 interface CashflowListProps {
   streams: any[];
@@ -60,7 +60,9 @@ export function CashflowList({
                     </div>
                     
                     <div className="text-right">
-                      {presentedByStreamId?.[stream.id] && !presentationLoading ? (
+                      {presentationLoading && !presentedByStreamId?.[stream.id] ? (
+                        <p className="text-base font-bold text-slate-500">…</p>
+                      ) : presentedByStreamId?.[stream.id] ? (
                         <>
                           <p
                             className={`text-base font-bold tracking-tight ${stream.flowType === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}
@@ -72,20 +74,22 @@ export function CashflowList({
                             )}
                           </p>
                           <p className="text-[10px] text-slate-400 mt-0.5">
-                            Nom.: {stream.flowType === 'INCOME' ? '+' : '-'}$
-                            {Number(stream.expectedAmount).toLocaleString()}{' '}
-                            {stream.currency}
+                            Nom.: {stream.flowType === 'INCOME' ? '+' : '-'}
+                            {formatBookAmount(
+                              Number(stream.expectedAmount),
+                              stream.currency ?? 'USD',
+                            )}
                           </p>
                         </>
                       ) : (
                         <p
                           className={`text-base font-bold tracking-tight ${stream.flowType === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}
                         >
-                          {stream.flowType === 'INCOME' ? '+' : '-'}$
-                          {Number(stream.expectedAmount).toLocaleString()}{' '}
-                          <span className="text-slate-400 font-normal text-xs">
-                            {stream.currency}
-                          </span>
+                          {stream.flowType === 'INCOME' ? '+' : '-'}
+                          {formatBookAmount(
+                            Number(stream.expectedAmount),
+                            stream.currency ?? 'USD',
+                          )}
                         </p>
                       )}
                       <p className="text-[9px] text-slate-400 uppercase tracking-wider font-bold mt-0.5">

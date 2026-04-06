@@ -1,5 +1,7 @@
 import type { AllocatorPlan } from '../types';
-import { formatPresentedAmount } from '@/features/currency/format';
+import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+
+const ALLOC_BOOK_CCY = 'USD';
 
 interface AllocatorPlanSummaryProps {
   plan: AllocatorPlan;
@@ -29,7 +31,9 @@ export function AllocatorPlanSummary({
   const unalloc = useP ? presentedUnallocated! : Number(plan.unallocatedCapital);
   const assigned = useP ? presentedAssigned! : assignedNom;
   const fmt = (n: number) =>
-    useP ? formatPresentedAmount(n, presentedCurrency) : `$${n.toLocaleString()}`;
+    useP
+      ? formatPresentedAmount(n, presentedCurrency)
+      : formatBookAmount(n, ALLOC_BOOK_CCY);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -42,7 +46,8 @@ export function AllocatorPlanSummary({
         </p>
         {useP ? (
           <p className="text-[9px] text-slate-400 mt-0.5">
-            Nom.: ${Number(plan.availableCapital).toLocaleString()}
+            Nom.:{' '}
+            {formatBookAmount(Number(plan.availableCapital), ALLOC_BOOK_CCY)}
           </p>
         ) : null}
       </div>
@@ -55,7 +60,7 @@ export function AllocatorPlanSummary({
         </p>
         {useP ? (
           <p className="text-[9px] text-emerald-700/70 mt-0.5">
-            Nom.: ${assignedNom.toLocaleString()}
+            Nom.: {formatBookAmount(assignedNom, ALLOC_BOOK_CCY)}
           </p>
         ) : null}
       </div>
@@ -68,7 +73,8 @@ export function AllocatorPlanSummary({
         </p>
         {useP ? (
           <p className="text-[9px] text-amber-800/70 mt-0.5">
-            Nom.: ${Number(plan.unallocatedCapital).toLocaleString()}
+            Nom.:{' '}
+            {formatBookAmount(Number(plan.unallocatedCapital), ALLOC_BOOK_CCY)}
           </p>
         ) : null}
       </div>
