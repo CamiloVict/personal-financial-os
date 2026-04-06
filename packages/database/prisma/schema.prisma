@@ -36,7 +36,8 @@ model User {
   cashflowStreams CashflowStream[]
 
   // Tax Module
-  taxProfiles TaxProfile[]
+  taxProfiles            TaxProfile[]
+  taxCalculationAudits   TaxCalculationAudit[]
 }
 
 // ==========================================
@@ -69,8 +70,41 @@ model TaxProfile {
   user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   classifications TaxIncomeClassification[]
   plans           TaxPlan[]
+  taxCalculationAudits TaxCalculationAudit[]
 
   @@unique([userId, taxYear, jurisdiction])
+}
+
+/// Registro append-only: qué reglas fiscales se aplicaron y bajo qué paquete normativo (auditoría).
+model TaxCalculationAudit {
+  id     String @id @default(uuid())
+  userId String
+  /// Perfil fiscal usado en el cálculo (opcional si el perfil se eliminó).
+  profileId String?
+
+  /// PLAN_RECALC | DECLARATION_INSIGHTS | LEVER_PREVIEW
+  kind         String
+  taxYear      Int
+  jurisdiction String
+
+  lawPackageId  String
+  engineVersion String
+  domain        String
+
+  appliedRuleRefs Json
+  auditPayload    Json
+
+  /// SHA-256 de un objeto estructural de entradas (sin montos en bruto cuando sea posible).
+  inputHash String?
+
+  createdAt DateTime @default(now())
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile TaxProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([profileId, createdAt(sort: Desc)])
+  @@index([lawPackageId, taxYear])
 }
 
 model TaxIncomeClassification {

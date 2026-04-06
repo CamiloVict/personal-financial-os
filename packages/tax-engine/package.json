@@ -5,7 +5,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc -w"
+    "dev": "tsc -w",
+    "export-regulatory-snapshot": "npm run build && node scripts/export-regulatory-snapshot.cjs"
   },
   "dependencies": {
     "@personal-finance-os/explanation": "workspace:*",

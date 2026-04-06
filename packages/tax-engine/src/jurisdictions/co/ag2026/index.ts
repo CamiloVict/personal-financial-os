@@ -2,8 +2,14 @@ import {
   createNode,
   emptyFinancialExplanation,
   type FinancialExplanation,
-  type NormativeRef,
 } from '@personal-finance-os/explanation';
+import {
+  CO_AG2026_BUNDLE_NORMATIVE_REFS,
+  CO_AG2026_ENGINE_VERSION,
+  CO_AG2026_LAW_PACKAGE_ID,
+  CO_AG2026_TAX_YEAR,
+  normativeRefsForRule,
+} from '../../../regulatory';
 import {
   TaxProfileInput,
   IncomeStreamInput,
@@ -20,14 +26,8 @@ import type {
 /** UVT de referencia del modelo CO-AG2026 (estimada). */
 export const UVT_2026 = 48000;
 
-export const CO_AG2026_NORMATIVE_REFS: NormativeRef[] = [
-  {
-    id: 'CO-AG2026-MODEL',
-    title: 'Modelo educativo Colombia cédula general (no es asesoría legal)',
-    article:
-      'Topes 40% ingreso / 1340 UVT; 25% renta exenta laboral hasta 790 UVT; deducciones simplificadas en motor',
-  },
-];
+/** @deprecated Usar `CO_AG2026_BUNDLE_NORMATIVE_REFS` desde `regulatory`; se mantiene alias para imports legacy. */
+export const CO_AG2026_NORMATIVE_REFS = CO_AG2026_BUNDLE_NORMATIVE_REFS;
 
 export function calculateColombiaIncomeTaxUVT2026Detailed(
   taxableBase: number,
@@ -135,7 +135,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
         description: 'Hasta 10% del ingreso, tope 384 UVT anuales (modelo motor).',
         value: -amt,
         ruleRef: 'CO-AG2026-DED-DEP',
-        normativeRefs: CO_AG2026_NORMATIVE_REFS,
+        normativeRefs: normativeRefsForRule('CO-AG2026-DED-DEP'),
       }),
     );
   }
@@ -157,6 +157,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
               : 'Hasta 5% del ingreso, tope 192 UVT (modelo motor).',
           value: -amt,
           ruleRef: 'CO-AG2026-DED-PREP',
+          normativeRefs: normativeRefsForRule('CO-AG2026-DED-PREP'),
         }),
       );
     }
@@ -180,6 +181,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
               : 'Hasta 15% del ingreso, tope 1200 UVT (modelo motor).',
           value: -amt,
           ruleRef: 'CO-AG2026-DED-VIV',
+          normativeRefs: normativeRefsForRule('CO-AG2026-DED-VIV'),
         }),
       );
     }
@@ -203,6 +205,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
               : '10% del ingreso en motor; topes legales adicionales no modelados aquí.',
           value: -amt,
           ruleRef: 'CO-AG2026-EX-AFC',
+          normativeRefs: normativeRefsForRule('CO-AG2026-EX-AFC'),
         }),
       );
     }
@@ -229,6 +232,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
               : '10% del ingreso en motor; topes legales adicionales no modelados aquí.',
           value: -amt,
           ruleRef: 'CO-AG2026-EX-FPV',
+          normativeRefs: normativeRefsForRule('CO-AG2026-EX-FPV'),
         }),
       );
     }
@@ -245,6 +249,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
           'Categorías con fiscalExpenseHint OTHER_DEDUCTIBLE; validar contra norma y topes globales del motor.',
         value: -otherDed,
         ruleRef: 'CO-AG2026-DED-OTHER-CF',
+        normativeRefs: normativeRefsForRule('CO-AG2026-DED-OTHER-CF'),
       }),
     );
   }
@@ -263,6 +268,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
       description: 'Hasta 25% de la subbase o 790 UVT, lo menor (modelo motor).',
       value: -exempt25,
       ruleRef: 'CO-AG2026-EX-25PCT',
+      normativeRefs: normativeRefsForRule('CO-AG2026-EX-25PCT'),
     }),
   );
 
@@ -282,6 +288,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
       description: `Mínimo entre 40% del ingreso (${(totalIncome * 0.4).toFixed(0)}) y 1340 UVT (${1340 * uvt}). Se recortaron exenciones/deducciones aplicadas.`,
       value: -excess,
       ruleRef: 'CO-AG2026-CAP-40-1340',
+      normativeRefs: normativeRefsForRule('CO-AG2026-CAP-40-1340'),
       meta: {
         maxAllowedDeductions,
         excessRemoved: excess,
@@ -325,6 +332,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
       label: 'UVT referencia motor',
       value: uvt,
       ruleRef: 'CO-AG2026-UVT',
+      normativeRefs: normativeRefsForRule('CO-AG2026-UVT'),
     }),
     createNode({
       kind: 'input',
@@ -370,6 +378,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
     description: `${taxDet.bracketLabel}. Base en UVT: ${taxDet.uvtBase.toFixed(2)}.`,
     value: taxLiability,
     ruleRef: 'CO-AG2026-TARIFF',
+    normativeRefs: normativeRefsForRule('CO-AG2026-TARIFF'),
     children: [
       createNode({
         kind: 'result',
@@ -387,6 +396,7 @@ export function computeOptimizedTaxSnapshotWithExplanation(
           description: 'No superior al impuesto calculado en Colombia (modelo motor).',
           value: -foreignCredit,
           ruleRef: 'CO-AG2026-FOREIGN-CREDIT',
+          normativeRefs: normativeRefsForRule('CO-AG2026-FOREIGN-CREDIT'),
         })
       : null;
 
@@ -421,7 +431,13 @@ export function computeOptimizedTaxSnapshotWithExplanation(
     steps,
     assumptions,
     missingData: [],
-    normativeRefs: CO_AG2026_NORMATIVE_REFS,
+    normativeRefs: CO_AG2026_BUNDLE_NORMATIVE_REFS,
+    regulatoryContext: {
+      jurisdiction: 'CO',
+      taxYear: CO_AG2026_TAX_YEAR,
+      engineVersion: CO_AG2026_ENGINE_VERSION,
+      lawPackageId: CO_AG2026_LAW_PACKAGE_ID,
+    },
     result: {
       label: 'Impuesto neto estimado',
       value: netPayable,
