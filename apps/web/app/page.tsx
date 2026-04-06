@@ -16,6 +16,7 @@ import {
   TaxAnalysisChart,
   TopInvestments,
   QuickActions,
+  PlanningShortcuts,
 } from '@/features/dashboard/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
@@ -233,6 +234,7 @@ export default function HomePage() {
                 taxScenarioLines.length > 0 && presentationLoading
               }
             />
+            <PlanningShortcuts />
             <ExplanationPanel explanation={taxAnalytics?.explanation} defaultOpen={false} />
             <QuickActions />
           </div>

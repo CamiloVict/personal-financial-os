@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
-import { PieChart as PieChartIcon, Activity } from 'lucide-react';
+import Link from 'next/link';
+import { PieChart as PieChartIcon, Activity, Settings2 } from 'lucide-react';
 import {
   useInvestmentPositions,
   useInvestmentTypes,
@@ -230,6 +231,19 @@ export default function InvestmentPositionsPage() {
           </h1>
           <p className="text-slate-500 mt-2 text-sm leading-relaxed">
             Registra tus activos y realiza un seguimiento detallado de capital, valorización y flujo.
+          </p>
+          <p className="text-slate-500 mt-2 text-[11px] leading-relaxed max-w-2xl">
+            <Link
+              href="/investment-types"
+              className="inline-flex items-center gap-1 font-semibold text-slate-700 hover:text-slate-900 underline-offset-2 hover:underline"
+            >
+              <Settings2 className="w-3.5 h-3.5 shrink-0 text-slate-500" aria-hidden />
+              Tipos de inversión
+            </Link>
+            <span className="font-normal text-slate-500">
+              {' '}
+              — define las categorías del modelo usadas al crear posiciones.
+            </span>
           </p>
         </div>
         <ConfidenceBadge confidence={positionsConfidence} />
