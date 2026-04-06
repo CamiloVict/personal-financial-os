@@ -140,27 +140,26 @@ export function linesFromDashboardTaxScenarios(
   });
 }
 
-/** Metas sin moneda en schema: se tratan como USD (convención del producto). */
-export function linesFromGoals(goals: any[]): ValuationLineInput[] {
-  return goals.flatMap((g) => {
-    const vd = g.targetDate
-      ? new Date(g.targetDate).toISOString().slice(0, 10)
-      : new Date().toISOString().slice(0, 10);
-    return [
-      {
-        id: `${g.id}-target`,
-        amount: Number(g.targetAmount),
-        currency: 'USD',
-        valueDate: vd,
-      },
-      {
-        id: `${g.id}-current`,
-        amount: Number(g.currentAmount || 0),
-        currency: 'USD',
-        valueDate: vd,
-      },
-    ];
-  });
+/** Metas sin moneda en schema: mismos montos que cashflow / simulador (COP). */
+export function linesFromGoals(
+  goals: any[],
+  valuationAsOfDate: string,
+): ValuationLineInput[] {
+  const vd = valuationAsOfDate.slice(0, 10);
+  return goals.flatMap((g) => [
+    {
+      id: `${g.id}-target`,
+      amount: Number(g.targetAmount),
+      currency: 'COP',
+      valueDate: vd,
+    },
+    {
+      id: `${g.id}-current`,
+      amount: Number(g.currentAmount || 0),
+      currency: 'COP',
+      valueDate: vd,
+    },
+  ]);
 }
 
 export function aggregateExpensePieByCategory(

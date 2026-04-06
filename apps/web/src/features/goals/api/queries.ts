@@ -14,6 +14,7 @@ export function useGoalScenarios(id: string) {
     queryKey: queryKeys.goals.scenarios(id),
     queryFn: () => apiClient.get<any>(`/goals/${id}/scenarios`),
     retry: false,
+    enabled: Boolean(id),
   });
 }
 
@@ -30,6 +31,7 @@ export function useCreateGoal() {
 export function useSimulateGoalScenarios(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: [...queryKeys.goals.scenarios(id), 'simulate'],
     mutationFn: () => apiClient.post(`/goals/${id}/scenarios/simulate`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.scenarios(id) });

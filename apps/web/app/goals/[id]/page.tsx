@@ -10,21 +10,145 @@ import { presentedCurrencyFromRows } from '@/features/currency/valuationUtils';
 import { useGlobalStore } from '@/shared/store/global';
 
 export default function GoalDetailPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const goalId = typeof params.id === 'string' ? params.id : '';
 
-  const { data: scenarioSnapshot, isLoading } = useGoalScenarios(id as string);
-  const simulateMutation = useSimulateGoalScenarios(id as string);
+  const { data: scenarioSnapshot, isLoading } = useGoalScenarios(goalId);
+  const simulateMutation = useSimulateGoalScenarios(goalId);
+
+  const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
+  const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
+
+  const goalSimLines = useMemo(() => {
+    if (!scenarioSnapshot) return [];
+    const d = valuationAsOfDate;
+    const {
+      monthlyAmountNeeded,
+      targetAmount,
+      currentMonthlySavings,
+      monthlyShortfall,
+      scenarios,
+    } = scenarioSnapshot;
+    const base = [
+      {
+        id: 'gs-needed',
+        amount: Number(monthlyAmountNeeded),
+        currency: 'COP',
+        valueDate: d,
+      },
+      {
+        id: 'gs-target',
+        amount: Number(targetAmount),
+        currency: 'COP',
+        valueDate: d,
+      },
+      {
+        id: 'gs-savings',
+        amount: Number(currentMonthlySavings),
+        currency: 'COP',
+        valueDate: d,
+      },
+      {
+        id: 'gs-shortfall',
+        amount: Number(monthlyShortfall),
+        currency: 'COP',
+        valueDate: d,
+      },
+    ];
+    const fromScen = (scenarios || []).flatMap((s: { id: string; incomeIncreaseAmount?: unknown; expenseReductionAmount?: unknown }) => [
+      {
+        id: `gs-${s.id}-inc`,
+        amount: Number(s.incomeIncreaseAmount || 0),
+        currency: 'COP',
+        valueDate: d,
+      },
+      {
+        id: `gs-${s.id}-exp`,
+        amount: Number(s.expenseReductionAmount || 0),
+        currency: 'COP',
+        valueDate: d,
+      },
+    ]);
+    return [...base, ...fromScen];
+  }, [scenarioSnapshot, valuationAsOfDate]);
+
+  const { data: simPresRows, isLoading: simPresLoading } = useValuationPresentation(
+    goalSimLines,
+    goalSimLines.length > 0,
+  );
+
+  const presentedSnapshot = useMemo(() => {
+    if (!simPresRows?.length) return null;
+    const find = (lineId: string) => simPresRows.find((r) => r.id === lineId);
+    const n = find('gs-needed');
+    const t = find('gs-target');
+    const s = find('gs-savings');
+    const sh = find('gs-shortfall');
+    if (!n || !t || !s || !sh) return null;
+    const ccy = presentedCurrencyFromRows(simPresRows, displayValuationMode);
+    return {
+      monthlyAmountNeeded: n.presentedAmount,
+      targetAmount: t.presentedAmount,
+      currentMonthlySavings: s.presentedAmount,
+      monthlyShortfall: sh.presentedAmount,
+      currency: ccy,
+    };
+  }, [simPresRows, displayValuationMode]);
+
+  const presentedByScenarioId = useMemo(() => {
+    const scenarios = scenarioSnapshot?.scenarios;
+    if (!simPresRows?.length || !scenarios?.length) return undefined;
+    const ccy = presentedCurrencyFromRows(simPresRows, displayValuationMode);
+    const m: Record<string, { income?: number; expense?: number; currency: string }> = {};
+    for (const s of scenarios as Array<{
+      id: string;
+      incomeIncreaseAmount?: unknown;
+      expenseReductionAmount?: unknown;
+    }>) {
+      const inc = simPresRows.find((r) => r.id === `gs-${s.id}-inc`);
+      const exp = simPresRows.find((r) => r.id === `gs-${s.id}-exp`);
+      const hasInc = Number(s.incomeIncreaseAmount) > 0;
+      const hasExp = Number(s.expenseReductionAmount) > 0;
+      if (!hasInc && !hasExp) continue;
+      m[s.id] = { currency: ccy };
+      if (hasInc && inc) m[s.id].income = inc.presentedAmount;
+      if (hasExp && exp) m[s.id].expense = exp.presentedAmount;
+    }
+    return Object.keys(m).length ? m : undefined;
+  }, [simPresRows, scenarioSnapshot?.scenarios, displayValuationMode]);
 
   useEffect(() => {
     if (
-      !isLoading &&
-      !scenarioSnapshot &&
-      !simulateMutation.isPending &&
-      !simulateMutation.isSuccess
+      !goalId ||
+      isLoading ||
+      scenarioSnapshot != null ||
+      simulateMutation.isPending ||
+      simulateMutation.isSuccess ||
+      simulateMutation.isError
     ) {
-      simulateMutation.mutate();
+      return;
     }
-  }, [isLoading, scenarioSnapshot, simulateMutation]);
+    simulateMutation.mutate();
+  }, [
+    goalId,
+    isLoading,
+    scenarioSnapshot,
+    simulateMutation.isPending,
+    simulateMutation.isSuccess,
+    simulateMutation.isError,
+    simulateMutation.mutate,
+  ]);
+
+  if (!goalId) {
+    return (
+      <div className="text-center py-20 text-slate-600">
+        <p>Meta no válida.</p>
+        <Link href="/goals" className="mt-4 inline-block text-blue-600 text-sm">
+          Volver a metas
+        </Link>
+      </div>
+    );
+  }
 
   if (isLoading || (simulateMutation.isPending && !scenarioSnapshot)) {
     return (
@@ -61,102 +185,6 @@ export default function GoalDetailPage() {
     currentProjectedMonths,
     scenarios,
   } = scenarioSnapshot;
-
-  const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
-  const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
-
-  const goalSimLines = useMemo(() => {
-    const d = valuationAsOfDate;
-    const base = [
-      {
-        id: 'gs-needed',
-        amount: Number(monthlyAmountNeeded),
-        currency: 'USD',
-        valueDate: d,
-      },
-      {
-        id: 'gs-target',
-        amount: Number(targetAmount),
-        currency: 'USD',
-        valueDate: d,
-      },
-      {
-        id: 'gs-savings',
-        amount: Number(currentMonthlySavings),
-        currency: 'USD',
-        valueDate: d,
-      },
-      {
-        id: 'gs-shortfall',
-        amount: Number(monthlyShortfall),
-        currency: 'USD',
-        valueDate: d,
-      },
-    ];
-    const fromScen = (scenarios || []).flatMap((s: any) => [
-      {
-        id: `gs-${s.id}-inc`,
-        amount: Number(s.incomeIncreaseAmount || 0),
-        currency: 'USD',
-        valueDate: d,
-      },
-      {
-        id: `gs-${s.id}-exp`,
-        amount: Number(s.expenseReductionAmount || 0),
-        currency: 'USD',
-        valueDate: d,
-      },
-    ]);
-    return [...base, ...fromScen];
-  }, [
-    valuationAsOfDate,
-    monthlyAmountNeeded,
-    targetAmount,
-    currentMonthlySavings,
-    monthlyShortfall,
-    scenarios,
-  ]);
-
-  const { data: simPresRows, isLoading: simPresLoading } =
-    useValuationPresentation(goalSimLines, goalSimLines.length > 0);
-
-  const presentedSnapshot = useMemo(() => {
-    if (!simPresRows?.length) return null;
-    const find = (id: string) => simPresRows.find((r) => r.id === id);
-    const n = find('gs-needed');
-    const t = find('gs-target');
-    const s = find('gs-savings');
-    const sh = find('gs-shortfall');
-    if (!n || !t || !s || !sh) return null;
-    const ccy = presentedCurrencyFromRows(simPresRows, displayValuationMode);
-    return {
-      monthlyAmountNeeded: n.presentedAmount,
-      targetAmount: t.presentedAmount,
-      currentMonthlySavings: s.presentedAmount,
-      monthlyShortfall: sh.presentedAmount,
-      currency: ccy,
-    };
-  }, [simPresRows, displayValuationMode]);
-
-  const presentedByScenarioId = useMemo(() => {
-    if (!simPresRows?.length || !scenarios?.length) return undefined;
-    const ccy = presentedCurrencyFromRows(simPresRows, displayValuationMode);
-    const m: Record<
-      string,
-      { income?: number; expense?: number; currency: string }
-    > = {};
-    for (const s of scenarios as any[]) {
-      const inc = simPresRows.find((r) => r.id === `gs-${s.id}-inc`);
-      const exp = simPresRows.find((r) => r.id === `gs-${s.id}-exp`);
-      const hasInc = Number(s.incomeIncreaseAmount) > 0;
-      const hasExp = Number(s.expenseReductionAmount) > 0;
-      if (!hasInc && !hasExp) continue;
-      m[s.id] = { currency: ccy };
-      if (hasInc && inc) m[s.id].income = inc.presentedAmount;
-      if (hasExp && exp) m[s.id].expense = exp.presentedAmount;
-    }
-    return Object.keys(m).length ? m : undefined;
-  }, [simPresRows, scenarios, displayValuationMode]);
 
   const isAchievable = Number(monthlyShortfall) <= 0;
 

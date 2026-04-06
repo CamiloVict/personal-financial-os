@@ -3,7 +3,7 @@ import { Target, Activity, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
-const GOAL_BOOK_CCY = 'USD';
+const GOAL_BOOK_CCY = 'COP';
 
 interface GoalListProps {
   goals: any[];

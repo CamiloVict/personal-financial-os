@@ -14,8 +14,12 @@ export default function GoalsPage() {
   const { data: goals = [], isLoading } = useGoals();
   const createGoalMutation = useCreateGoal();
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
+  const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
 
-  const goalLines = useMemo(() => linesFromGoals(goals), [goals]);
+  const goalLines = useMemo(
+    () => linesFromGoals(goals, valuationAsOfDate),
+    [goals, valuationAsOfDate],
+  );
   const { data: goalPresRows, isLoading: goalPresLoading } =
     useValuationPresentation(goalLines, goalLines.length > 0);
 

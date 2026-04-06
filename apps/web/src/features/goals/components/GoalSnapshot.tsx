@@ -2,7 +2,7 @@ import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
-const GOAL_BOOK_CCY = 'USD';
+const GOAL_BOOK_CCY = 'COP';
 
 interface GoalSnapshotProps {
   monthlyAmountNeeded: number;
