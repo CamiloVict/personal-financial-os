@@ -14,6 +14,7 @@ import {
   GoalScenarios,
   GoalProjectionPanel,
   GoalSettingsForm,
+  GoalProgressSection,
 } from '@/features/goals/components';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
 import { presentedCurrencyFromRows } from '@/features/currency/valuationUtils';
@@ -102,7 +103,11 @@ export default function GoalDetailPage() {
     const s = find('gs-savings');
     const sh = find('gs-shortfall');
     if (!n || !t || !s || !sh) return null;
-    const ccy = presentedCurrencyFromRows(simPresRows, displayValuationMode);
+    const ccy = presentedCurrencyFromRows(
+      simPresRows,
+      displayValuationMode,
+      'gs-savings',
+    );
     return {
       monthlyAmountNeeded: n.presentedAmount,
       targetAmount: t.presentedAmount,
@@ -115,7 +120,11 @@ export default function GoalDetailPage() {
   const presentedByScenarioId = useMemo(() => {
     const scenarios = scenarioSnapshot?.scenarios;
     if (!simPresRows?.length || !scenarios?.length) return undefined;
-    const ccy = presentedCurrencyFromRows(simPresRows, displayValuationMode);
+    const ccy = presentedCurrencyFromRows(
+      simPresRows,
+      displayValuationMode,
+      'gs-savings',
+    );
     const m: Record<string, { income?: number; expense?: number; currency: string }> = {};
     for (const s of scenarios as Array<{
       id: string;
@@ -219,6 +228,18 @@ export default function GoalDetailPage() {
         <GoalSettingsForm goalId={goalId} goal={goalRecord} />
       ) : null}
 
+      {goalRecord ? (
+        <GoalProgressSection
+          goalId={goalId}
+          bookCurrency={
+            goalRecord.currency === 'USD' || goalRecord.currency === 'COP'
+              ? goalRecord.currency
+              : 'COP'
+          }
+          onLogged={() => simulateMutation.mutate()}
+        />
+      ) : null}
+
       <header className="flex justify-between items-end border-b border-slate-200/50 pb-4 mb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
@@ -228,8 +249,10 @@ export default function GoalDetailPage() {
             {goalRecord?.name ? goalRecord.name : 'Simulación de meta'}
           </h1>
           <p className="text-slate-500 mt-1 max-w-2xl text-xs leading-relaxed">
-            Proyecciones condicionales según tus flujos registrados y {Number(monthsRemaining)} meses en el horizonte
-            del modelo. No sustituye asesoría personalizada.
+            {goalRecord?.targetDate
+              ? `Proyecciones según tus flujos y ~${Number(monthsRemaining)} meses hasta la fecha objetivo del modelo.`
+              : `Sin fecha objetivo en la meta: el modelo usa ${Number(monthsRemaining)} meses de horizonte para el ritmo mensual sugerido.`}{' '}
+            No sustituye asesoría personalizada.
           </p>
         </div>
         <button

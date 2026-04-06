@@ -202,6 +202,11 @@ export function linesFromAllocatorPlan(
     availableCapital: number;
     unallocatedCapital: number;
     scenarios: Array<{ id: string; modeledAmount: number; expectedReturnAmount: number }>;
+    surplusAlternatives?: Array<{
+      id: string;
+      modeledAmount: number;
+      expectedReturnAmount: number;
+    }>;
   },
   asOf: string,
 ): ValuationLineInput[] {
@@ -219,7 +224,9 @@ export function linesFromAllocatorPlan(
       valueDate: asOf,
     },
   ];
-  for (const sc of plan.scenarios) {
+  const pushScenarioLines = (
+    sc: { id: string; modeledAmount: number; expectedReturnAmount: number },
+  ) => {
     lines.push({
       id: `alloc-mod-${sc.id}`,
       amount: sc.modeledAmount,
@@ -232,14 +239,29 @@ export function linesFromAllocatorPlan(
       currency: 'USD',
       valueDate: asOf,
     });
+  };
+  for (const sc of plan.scenarios) {
+    pushScenarioLines(sc);
+  }
+  for (const sc of plan.surplusAlternatives ?? []) {
+    pushScenarioLines(sc);
   }
   return lines;
 }
 
+/**
+ * Moneda de presentación coherente entre filas. Si se indica `preferredLineId`, se usa esa fila
+ * (útil cuando la primera línea puede tener fallback distinto, p. ej. metas / simulación).
+ */
 export function presentedCurrencyFromRows(
   rows: PresentLineResult[] | undefined,
   displayMode: string,
+  preferredLineId?: string,
 ): string {
+  if (preferredLineId && rows?.length) {
+    const hit = rows.find((r) => r.id === preferredLineId);
+    if (hit?.presentedCurrency) return hit.presentedCurrency;
+  }
   return (
     rows?.[0]?.presentedCurrency ?? (displayMode === 'NOMINAL_USD' ? 'USD' : 'COP')
   );

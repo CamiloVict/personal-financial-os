@@ -88,13 +88,14 @@ export function GoalSettingsForm({
           </select>
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">Fecha objetivo</label>
+          <label className="block text-[10px] font-semibold text-slate-600 uppercase mb-1">
+            Fecha objetivo (opcional)
+          </label>
           <input
             type="date"
             value={targetDate}
             onChange={(e) => setTargetDate(e.target.value)}
             className="glass-input w-full p-2 rounded-lg text-sm"
-            required
           />
         </div>
       </div>

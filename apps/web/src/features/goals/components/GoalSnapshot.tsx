@@ -103,7 +103,10 @@ export function GoalSnapshot({
         </div>
       </div>
 
-      {!isAchievable && currentMonthlySavings > 0 && currentProjectedMonths && (
+      {!isAchievable &&
+        currentMonthlySavings > 0 &&
+        currentProjectedMonths != null &&
+        currentProjectedMonths > 0 && (
         <div className="glass-card bg-blue-50 border-blue-200 p-4 rounded-xl flex items-center justify-between mb-5">
           <div>
             <h3 className="text-blue-900 font-bold text-xs mb-1 flex items-center gap-1.5">
@@ -114,7 +117,27 @@ export function GoalSnapshot({
               Si el ahorro se mantuviera en{' '}
               {presentationLoading ? '…' : fmt(savings)}
               /mes, el modelo proyecta cubrir el faltante en{' '}
-              <strong className="text-blue-900">{currentProjectedMonths} meses</strong> ({currentProjectedMonths - monthsRemaining} meses después del plazo objetivo del modelo).
+              <strong className="text-blue-900">{currentProjectedMonths} meses</strong>
+              {(() => {
+                const delta = currentProjectedMonths - monthsRemaining;
+                if (delta > 0) {
+                  return (
+                    <>
+                      {' '}
+                      (unos <strong>{delta}</strong> meses después del plazo usado en el modelo).
+                    </>
+                  );
+                }
+                if (delta < 0) {
+                  return (
+                    <>
+                      {' '}
+                      (antes del plazo del modelo: ~{Math.abs(delta)} meses).
+                    </>
+                  );
+                }
+                return <> (alineado con el plazo del modelo).</>;
+              })()}
             </p>
           </div>
         </div>

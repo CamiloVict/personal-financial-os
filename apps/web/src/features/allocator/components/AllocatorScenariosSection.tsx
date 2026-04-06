@@ -78,6 +78,37 @@ export function AllocatorScenariosSection({
           })}
         </div>
       )}
+
+      {plan.surplusAlternatives && plan.surplusAlternatives.length > 0 ? (
+        <div className="mt-8 pt-6 border-t border-amber-200/60">
+          <h3 className="text-xs font-bold text-amber-900/90 tracking-tight mb-1">
+            Otras formas de usar el mismo sobrante
+          </h3>
+          <p className="text-[10px] text-amber-900/75 mb-3 leading-relaxed max-w-3xl">
+            Cada tarjeta muestra el <strong className="font-medium">mismo monto total</strong> que quedó libre
+            después de fiscal, deuda y cubrir el déficit de metas: son <strong className="font-medium">mentalidades
+            distintas</strong> (100% liquidez, 100% inversión, etc.). No las combines con el reparto de las tarjetas
+            de arriba; elegí una lógica coherente. Montos en moneda del modelo (presentación global si aplica).
+          </p>
+          <div className="space-y-3">
+            {plan.surplusAlternatives.map((scenario, index) => {
+              const pres = presentedByScenarioId?.[scenario.id];
+              return (
+                <AllocatorScenarioItem
+                  key={scenario.id}
+                  scenario={scenario}
+                  index={index}
+                  presentedModeled={pres?.modeled ?? null}
+                  presentedReturn={pres?.expectedReturn ?? null}
+                  presentedCurrency={presentedCurrency}
+                  presentationLoading={presentationLoading}
+                  variant="reference"
+                />
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

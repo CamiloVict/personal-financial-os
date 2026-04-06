@@ -34,6 +34,11 @@ export interface AllocatorResult {
   engineNotes?: string[];
   unallocatedCapital: number;
   scenarios: AllocationScenario[];
+  /**
+   * Ideas con el mismo monto de sobrante (una u otra, no acumulativas con las tarjetas de arriba).
+   * Solo aparece cuando hubo capital sin asignar tras fiscal/deuda/metas mínimas.
+   */
+  surplusAlternatives?: AllocationScenario[];
   explanation: FinancialExplanation;
   confidence: FinancialConfidence;
 }

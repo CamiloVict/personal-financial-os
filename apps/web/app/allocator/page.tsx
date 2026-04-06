@@ -90,7 +90,7 @@ export default function AllocatorPage() {
       string,
       { modeled: number; expectedReturn: number }
     > = {};
-    for (const sc of plan.scenarios) {
+    const fillByScenario = (sc: { id: string }) => {
       const mod = find(`alloc-mod-${sc.id}`);
       const ret = find(`alloc-ret-${sc.id}`);
       if (mod && ret) {
@@ -99,6 +99,12 @@ export default function AllocatorPage() {
           expectedReturn: ret.presentedAmount,
         };
       }
+    };
+    for (const sc of plan.scenarios) {
+      fillByScenario(sc);
+    }
+    for (const sc of plan.surplusAlternatives ?? []) {
+      fillByScenario(sc);
     }
     return {
       available,

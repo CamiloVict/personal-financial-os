@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { buildLeverageAnalysisExplanation } from '../../common/explanation/debts-leverage-explanation';
 import { ConfidenceService } from '../confidence/confidence.service';
@@ -25,6 +26,8 @@ export class DebtsService {
     monthlyPayment: unknown;
     autoApplyMonthlyPayment?: boolean;
     lastAutoPaymentMonth?: string | null;
+    lastAutoInterestPortion?: unknown;
+    lastAutoPrincipalPortion?: unknown;
     linkedPositionId: string | null;
     createdAt: Date;
   }): DebtItem {
@@ -40,6 +43,14 @@ export class DebtsService {
       monthlyPayment: Number(d.monthlyPayment ?? 0),
       autoApplyMonthlyPayment: Boolean(d.autoApplyMonthlyPayment),
       lastAutoPaymentMonth: d.lastAutoPaymentMonth ?? null,
+      lastAutoInterestPortion:
+        d.lastAutoInterestPortion != null
+          ? Number(d.lastAutoInterestPortion)
+          : null,
+      lastAutoPrincipalPortion:
+        d.lastAutoPrincipalPortion != null
+          ? Number(d.lastAutoPrincipalPortion)
+          : null,
       linkedAssetId: d.linkedPositionId,
       createdAt: d.createdAt.toISOString(),
     };
@@ -233,11 +244,34 @@ export class DebtsService {
       data.autoApplyMonthlyPayment = body.autoApplyMonthlyPayment;
     }
     if (body.remainingAmount !== undefined) {
-      data.remainingAmount = body.remainingAmount;
+      const ra = Number(body.remainingAmount);
+      data.remainingAmount = new Prisma.Decimal(Number.isFinite(ra) ? ra : 0);
     }
     if (body.monthlyPayment !== undefined) {
-      data.monthlyPayment = body.monthlyPayment;
+      const mp = Number(body.monthlyPayment);
+      data.monthlyPayment = new Prisma.Decimal(Number.isFinite(mp) ? mp : 0);
     }
+    if (body.interestRate !== undefined) {
+      if (body.interestRate === null) {
+        data.interestRate = null;
+      } else {
+        const r = Number(body.interestRate);
+        data.interestRate = new Prisma.Decimal(Number.isFinite(r) ? r : 0);
+      }
+    }
+    if (body.totalAmount !== undefined) {
+      const t = Number(body.totalAmount);
+      data.totalAmount = new Prisma.Decimal(Number.isFinite(t) ? t : 0);
+    }
+    if (body.name !== undefined && typeof body.name === 'string') {
+      data.name = body.name.trim() || row.name;
+    }
+    if (body.dueDate !== undefined) {
+      data.dueDate = body.dueDate
+        ? new Date(body.dueDate as string)
+        : null;
+    }
+
     if (Object.keys(data).length === 0) {
       return this.mapDebt(row as any);
     }

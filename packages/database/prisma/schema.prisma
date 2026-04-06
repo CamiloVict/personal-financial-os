@@ -406,6 +406,21 @@ model SavingGoal {
 
   user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   recommendations GoalRecommendation[]
+  progressLogs    GoalProgressLog[]
+}
+
+/// Novedad o registro de avance hacia una meta (texto + aporte opcional al saldo actual).
+model GoalProgressLog {
+  id          String   @id @default(uuid())
+  goalId      String
+  note        String
+  /// Suma al `currentAmount` de la meta al crear el registro (0 = solo bitácora).
+  amountDelta Decimal  @default(0)
+  createdAt   DateTime @default(now())
+
+  goal SavingGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId, createdAt(sort: Desc)])
 }
 
 // ==========================================
@@ -487,6 +502,10 @@ model Debt {
   autoApplyMonthlyPayment Boolean  @default(false)
   /// YYYY-MM (UTC) del último mes en que se aplicó la cuota automática.
   lastAutoPaymentMonth    String?  @db.VarChar(7)
+  /// Parte de la última cuota automática asignada a intereses (saldo × tasa nominal anual ÷ 12).
+  lastAutoInterestPortion  Decimal?
+  /// Parte de la última cuota automática que redujo capital (cuota − interés del período).
+  lastAutoPrincipalPortion Decimal?
   linkedPositionId String?
   linkedPosition   InvestmentPosition? @relation(fields: [linkedPositionId], references: [id], onDelete: SetNull)
 

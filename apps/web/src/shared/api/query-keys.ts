@@ -27,6 +27,7 @@ export const queryKeys = {
       [...queryKeys.goals.detail(id), 'scenarios'] as const,
     projection: (id: string) =>
       [...queryKeys.goals.detail(id), 'projection'] as const,
+    logs: (id: string) => [...queryKeys.goals.detail(id), 'logs'] as const,
   },
   analytics: {
     all: ['app-analytics', ME_SCOPE] as const,

@@ -51,6 +51,13 @@ export default function DebtsPage() {
     [patchDebt],
   );
 
+  const onSaveDebtTerms = useCallback(
+    (id: string, body: { monthlyPayment: number; interestRate: number }) => {
+      patchDebt.mutate({ id, body });
+    },
+    [patchDebt],
+  );
+
   const debtLines = useMemo(() => linesFromDebts(debtsList), [debtsList]);
   const { data: presRows, isLoading: presLoading } = useValuationPresentation(
     debtLines,
@@ -173,6 +180,7 @@ export default function DebtsPage() {
               presentedByDebtId={presentedByDebtId}
               presentationLoading={presLoading}
               onToggleDebtAutoApply={onToggleDebtAutoApply}
+              onSaveDebtTerms={onSaveDebtTerms}
               patchDebtPending={patchDebt.isPending}
             />
             <DebtsBadDebtPanel
@@ -180,6 +188,7 @@ export default function DebtsPage() {
               presentedByDebtId={presentedByDebtId}
               presentationLoading={presLoading}
               onToggleDebtAutoApply={onToggleDebtAutoApply}
+              onSaveDebtTerms={onSaveDebtTerms}
               patchDebtPending={patchDebt.isPending}
             />
           </div>

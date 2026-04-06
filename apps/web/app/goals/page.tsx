@@ -73,7 +73,9 @@ export default function GoalsPage() {
         name,
         targetAmount: Number(targetAmount) || 0,
         currentAmount: Number(currentAmount) || 0,
-        targetDate: new Date(targetDate).toISOString(),
+        targetDate: targetDate
+          ? new Date(targetDate).toISOString()
+          : null,
         currency: currency === 'USD' ? 'USD' : 'COP',
         utilityMode,
         utilityCadence,

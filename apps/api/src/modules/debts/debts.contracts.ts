@@ -15,6 +15,10 @@ export interface DebtItem {
   monthlyPayment: number;
   autoApplyMonthlyPayment: boolean;
   lastAutoPaymentMonth?: string | null;
+  /** Última cuota automática: interés del mes (tasa nominal anual ÷ 12 sobre saldo). */
+  lastAutoInterestPortion?: number | null;
+  /** Última cuota automática: reducción de capital. */
+  lastAutoPrincipalPortion?: number | null;
   linkedAssetId?: string | null;
   createdAt: string;
 }

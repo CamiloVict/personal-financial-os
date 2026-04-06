@@ -114,15 +114,17 @@ export function GoalForm({
 
         <div>
           <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">
-            Fecha objetivo
+            Fecha objetivo (opcional)
           </label>
           <input
             type="date"
-            required
             value={targetDate}
             onChange={(e) => setTargetDate(e.target.value)}
             className="glass-input w-full p-2 rounded-lg text-sm"
           />
+          <p className="text-[10px] text-slate-500 mt-1">
+            Si la dejás vacía, el modelo usa un horizonte de 12 meses para estimar cuánto ahorrar por mes.
+          </p>
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-2">

@@ -35,6 +35,20 @@ export class GoalsController {
     return this.goalsService.simulateGoalScenarios(id, userId);
   }
 
+  @Get(':id/logs')
+  getProgressLogs(@Param('id') id: string, @DbUserId() userId: string) {
+    return this.goalsService.listProgressLogs(id, userId);
+  }
+
+  @Post(':id/logs')
+  addProgressLog(
+    @Param('id') id: string,
+    @DbUserId() userId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return this.goalsService.addProgressLog(id, userId, body);
+  }
+
   @Get(':id')
   getGoal(@Param('id') id: string, @DbUserId() userId: string) {
     return this.goalsService.findOneGoal(id, userId);

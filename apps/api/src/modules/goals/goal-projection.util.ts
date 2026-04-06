@@ -3,6 +3,83 @@
  * Sin dependencias de framework: apto para tests unitarios.
  */
 
+/** Meses de horizonte cuando la meta no tiene fecha objetivo (ritmo sugerido). */
+export const DEFAULT_GOAL_PLANNING_HORIZON_MONTHS = 12;
+
+const FREQ_TO_MONTHLY_MULT: Record<string, number> = {
+  WEEKLY: 52 / 12,
+  BIWEEKLY: 26 / 12,
+  MONTHLY: 1,
+  BIMONTHLY: 0.5,
+  QUARTERLY: 1 / 3,
+  FOUR_MONTHLY: 0.25,
+  SEMIANNUALLY: 1 / 6,
+  ANNUALLY: 1 / 12,
+};
+
+/**
+ * Convierte el monto esperado de un flujo de caja a equivalente mensual según su frecuencia.
+ */
+export function cashflowStreamToMonthlyEquivalent(
+  expectedAmount: number,
+  frequency: string,
+  customFrequencyMonths: number | null | undefined,
+): number {
+  const amt = Number(expectedAmount);
+  if (!Number.isFinite(amt)) return 0;
+  const f = String(frequency ?? 'MONTHLY').trim().toUpperCase();
+  if (f === 'CUSTOM') {
+    if (
+      customFrequencyMonths != null &&
+      customFrequencyMonths > 0
+    ) {
+      return amt / customFrequencyMonths;
+    }
+    return amt;
+  }
+  const m = FREQ_TO_MONTHLY_MULT[f];
+  return Number.isFinite(m) ? amt * m : amt;
+}
+
+/**
+ * Meses entre hoy y la fecha objetivo (UTC, calendario). Sin fecha: horizonte de planificación por defecto.
+ */
+export function monthsRemainingForGoal(
+  targetDate: Date | null | undefined,
+  now: Date,
+): {
+  months: number;
+  openEnded: boolean;
+  targetInPast: boolean;
+} {
+  if (!targetDate || Number.isNaN(targetDate.getTime())) {
+    return {
+      months: DEFAULT_GOAL_PLANNING_HORIZON_MONTHS,
+      openEnded: true,
+      targetInPast: false,
+    };
+  }
+  const end = new Date(
+    Date.UTC(
+      targetDate.getUTCFullYear(),
+      targetDate.getUTCMonth(),
+      targetDate.getUTCDate(),
+    ),
+  );
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  if (end.getTime() < start.getTime()) {
+    return { months: 1, openEnded: false, targetInPast: true };
+  }
+  const msPerAvgMonth = (365.25 / 12) * 24 * 60 * 60 * 1000;
+  const months = Math.max(
+    1,
+    Math.ceil((end.getTime() - start.getTime()) / msPerAvgMonth),
+  );
+  return { months, openEnded: false, targetInPast: false };
+}
+
 export function annualToMonthlyRate(annualPercent: number): number {
   if (annualPercent <= 0) return 0;
   return Math.pow(1 + annualPercent / 100, 1 / 12) - 1;

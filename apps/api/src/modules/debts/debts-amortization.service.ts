@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { splitMonthlyInstallment } from './debt-monthly-split.util';
 
 @Injectable()
 export class DebtsAmortizationService {
@@ -35,12 +37,16 @@ export class DebtsAmortizationService {
       const pay = Number(d.monthlyPayment);
       const rem = Number(d.remainingAmount);
       if (!Number.isFinite(pay) || pay <= 0 || rem <= 0) continue;
-      const next = Math.max(0, rem - pay);
+      const ratePct = Number(d.interestRate ?? 0);
+      const { interestPortion, principalPortion, newRemaining } =
+        splitMonthlyInstallment(rem, pay, ratePct);
       await this.prisma.debt.update({
         where: { id: d.id },
         data: {
-          remainingAmount: next,
+          remainingAmount: new Prisma.Decimal(newRemaining),
           lastAutoPaymentMonth: ym,
+          lastAutoInterestPortion: new Prisma.Decimal(interestPortion),
+          lastAutoPrincipalPortion: new Prisma.Decimal(principalPortion),
         },
       });
       updated++;

@@ -12,6 +12,8 @@ interface AllocatorScenarioItemProps {
   presentedReturn?: number | null;
   presentedCurrency?: string;
   presentationLoading?: boolean;
+  /** Tarjetas informativas (p. ej. “100% liquidez”) que no son el reparto principal. */
+  variant?: 'standard' | 'reference';
 }
 
 export function AllocatorScenarioItem({
@@ -21,6 +23,7 @@ export function AllocatorScenarioItem({
   presentedReturn,
   presentedCurrency = 'USD',
   presentationLoading,
+  variant = 'standard',
 }: AllocatorScenarioItemProps) {
   return (
     <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
@@ -37,7 +40,9 @@ export function AllocatorScenarioItem({
             <h3 className="font-bold text-slate-900 text-xs">{scenario.title}</h3>
           </div>
           <span className="bg-white text-slate-800 text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-sm border border-slate-100">
-            Peso modelo: {scenario.priorityScore}
+            {variant === 'reference'
+              ? 'Solo referencia'
+              : `Peso modelo: ${scenario.priorityScore}`}
           </span>
         </div>
 

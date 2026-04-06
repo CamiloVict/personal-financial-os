@@ -32,6 +32,11 @@ export type GoalProjectionResponse = {
     monthlyAmountNeeded: number;
     monthlyShortfall: number;
     monthsRemainingModel: number;
+    horizonOpenEnded?: boolean;
+    targetInPast?: boolean;
+    cashflowMixedCurrency?: boolean;
+    /** Parte del cashflow vino de otras monedas y se unificó con FX a la fecha del cálculo. */
+    savingsFxConversionApplied?: boolean;
     shortfall: number;
     totalIncome: number;
     totalExpense: number;

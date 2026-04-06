@@ -138,7 +138,16 @@ export function GoalProjectionPanel({
             → ahorro modelado:{' '}
             <strong>{formatBookAmount(cashContext.currentMonthlySavings, book)}</strong> · Requerido:{' '}
             <strong>{formatBookAmount(cashContext.monthlyAmountNeeded, book)}</strong> · Plazo:{' '}
-            {cashContext.monthsRemainingModel} meses ({book}).
+            {cashContext.monthsRemainingModel} meses
+            {cashContext.horizonOpenEnded ? ' (sin fecha objetivo, horizonte de planificación)' : ''}
+            {cashContext.targetInPast ? ' · fecha objetivo ya pasó: ritmo de cierre es ilustrativo' : ''}
+            {cashContext.cashflowMixedCurrency
+              ? ' · hay flujos en varias monedas o en moneda distinta a la de la meta: ingreso/gasto mensual unifica todo en la moneda de la meta (FX del cálculo).'
+              : ''}
+            {cashContext.savingsFxConversionApplied
+              ? ' · parte del flujo estaba en otras monedas y se pasó a la moneda de la meta con FX (fecha del cálculo).'
+              : ''}{' '}
+            ({book}).
           </p>
         </div>
       </div>

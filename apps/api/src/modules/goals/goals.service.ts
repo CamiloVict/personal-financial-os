@@ -1,14 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   FeasibilityLevel,
   GoalUtilityCadence,
   GoalUtilityMode,
+  Prisma,
   ScenarioType,
 } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { ConversionService } from '../currency/conversion.service';
 import {
   annualToMonthlyRate,
+  cashflowStreamToMonthlyEquivalent,
   DEFAULT_PROJECTION_SCENARIOS,
+  monthsRemainingForGoal,
   monthsToReachTarget,
   splitContributionVsGrowth,
   utilityImpliedMonthlySavings,
@@ -40,9 +44,16 @@ function normalizeGoalCurrency(c: unknown): string {
   return s === 'USD' ? 'USD' : 'COP';
 }
 
+function normStreamCurrency(c: unknown): string {
+  return String(c ?? 'USD').trim().toUpperCase();
+}
+
 @Injectable()
 export class GoalsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly conversion: ConversionService,
+  ) {}
 
   findAllGoals(userId?: string) {
     return this.prisma.savingGoal.findMany({
@@ -129,6 +140,60 @@ export class GoalsService {
     });
   }
 
+  async listProgressLogs(goalId: string, userId: string) {
+    await this.findOneGoal(goalId, userId);
+    const rows = await this.prisma.goalProgressLog.findMany({
+      where: { goalId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return rows.map((l) => ({
+      id: l.id,
+      goalId: l.goalId,
+      note: l.note,
+      amountDelta: Number(l.amountDelta),
+      createdAt: l.createdAt.toISOString(),
+    }));
+  }
+
+  async addProgressLog(
+    goalId: string,
+    userId: string,
+    body: Record<string, unknown>,
+  ) {
+    const goal = await this.findOneGoal(goalId, userId);
+    const note = String(body.note ?? '').trim();
+    if (!note) throw new BadRequestException('La nota no puede estar vacía');
+    const amountDelta = Math.max(0, Number(body.amountDelta ?? 0));
+    if (!Number.isFinite(amountDelta)) {
+      throw new BadRequestException('Monto inválido');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const log = await tx.goalProgressLog.create({
+        data: {
+          goalId,
+          note,
+          amountDelta: new Prisma.Decimal(amountDelta),
+        },
+      });
+      if (amountDelta > 0) {
+        const next = Number(goal.currentAmount) + amountDelta;
+        await tx.savingGoal.update({
+          where: { id: goalId },
+          data: { currentAmount: new Prisma.Decimal(next) },
+        });
+      }
+      return {
+        id: log.id,
+        goalId: log.goalId,
+        note: log.note,
+        amountDelta: Number(log.amountDelta),
+        createdAt: log.createdAt.toISOString(),
+      };
+    });
+  }
+
   async getLatestScenarioSnapshot(goalId: string, userId: string) {
     const goal = await this.prisma.savingGoal.findFirst({
       where: { id: goalId, userId },
@@ -154,9 +219,9 @@ export class GoalsService {
     if (!goal) throw new NotFoundException('Meta no encontrada');
 
     const streams = await this.prisma.cashflowStream.findMany({
-      where: { userId },
+      where: { userId, isActive: true },
     });
-    const ctx = this.computeGoalCashContext(goal, streams);
+    const ctx = await this.computeGoalCashContext(goal, streams, new Date());
     const pv = ctx.currentAmount;
     const targetBalance = ctx.targetAmount;
 
@@ -236,6 +301,10 @@ export class GoalsService {
         monthlyAmountNeeded: ctx.monthlyAmountNeeded,
         monthlyShortfall: ctx.monthlyShortfall,
         monthsRemainingModel: ctx.monthsRemaining,
+        horizonOpenEnded: ctx.horizonOpenEnded,
+        targetInPast: ctx.targetInPast,
+        cashflowMixedCurrency: ctx.cashflowMixedCurrency,
+        savingsFxConversionApplied: ctx.savingsFxConversionApplied,
         shortfall: ctx.shortfall,
         totalIncome: ctx.totalIncome,
         totalExpense: ctx.totalExpense,
@@ -246,8 +315,9 @@ export class GoalsService {
       strategy,
       disclaimers: [
         'Las tasas de rendimiento son ilustrativas y no constituyen promesa de rentabilidad.',
-        'Los montos objetivo/saldo siguen la moneda de la meta; el cashflow sigue la moneda de cada flujo.',
+        'Los montos objetivo/saldo siguen la moneda de la meta. Se usan todos los flujos activos (ingreso y gasto): equivalente mensual por frecuencia y, si hace falta, conversión a la moneda de la meta con FX a la fecha del cálculo. Sin cotización, ese flujo no entra en el total.',
         'El ahorro mensual del modelo suma (ingresos − gastos) más utilidades hacia la meta solo si configuraste monto o % trimestral; con cadencia manual actualizá el saldo a mano.',
+        'Sin fecha objetivo, el “meses en el modelo” son 12 para estimar un ritmo mensual sugerido.',
       ],
     };
   }
@@ -302,8 +372,42 @@ export class GoalsService {
     };
   }
 
+  /**
+   * Equivalente mensual del flujo en la moneda de la meta (FX a `fxAsOf` si hace falta).
+   * Sin cotización: devuelve 0 para no contaminar el total.
+   */
+  private async streamMonthlyInGoalCurrency(
+    s: {
+      expectedAmount: unknown;
+      currency?: string;
+      frequency?: string;
+      customFrequencyMonths?: number | null;
+    },
+    goalCurrency: string,
+    fxAsOf: Date,
+  ): Promise<{ amount: number; converted: boolean }> {
+    const monthly = cashflowStreamToMonthlyEquivalent(
+      Number(s.expectedAmount),
+      String(s.frequency ?? 'MONTHLY'),
+      s.customFrequencyMonths,
+    );
+    if (!Number.isFinite(monthly) || monthly === 0) {
+      return { amount: 0, converted: false };
+    }
+    const from = normStreamCurrency(s.currency);
+    if (from === goalCurrency.toUpperCase()) {
+      return { amount: monthly, converted: false };
+    }
+    try {
+      const r = await this.conversion.convert(monthly, from, goalCurrency, fxAsOf);
+      return { amount: r.amount, converted: true };
+    } catch {
+      return { amount: 0, converted: false };
+    }
+  }
+
   /** Contexto numérico compartido entre simulación y proyección. */
-  private computeGoalCashContext(
+  private async computeGoalCashContext(
     goal: {
       targetAmount: unknown;
       currentAmount: unknown;
@@ -313,19 +417,52 @@ export class GoalsService {
       utilityValue?: unknown;
       currency?: string | null;
     },
-    streams: { flowType: string; expectedAmount: unknown }[],
+    streams: {
+      flowType: string;
+      expectedAmount: unknown;
+      currency?: string;
+      frequency?: string;
+      customFrequencyMonths?: number | null;
+    }[],
+    fxAsOf: Date,
   ) {
-    const incomeStreams = streams.filter((s) => s.flowType === 'INCOME');
-    const expenseStreams = streams.filter((s) => s.flowType === 'EXPENSE');
+    const goalCurrency = normalizeGoalCurrency(goal.currency);
+    /** Siempre todos los flujos activos: cada uno se lleva a equivalente mensual y a la moneda de la meta.
+     *  (Antes solo se usaban flujos en la misma moneda que la meta y se ignoraba el resto → capacidad de ahorro falsa.) */
+    const scope = streams;
+    const ledgerCurrencies = new Set(
+      streams.map((s) => normStreamCurrency(s.currency)),
+    );
+    const cashflowMixedCurrency =
+      streams.length > 0 &&
+      (ledgerCurrencies.size > 1 ||
+        [...ledgerCurrencies].some((c) => c !== goalCurrency.toUpperCase()));
 
-    const totalIncome = incomeStreams.reduce(
-      (acc, s) => acc + Number(s.expectedAmount),
-      0,
-    );
-    const totalExpense = expenseStreams.reduce(
-      (acc, s) => acc + Number(s.expectedAmount),
-      0,
-    );
+    const incomeStreams = scope.filter((s) => s.flowType === 'INCOME');
+    const expenseStreams = scope.filter((s) => s.flowType === 'EXPENSE');
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+    let savingsFxConversionApplied = false;
+    for (const s of incomeStreams) {
+      const { amount, converted } = await this.streamMonthlyInGoalCurrency(
+        s,
+        goalCurrency,
+        fxAsOf,
+      );
+      if (converted) savingsFxConversionApplied = true;
+      totalIncome += amount;
+    }
+    for (const s of expenseStreams) {
+      const { amount, converted } = await this.streamMonthlyInGoalCurrency(
+        s,
+        goalCurrency,
+        fxAsOf,
+      );
+      if (converted) savingsFxConversionApplied = true;
+      totalExpense += amount;
+    }
+
     const cashflowMonthlySavings = totalIncome - totalExpense;
     const utilityMonthly = utilityImpliedMonthlySavings({
       mode: goal.utilityMode ?? GoalUtilityMode.NONE,
@@ -339,23 +476,29 @@ export class GoalsService {
     const currentAmount = Number(goal.currentAmount || 0);
     const shortfall = targetAmount - currentAmount;
 
-    const targetDate = goal.targetDate ? new Date(goal.targetDate) : new Date();
     const now = new Date();
-    const monthsRemaining = Math.max(
-      1,
-      Math.ceil(
-        (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30),
-      ),
-    );
+    const targetDateObj = goal.targetDate
+      ? new Date(goal.targetDate)
+      : null;
+    const {
+      months: monthsRemaining,
+      openEnded: horizonOpenEnded,
+      targetInPast,
+    } = monthsRemainingForGoal(targetDateObj, now);
 
-    const monthlyAmountNeeded = Math.round(shortfall / monthsRemaining);
+    const monthlyAmountNeeded =
+      shortfall > 0
+        ? Math.round(shortfall / monthsRemaining)
+        : 0;
     const monthlyShortfall = Math.round(
       monthlyAmountNeeded - currentMonthlySavings,
     );
 
     let currentProjectedMonths: number | null = null;
-    if (currentMonthlySavings > 0) {
+    if (shortfall > 0 && currentMonthlySavings > 0) {
       currentProjectedMonths = Math.ceil(shortfall / currentMonthlySavings);
+    } else if (shortfall <= 0) {
+      currentProjectedMonths = 0;
     }
 
     let feasibilityLevel: FeasibilityLevel = FeasibilityLevel.REASONABLE;
@@ -371,12 +514,16 @@ export class GoalsService {
       totalExpense,
       cashflowMonthlySavings,
       utilityMonthly,
-      goalCurrency: normalizeGoalCurrency(goal.currency),
+      goalCurrency,
       currentMonthlySavings,
       targetAmount,
       currentAmount,
       shortfall,
       monthsRemaining,
+      horizonOpenEnded,
+      targetInPast,
+      cashflowMixedCurrency,
+      savingsFxConversionApplied,
       monthlyAmountNeeded,
       monthlyShortfall,
       currentProjectedMonths,
@@ -391,10 +538,10 @@ export class GoalsService {
     if (!goal) throw new NotFoundException('Meta no encontrada');
 
     const streams = await this.prisma.cashflowStream.findMany({
-      where: { userId: goal.userId },
+      where: { userId: goal.userId, isActive: true },
     });
 
-    const ctx = this.computeGoalCashContext(goal, streams);
+    const ctx = await this.computeGoalCashContext(goal, streams, new Date());
     const {
       currentMonthlySavings,
       targetAmount,

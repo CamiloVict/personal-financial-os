@@ -19,6 +19,8 @@ export interface AllocatorPlan {
   availableCapital: number;
   unallocatedCapital: number;
   scenarios: AllocatorScenario[];
+  /** Escenarios informativos: otras formas de usar el mismo sobrante (no suman al “usado” encima). */
+  surplusAlternatives?: AllocatorScenario[];
   explanation: FinancialExplanation;
   confidence: FinancialConfidence;
   engineNotes?: string[];

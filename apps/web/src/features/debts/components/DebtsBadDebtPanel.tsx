@@ -8,6 +8,10 @@ interface DebtsBadDebtPanelProps {
   presentedByDebtId?: Record<string, { amount: number; currency: string }>;
   presentationLoading?: boolean;
   onToggleDebtAutoApply?: (id: string, next: boolean) => void;
+  onSaveDebtTerms?: (
+    id: string,
+    body: { monthlyPayment: number; interestRate: number },
+  ) => void;
   patchDebtPending?: boolean;
 }
 
@@ -16,6 +20,7 @@ export function DebtsBadDebtPanel({
   presentedByDebtId,
   presentationLoading,
   onToggleDebtAutoApply,
+  onSaveDebtTerms,
   patchDebtPending,
 }: DebtsBadDebtPanelProps) {
   return (
@@ -83,8 +88,13 @@ export function DebtsBadDebtPanel({
                 remainingAmount={Number(bd.remainingAmount)}
                 currency={bd.currency ?? 'COP'}
                 monthlyPayment={Number(bd.monthlyPayment ?? 0)}
+                interestRate={Number(bd.interestRate ?? 0)}
                 autoApplyMonthlyPayment={bd.autoApplyMonthlyPayment}
+                lastAutoPaymentMonth={bd.lastAutoPaymentMonth}
+                lastAutoInterestPortion={bd.lastAutoInterestPortion}
+                lastAutoPrincipalPortion={bd.lastAutoPrincipalPortion}
                 onToggleAutoApply={onToggleDebtAutoApply}
+                onSaveTerms={onSaveDebtTerms}
                 patchPending={patchDebtPending}
               />
             </div>

@@ -33,6 +33,7 @@ export function useUpdateGoal(id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.list() });
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.detail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.logs(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.scenarios(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.projection(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
@@ -79,5 +80,38 @@ export function useGoalProjection(goalId: string) {
       apiClient.get<GoalProjectionResponse>(`/goals/${goalId}/projection`),
     enabled: Boolean(goalId),
     staleTime: 30_000,
+  });
+}
+
+export type GoalProgressLogRow = {
+  id: string;
+  goalId: string;
+  note: string;
+  amountDelta: number;
+  createdAt: string;
+};
+
+export function useGoalProgressLogs(goalId: string) {
+  return useQuery({
+    queryKey: queryKeys.goals.logs(goalId),
+    queryFn: () =>
+      apiClient.get<GoalProgressLogRow[]>(`/goals/${goalId}/logs`),
+    enabled: Boolean(goalId),
+  });
+}
+
+export function useAddGoalProgressLog(goalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { note: string; amountDelta?: number }) =>
+      apiClient.post<GoalProgressLogRow>(`/goals/${goalId}/logs`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.logs(goalId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.detail(goalId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.scenarios(goalId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.projection(goalId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
+    },
   });
 }

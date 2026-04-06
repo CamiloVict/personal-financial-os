@@ -27,6 +27,8 @@ export interface BadDebtRow {
   monthlyPayment?: number;
   autoApplyMonthlyPayment?: boolean;
   lastAutoPaymentMonth?: string | null;
+  lastAutoInterestPortion?: number | null;
+  lastAutoPrincipalPortion?: number | null;
 }
 
 export interface GoodDebtRow extends BadDebtRow {
