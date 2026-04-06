@@ -1,6 +1,8 @@
+import { createHash } from 'crypto';
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
@@ -18,6 +20,7 @@ import {
   type NormalizedTaxFinancials,
 } from '@personal-finance-os/tax-engine';
 import {
+  buildTaxCalculationAuditPayload,
   createNode,
   emptyFinancialExplanation,
   mergeFinancialExplanations,
@@ -26,14 +29,105 @@ import {
 import { augmentTaxExplanation } from '../../common/explanation/tax-context';
 import { ConfidenceService } from '../confidence/confidence.service';
 
+export type TaxCalculationAuditKind =
+  | 'PLAN_RECALC'
+  | 'DECLARATION_INSIGHTS'
+  | 'LEVER_PREVIEW';
+
 @Injectable()
 export class TaxService {
+  private readonly logger = new Logger(TaxService.name);
   private readonly engine = new ColombiaTaxEngineAG2026();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly confidenceService: ConfidenceService,
   ) {}
+
+  private stableJsonStringify(obj: unknown): string {
+    const sort = (v: unknown): unknown => {
+      if (v === null || typeof v !== 'object') return v;
+      if (Array.isArray(v)) return v.map(sort);
+      const o = v as Record<string, unknown>;
+      const keys = Object.keys(o).sort();
+      const out: Record<string, unknown> = {};
+      for (const k of keys) out[k] = sort(o[k]);
+      return out;
+    };
+    return JSON.stringify(sort(obj));
+  }
+
+  private hashTaxInputFingerprint(obj: Record<string, unknown>): string {
+    return createHash('sha256')
+      .update(this.stableJsonStringify(obj))
+      .digest('hex');
+  }
+
+  /**
+   * Alinea contexto regulatorio, persiste auditoría append-only y opcionalmente loguea.
+   * `TAX_AUDIT_PERSIST=0` desactiva escritura en BD (p. ej. tests).
+   * `TAX_AUDIT_LOG=1` añade línea estructurada en logs.
+   */
+  private async finalizeTaxRegulatoryContext(
+    explanation: FinancialExplanation,
+    opts: {
+      taxYear: number;
+      jurisdiction?: string;
+      userId: string;
+      profileId: string;
+      kind: TaxCalculationAuditKind;
+      inputFingerprint: Record<string, unknown>;
+    },
+  ): Promise<FinancialExplanation> {
+    if (!explanation.regulatoryContext) return explanation;
+    const next: FinancialExplanation = {
+      ...explanation,
+      regulatoryContext: {
+        ...explanation.regulatoryContext,
+        taxYear: opts.taxYear,
+        jurisdiction:
+          opts.jurisdiction ?? explanation.regulatoryContext.jurisdiction,
+        computedAt: new Date().toISOString(),
+      },
+    };
+    const payload = buildTaxCalculationAuditPayload(next, {
+      taxYear: opts.taxYear,
+    });
+    const inputHash = this.hashTaxInputFingerprint(opts.inputFingerprint);
+
+    if (process.env.TAX_AUDIT_LOG === '1') {
+      this.logger.log(
+        `tax.calculation.audit ${JSON.stringify({ ...payload, inputHash })}`,
+      );
+    }
+
+    if (process.env.TAX_AUDIT_PERSIST !== '0') {
+      try {
+        const auditJson = JSON.parse(JSON.stringify(payload)) as Prisma.InputJsonValue;
+        await this.prisma.taxCalculationAudit.create({
+          data: {
+            userId: opts.userId,
+            profileId: opts.profileId,
+            kind: opts.kind,
+            taxYear: opts.taxYear,
+            jurisdiction: next.regulatoryContext!.jurisdiction,
+            lawPackageId: payload.lawPackageId,
+            engineVersion: payload.engineVersion,
+            domain: payload.domain,
+            appliedRuleRefs: payload.appliedRuleRefsInOrder,
+            auditPayload: auditJson,
+            inputHash,
+          },
+        });
+      } catch (err) {
+        this.logger.warn(
+          `TaxCalculationAudit persist failed: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
+    return next;
+  }
 
   /**
    * Agrega gastos (cashflow), deudas e inversiones activas al paquete que consume el motor CO-AG2026.
@@ -294,7 +388,7 @@ export class TaxService {
       UVT_2026,
       normalized,
     );
-    const explanation = augmentTaxExplanation(coreExpl, {
+    let explanation = augmentTaxExplanation(coreExpl, {
       incomeStreamCount: incomeStreams.length,
       engineVersion: this.engine.version,
       missingConditions: [
@@ -305,6 +399,28 @@ export class TaxService {
         'Gastos activos, deudas e inversiones (cashflow/deudas/módulo inversiones) alimentan deducciones e intereses hipotecarios cuando el modelo puede inferirlos.',
         ...normalized.warnings,
       ],
+    });
+    explanation = await this.finalizeTaxRegulatoryContext(explanation, {
+      taxYear: profile.taxYear,
+      jurisdiction: profile.jurisdiction ?? 'CO',
+      userId,
+      profileId: profile.id,
+      kind: 'PLAN_RECALC',
+      inputFingerprint: {
+        incomeStreamCount: incomeStreams.length,
+        classificationRefs: classifications.map((c) => c.referenceId).sort(),
+        normalizedDeductionLines: normalized.deductions.length,
+        normalizedLiabilities: normalized.liabilities.length,
+        normalizedInvestments: normalized.investments.length,
+        warningsCount: normalized.warnings.length,
+        benefitFlags: {
+          hasDependents: profile.hasDependents,
+          hasVoluntaryPension: profile.hasVoluntaryPension,
+          hasAFC: profile.hasAFC,
+          hasPrepaidMedicine: profile.hasPrepaidMedicine,
+          hasHousingInterest: profile.hasHousingInterest,
+        },
+      },
     });
 
     const confidence = await this.confidenceService.evaluateTax(userId);
@@ -546,7 +662,7 @@ export class TaxService {
       UVT_2026,
       normalized,
     );
-    const explanation = augmentTaxExplanation(coreDeclExpl, {
+    let explanation = augmentTaxExplanation(coreDeclExpl, {
       incomeStreamCount: streams.length,
       engineVersion: this.engine.version,
       missingConditions: [
@@ -558,6 +674,22 @@ export class TaxService {
         `Umbral filing orientativo: ingreso ≥ ${approxFilingThresholdUvt} UVT × ${UVT_2026} COP/UVT.`,
         ...normalized.warnings,
       ],
+    });
+    explanation = await this.finalizeTaxRegulatoryContext(explanation, {
+      taxYear: profile.taxYear,
+      jurisdiction: profile.jurisdiction ?? 'CO',
+      userId,
+      profileId: profile.id,
+      kind: 'DECLARATION_INSIGHTS',
+      inputFingerprint: {
+        incomeStreamCount: streams.length,
+        classificationRefs: classifications.map((c) => c.referenceId).sort(),
+        leverRowIds: leverComparison.map((r) => r.id).sort(),
+        normalizedDeductionLines: normalized.deductions.length,
+        normalizedLiabilities: normalized.liabilities.length,
+        normalizedInvestments: normalized.investments.length,
+        warningsCount: normalized.warnings.length,
+      },
     });
 
     const confidence = await this.confidenceService.evaluateTax(userId);
@@ -633,12 +765,27 @@ export class TaxService {
       );
     const conservativeTax = calculateColombiaIncomeTaxUVT2026(totalAnnual);
 
-    const explanation = mergeFinancialExplanations(corePreviewExpl, {
+    let explanation = mergeFinancialExplanations(corePreviewExpl, {
       assumptions: [
         `Palancas simuladas (combinación): ${unique.join(', ')}.`,
         'Resto de beneficios en cero salvo datos de residencia del perfil (applyTaxLeverSelection).',
         ...normalized.warnings,
       ],
+    });
+    explanation = await this.finalizeTaxRegulatoryContext(explanation, {
+      taxYear: profile.taxYear,
+      jurisdiction: profile.jurisdiction ?? 'CO',
+      userId,
+      profileId: profile.id,
+      kind: 'LEVER_PREVIEW',
+      inputFingerprint: {
+        leverIds: [...unique].sort(),
+        incomeStreamCount: streams.length,
+        classificationRefs: classifications.map((c) => c.referenceId).sort(),
+        normalizedDeductionLines: normalized.deductions.length,
+        normalizedLiabilities: normalized.liabilities.length,
+        normalizedInvestments: normalized.investments.length,
+      },
     });
 
     const confidence = await this.confidenceService.evaluateTax(userId);
