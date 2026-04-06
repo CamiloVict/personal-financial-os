@@ -17,6 +17,7 @@ import {
   TaxScenarios,
   TaxMissedOpportunities,
   TaxDeclarationSection,
+  TaxNormalizationPanel,
 } from '@/features/tax/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
@@ -83,6 +84,9 @@ export default function TaxDashboard() {
 
   const saveProfileMutation = useSaveTaxProfile();
   const analyzeMutation = useAnalyzeTax();
+
+  const normalizedForTax =
+    analyzeMutation.data?.normalizedForTax ?? plan?.normalizedForTax ?? null;
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,6 +288,15 @@ export default function TaxDashboard() {
               </button>
             </div>
           </div>
+
+          <TaxNormalizationPanel
+            data={normalizedForTax}
+            emptyHint={
+              plan
+                ? 'Este plan puede haberse generado antes de guardar la normalización fiscal, o no hay aún gastos/deudas/inversiones que el modelo use. Pulsa Recalcular motor.'
+                : undefined
+            }
+          />
 
           {loadingDeclaration ? (
             <div className="h-32 rounded-xl bg-slate-100 animate-pulse border border-slate-200" aria-hidden />

@@ -5,6 +5,11 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/glossary(.*)',
+  /**
+   * Proxy del API Nest vía `next.config.js` → `rewrites`. La autenticación la aplica el backend (Bearer);
+   * si Clerk protege aquí, las peticiones `fetch` a mismo origen fallan o devuelven HTML en lugar de JSON.
+   */
+  '/api/nest(.*)',
 ]);
 
 const clerk = clerkMiddleware(async (auth, request) => {

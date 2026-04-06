@@ -41,6 +41,8 @@ export function DevSessionBar() {
   };
 
   const host = API_URL.replace(/^https?:\/\//, '');
+  const viaProxy =
+    typeof window !== 'undefined' && process.env.NEXT_PUBLIC_API_DIRECT !== 'true';
 
   return (
     <div className="border-b border-slate-200 bg-slate-100/95 text-[10px] text-slate-600 px-3 sm:px-4 py-1 flex flex-wrap items-center gap-2 justify-between gap-y-1">
@@ -50,8 +52,9 @@ export function DevSessionBar() {
         ) : ok === false ? (
           <WifiOff className="w-3 h-3 text-red-500 shrink-0" aria-hidden />
         ) : null}
-        <span className="font-mono truncate" title={API_URL}>
-          API {host}
+        <span className="font-mono truncate" title={viaProxy ? `Proxy /api/nest → ${API_URL}` : API_URL}>
+          {viaProxy ? '/api/nest → ' : ''}
+          {host}
         </span>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">

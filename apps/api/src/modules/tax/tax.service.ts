@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import {
   ColombiaTaxEngineAG2026,
@@ -12,6 +13,9 @@ import {
   computeOptimizedTaxSnapshotWithExplanation,
   calculateColombiaIncomeTaxUVT2026,
   CO_AG2026_NORMATIVE_REFS,
+  normalizeFinancialDataForTax,
+  UVT_2026,
+  type NormalizedTaxFinancials,
 } from '@personal-finance-os/tax-engine';
 import {
   createNode,
@@ -30,6 +34,56 @@ export class TaxService {
     private readonly prisma: PrismaService,
     private readonly confidenceService: ConfidenceService,
   ) {}
+
+  /**
+   * Agrega gastos (cashflow), deudas e inversiones activas al paquete que consume el motor CO-AG2026.
+   */
+  private async loadNormalizedTaxFinancials(
+    userId: string,
+  ): Promise<NormalizedTaxFinancials> {
+    const [expenseStreams, debts, positions] = await Promise.all([
+      this.prisma.cashflowStream.findMany({
+        where: { userId, flowType: 'EXPENSE', isActive: true },
+        include: { category: true },
+      }),
+      this.prisma.debt.findMany({ where: { userId } }),
+      this.prisma.investmentPosition.findMany({
+        where: { userId, status: 'ACTIVE' },
+        include: { type: true },
+      }),
+    ]);
+
+    return normalizeFinancialDataForTax({
+      expenseStreams: expenseStreams.map((s) => ({
+        id: s.id,
+        name: s.name,
+        expectedAmount: Number(s.expectedAmount),
+        frequency: s.frequency,
+        customFrequencyMonths: s.customFrequencyMonths,
+        categoryName: s.category.name,
+        currency: s.currency,
+        fiscalExpenseHint: s.category.fiscalExpenseHint,
+      })),
+      debts: debts.map((d) => ({
+        id: d.id,
+        name: d.name,
+        debtKind: d.debtKind,
+        remainingAmount: Number(d.remainingAmount),
+        interestRate:
+          d.interestRate != null ? Number(d.interestRate) : null,
+        monthlyPayment:
+          d.monthlyPayment != null ? Number(d.monthlyPayment) : null,
+        currency: d.currency,
+      })),
+      investments: positions.map((p) => ({
+        positionId: p.id,
+        name: p.name,
+        typeId: p.typeId,
+        typeName: p.type.name,
+        fiscalAssetTreatment: p.type.fiscalAssetTreatment,
+      })),
+    });
+  }
 
   async getProfile(userId: string) {
     return this.prisma.taxProfile.findFirst({
@@ -157,6 +211,8 @@ export class TaxService {
       this.engine.classifyIncome(stream, profileInput),
     );
 
+    const normalized = await this.loadNormalizedTaxFinancials(userId);
+
     for (const c of classifications) {
       const existing = await this.prisma.taxIncomeClassification.findFirst({
         where: { profileId: profile.id, referenceId: c.referenceId },
@@ -191,10 +247,16 @@ export class TaxService {
     const scenarios = this.engine.generateScenarios(
       profileInput,
       classifications,
+      normalized,
     );
 
     const plan = await this.prisma.taxPlan.create({
-      data: { profileId: profile.id },
+      data: {
+        profileId: profile.id,
+        normalizedSnapshot: JSON.parse(
+          JSON.stringify(normalized),
+        ) as Prisma.InputJsonValue,
+      },
     });
 
     for (const sc of scenarios) {
@@ -229,6 +291,8 @@ export class TaxService {
       profileInput,
       totalIncome,
       foreignTaxes,
+      UVT_2026,
+      normalized,
     );
     const explanation = augmentTaxExplanation(coreExpl, {
       incomeStreamCount: incomeStreams.length,
@@ -238,6 +302,8 @@ export class TaxService {
       ],
       extraAssumptions: [
         'Escenarios “conservador” y “optimizado” se generan con el mismo ingreso clasificado.',
+        'Gastos activos, deudas e inversiones (cashflow/deudas/módulo inversiones) alimentan deducciones e intereses hipotecarios cuando el modelo puede inferirlos.',
+        ...normalized.warnings,
       ],
     });
 
@@ -249,6 +315,7 @@ export class TaxService {
       scenarios,
       explanation,
       confidence,
+      normalizedForTax: normalized,
     };
   }
 
@@ -372,8 +439,11 @@ export class TaxService {
     };
 
     return {
-      ...latestPlan,
+      id: latestPlan.id,
+      profileId: latestPlan.profileId,
+      generatedAt: latestPlan.generatedAt,
       scenarios: latestPlan.scenarios,
+      normalizedForTax: latestPlan.normalizedSnapshot,
       explanation,
       confidence,
     };
@@ -423,10 +493,13 @@ export class TaxService {
       this.engine.classifyIncome(stream, profileInput),
     );
 
+    const normalized = await this.loadNormalizedTaxFinancials(userId);
+
     const totalAnnual = incomeStreams.reduce((a, s) => a + s.amount, 0);
     let leverComparison = this.engine.compareLeverScenarios(
       profileInput,
       classifications,
+      normalized,
     );
 
     /** Sin ingresos en Cashflow el motor devuelve []; igual mostramos tarjeta + gráfico en cero. */
@@ -455,7 +528,6 @@ export class TaxService {
       ];
     }
 
-    const UVT_2026 = 48000;
     const approxFilingThresholdUvt = 1400;
     const exceedsMassThreshold =
       totalAnnual >= approxFilingThresholdUvt * UVT_2026;
@@ -471,6 +543,8 @@ export class TaxService {
       profileInput,
       totalAnnual,
       foreignTaxes,
+      UVT_2026,
+      normalized,
     );
     const explanation = augmentTaxExplanation(coreDeclExpl, {
       incomeStreamCount: streams.length,
@@ -482,6 +556,7 @@ export class TaxService {
         'Comparación por palanca: cada fila recalcula el motor con un subconjunto de beneficios.',
         `Umbral ingreso “establecido”: stream con antigüedad > 365 días.`,
         `Umbral filing orientativo: ingreso ≥ ${approxFilingThresholdUvt} UVT × ${UVT_2026} COP/UVT.`,
+        ...normalized.warnings,
       ],
     });
 
@@ -540,6 +615,7 @@ export class TaxService {
     const classifications = incomeStreams.map((stream) =>
       this.engine.classifyIncome(stream, profileInput),
     );
+    const normalized = await this.loadNormalizedTaxFinancials(userId);
     const totalAnnual = incomeStreams.reduce((a, s) => a + s.amount, 0);
     const foreignTaxes = classifications.reduce(
       (a, c) => a + (c.foreignTaxPaid || 0),
@@ -552,6 +628,8 @@ export class TaxService {
         patched,
         totalAnnual,
         foreignTaxes,
+        UVT_2026,
+        normalized,
       );
     const conservativeTax = calculateColombiaIncomeTaxUVT2026(totalAnnual);
 
@@ -559,6 +637,7 @@ export class TaxService {
       assumptions: [
         `Palancas simuladas (combinación): ${unique.join(', ')}.`,
         'Resto de beneficios en cero salvo datos de residencia del perfil (applyTaxLeverSelection).',
+        ...normalized.warnings,
       ],
     });
 
