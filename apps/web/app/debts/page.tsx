@@ -1,8 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Activity } from 'lucide-react';
-import { useDebtsList, useLeverageAnalysis } from '@/features/debts/api/queries';
+import {
+  useDebtsList,
+  useLeverageAnalysis,
+  usePatchDebt,
+} from '@/features/debts/api/queries';
 import type { LeverageAnalysis } from '@/features/debts/types';
 import {
   DebtsPageHeader,
@@ -22,7 +26,15 @@ import { useGlobalStore } from '@/shared/store/global';
 export default function DebtsPage() {
   const { data: analysis, isLoading } = useLeverageAnalysis();
   const { data: debtsList = [] } = useDebtsList(!isLoading && !!analysis);
+  const patchDebt = usePatchDebt();
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
+
+  const onToggleDebtAutoApply = useCallback(
+    (id: string, autoApplyMonthlyPayment: boolean) => {
+      patchDebt.mutate({ id, body: { autoApplyMonthlyPayment } });
+    },
+    [patchDebt],
+  );
 
   const debtLines = useMemo(() => linesFromDebts(debtsList), [debtsList]);
   const { data: presRows, isLoading: presLoading } = useValuationPresentation(
@@ -92,11 +104,15 @@ export default function DebtsPage() {
               goodDebts={a.goodDebts}
               presentedByDebtId={presentedByDebtId}
               presentationLoading={presLoading}
+              onToggleDebtAutoApply={onToggleDebtAutoApply}
+              patchDebtPending={patchDebt.isPending}
             />
             <DebtsBadDebtPanel
               badDebts={a.badDebts}
               presentedByDebtId={presentedByDebtId}
               presentationLoading={presLoading}
+              onToggleDebtAutoApply={onToggleDebtAutoApply}
+              patchDebtPending={patchDebt.isPending}
             />
           </div>
         </div>

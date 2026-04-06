@@ -6,6 +6,9 @@
 # 3) fly postgres attach --app personal-finance-os-api pfo-db
 # 4) fly secrets set CLERK_SECRET_KEY="sk_..."
 # 5) fly deploy
+#
+# Cuotas de deuda automáticas: se aplican al abrir /debts (GET) y con cron diario UTC.
+# Opcional: CRON_SECRET + POST /debts/internal/run-monthly-amortization (header x-cron-secret) desde un scheduler externo si la VM duerme.
 
 app = "personal-finance-os-api"
 # bog deprecada en Fly — no permite VMs nuevas; gru (São Paulo) suele ser la más cercana a CO

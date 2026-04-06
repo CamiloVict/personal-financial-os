@@ -464,6 +464,10 @@ model Debt {
   /// MORTGAGE | AUTO_LOAN | CREDIT_CARD | PERSONAL_LOAN | BUSINESS_LOAN (texto para compatibilidad con el API)
   debtKind         String?
   monthlyPayment   Decimal?
+  /// Si es true y hay monthlyPayment, se reduce remainingAmount una vez por mes (UTC), vía cron o endpoint interno.
+  autoApplyMonthlyPayment Boolean  @default(false)
+  /// YYYY-MM (UTC) del último mes en que se aplicó la cuota automática.
+  lastAutoPaymentMonth    String?  @db.VarChar(7)
   linkedPositionId String?
   linkedPosition   InvestmentPosition? @relation(fields: [linkedPositionId], references: [id], onDelete: SetNull)
 

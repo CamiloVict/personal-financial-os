@@ -20,9 +20,13 @@ export interface LeverageAnalysis {
 export interface BadDebtRow {
   id: string;
   name: string;
+  totalAmount: number;
   remainingAmount: number;
   interestRate: number;
   currency?: string;
+  monthlyPayment?: number;
+  autoApplyMonthlyPayment?: boolean;
+  lastAutoPaymentMonth?: string | null;
 }
 
 export interface GoodDebtRow extends BadDebtRow {

@@ -2,6 +2,47 @@ import React from 'react';
 import { Calendar, ListPlus, Trash2 } from 'lucide-react';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 
+function PositionProgressBlock({ pos }: { pos: any }) {
+  const cap = Number(pos.initialCapital);
+  const val = Number(pos.currentEstimatedValue);
+  const roiPct = cap > 0 ? ((val - cap) / cap) * 100 : null;
+  const ratioPct = cap > 0 ? Math.min(150, Math.max(0, (val / cap) * 100)) : 0;
+  const events = pos._count?.events ?? 0;
+  return (
+    <div className="px-5 pb-3 border-b border-slate-100 bg-white/50">
+      <div className="flex flex-wrap justify-between items-center gap-2 text-[10px] text-slate-500 mb-1">
+        <span className="font-semibold uppercase tracking-wide">
+          Progreso (nominal, libro)
+        </span>
+        {roiPct != null ? (
+          <span
+            className={`font-bold tabular-nums ${roiPct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
+          >
+            {roiPct >= 0 ? '+' : ''}
+            {roiPct.toFixed(1)}% rendimiento
+          </span>
+        ) : (
+          <span className="text-slate-400">—</span>
+        )}
+      </div>
+      <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-blue-500 transition-all duration-500"
+          style={{ width: `${ratioPct}%` }}
+          title="Valor actual / capital (tope visual 150%)"
+        />
+      </div>
+      <p className="text-[9px] text-slate-400 mt-1">
+        {events} movimiento{events === 1 ? '' : 's'} registrado
+        {events === 1 ? '' : 's'}
+        {events > 0
+          ? ' · Los aportes, retiros y reinversiones actualizan capital y valor vía “Registrar evento”.'
+          : ' · Usa “Registrar evento” para aportes, reinversión de utilidades o cambios de valorización.'}
+      </p>
+    </div>
+  );
+}
+
 interface PositionListProps {
   positions: any[];
   onSelectPosition: (pos: any) => void;
@@ -108,6 +149,8 @@ export function PositionList({
               <div className="text-slate-800 font-medium text-sm">{new Date(pos.startDate).toLocaleDateString()}</div>
             </div>
           </div>
+
+          <PositionProgressBlock pos={pos} />
 
           <div className="p-4 border-t border-slate-100 bg-white flex flex-wrap justify-end gap-3 transition-opacity hover-reveal-actions">
             <button

@@ -1,17 +1,22 @@
 import { CreditCard, TrendingDown } from 'lucide-react';
 import type { BadDebtRow } from '../types';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+import { DebtRepaymentProgress } from './DebtRepaymentProgress';
 
 interface DebtsBadDebtPanelProps {
   badDebts: BadDebtRow[];
   presentedByDebtId?: Record<string, { amount: number; currency: string }>;
   presentationLoading?: boolean;
+  onToggleDebtAutoApply?: (id: string, next: boolean) => void;
+  patchDebtPending?: boolean;
 }
 
 export function DebtsBadDebtPanel({
   badDebts,
   presentedByDebtId,
   presentationLoading,
+  onToggleDebtAutoApply,
+  patchDebtPending,
 }: DebtsBadDebtPanelProps) {
   return (
     <div className="glass-card rounded-xl p-4 shadow-sm border border-rose-100">
@@ -72,6 +77,16 @@ export function DebtsBadDebtPanel({
                   </p>
                 </div>
               </div>
+              <DebtRepaymentProgress
+                debtId={bd.id}
+                totalAmount={Number(bd.totalAmount)}
+                remainingAmount={Number(bd.remainingAmount)}
+                currency={bd.currency ?? 'COP'}
+                monthlyPayment={Number(bd.monthlyPayment ?? 0)}
+                autoApplyMonthlyPayment={bd.autoApplyMonthlyPayment}
+                onToggleAutoApply={onToggleDebtAutoApply}
+                patchPending={patchDebtPending}
+              />
             </div>
           ))}
         </div>

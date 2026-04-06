@@ -28,3 +28,15 @@ export function useCreateDebt() {
     },
   });
 }
+
+export function usePatchDebt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
+      apiClient.patch<unknown>(`/debts/${id}`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: debtsQueryKeys.leverageAnalysis() });
+      queryClient.invalidateQueries({ queryKey: debtsQueryKeys.list() });
+    },
+  });
+}

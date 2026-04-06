@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { buildLeverageAnalysisExplanation } from '../../common/explanation/debts-leverage-explanation';
 import { ConfidenceService } from '../confidence/confidence.service';
 import { LeverageAnalysisResult, DebtItem } from './debts.contracts';
+import { DebtsAmortizationService } from './debts-amortization.service';
 
 @Injectable()
 export class DebtsService {
   constructor(
     private prisma: PrismaService,
     private readonly confidenceService: ConfidenceService,
+    private readonly debtsAmortization: DebtsAmortizationService,
   ) {}
 
   private mapDebt(d: {
@@ -21,6 +23,8 @@ export class DebtsService {
     interestRate: unknown;
     currency: string;
     monthlyPayment: unknown;
+    autoApplyMonthlyPayment?: boolean;
+    lastAutoPaymentMonth?: string | null;
     linkedPositionId: string | null;
     createdAt: Date;
   }): DebtItem {
@@ -34,12 +38,16 @@ export class DebtsService {
       interestRate: Number(d.interestRate ?? 0),
       currency: d.currency,
       monthlyPayment: Number(d.monthlyPayment ?? 0),
+      autoApplyMonthlyPayment: Boolean(d.autoApplyMonthlyPayment),
+      lastAutoPaymentMonth: d.lastAutoPaymentMonth ?? null,
       linkedAssetId: d.linkedPositionId,
       createdAt: d.createdAt.toISOString(),
     };
   }
 
   async getLeverageAnalysis(userId: string): Promise<LeverageAnalysisResult> {
+    await this.debtsAmortization.applyScheduledPayments();
+
     const userDebts = await this.prisma.debt.findMany({
       where: {
         userId,
@@ -169,6 +177,8 @@ export class DebtsService {
   }
 
   async getAllDebts(userId: string): Promise<DebtItem[]> {
+    await this.debtsAmortization.applyScheduledPayments();
+
     const rows = await this.prisma.debt.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -188,7 +198,14 @@ export class DebtsService {
       interestRate,
       dueDate,
       monthlyPayment,
+      autoApplyMonthlyPayment,
     } = debt as any;
+
+    const mp = Number(monthlyPayment) || 0;
+    const auto =
+      typeof autoApplyMonthlyPayment === 'boolean'
+        ? autoApplyMonthlyPayment
+        : mp > 0;
 
     return this.prisma.debt.create({
       data: {
@@ -202,7 +219,38 @@ export class DebtsService {
         monthlyPayment: monthlyPayment ?? null,
         debtKind: type ?? null,
         linkedPositionId: linkedAssetId ?? null,
-      },
+        autoApplyMonthlyPayment: auto && mp > 0,
+      } as any,
     });
+  }
+
+  async patchDebt(userId: string, id: string, body: Record<string, unknown>) {
+    const row = await this.prisma.debt.findFirst({ where: { id, userId } });
+    if (!row) throw new NotFoundException('Deuda no encontrada');
+
+    const data: Record<string, unknown> = {};
+    if (typeof body.autoApplyMonthlyPayment === 'boolean') {
+      data.autoApplyMonthlyPayment = body.autoApplyMonthlyPayment;
+    }
+    if (body.remainingAmount !== undefined) {
+      data.remainingAmount = body.remainingAmount;
+    }
+    if (body.monthlyPayment !== undefined) {
+      data.monthlyPayment = body.monthlyPayment;
+    }
+    if (Object.keys(data).length === 0) {
+      return this.mapDebt(row as any);
+    }
+
+    const updated = await this.prisma.debt.update({
+      where: { id },
+      data: data as any,
+    });
+    return this.mapDebt(updated as any);
+  }
+
+  /** Endpoint interno / cron: aplica cuotas automáticas en todas las deudas elegibles. */
+  runScheduledAmortizationForOps() {
+    return this.debtsAmortization.applyScheduledPayments();
   }
 }

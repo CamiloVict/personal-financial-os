@@ -40,7 +40,10 @@ export class InvestmentsService {
   getPositions(userId?: string) {
     return this.prisma.investmentPosition.findMany({
       where: userId ? { userId } : undefined,
-      include: { type: true },
+      include: {
+        type: true,
+        _count: { select: { events: true } },
+      },
       orderBy: { name: 'asc' },
     });
   }
@@ -113,6 +116,9 @@ export class InvestmentsService {
         case 'PROFIT_REINVESTMENT':
           initialCapital += amount;
           currentEstimatedValue += amount;
+          break;
+        case 'PROFIT_DISTRIBUTION':
+          currentEstimatedValue -= amount;
           break;
       }
 

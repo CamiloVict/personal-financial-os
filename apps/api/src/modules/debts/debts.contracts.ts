@@ -13,6 +13,8 @@ export interface DebtItem {
   interestRate: number; // e.g. 12% EA
   currency: string;
   monthlyPayment: number;
+  autoApplyMonthlyPayment: boolean;
+  lastAutoPaymentMonth?: string | null;
   linkedAssetId?: string | null;
   createdAt: string;
 }
