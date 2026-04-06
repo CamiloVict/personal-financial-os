@@ -30,10 +30,16 @@ export function useDeleteInvestmentType() {
   });
 }
 
+export type InvestmentPositionsPayload = {
+  positions: any[];
+  confidence: import('@personal-finance-os/explanation').FinancialConfidence;
+};
+
 export function useInvestmentPositions() {
   return useQuery({
     queryKey: queryKeys.investments.positions(),
-    queryFn: () => apiClient.get<any[]>('/investments/positions'),
+    queryFn: () =>
+      apiClient.get<InvestmentPositionsPayload>('/investments/positions'),
   });
 }
 

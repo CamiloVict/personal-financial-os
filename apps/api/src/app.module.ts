@@ -15,11 +15,13 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AllocatorModule } from './modules/allocator/allocator.module';
 import { SimulatorModule } from './modules/simulator/simulator.module';
 import { DebtsModule } from './modules/debts/debts.module';
+import { ConfidenceModule } from './modules/confidence/confidence.module';
 
 @Module({
   imports: [
     AuthModule,
     PrismaModule,
+    ConfidenceModule,
     CashflowModule,
     InvestmentsModule,
     GoalsModule,

@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { createNode, emptyFinancialExplanation } from '@personal-finance-os/explanation';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { ConfidenceService } from '../confidence/confidence.service';
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly confidenceService: ConfidenceService,
+  ) {}
 
   async getCashflowDistribution(userId: string) {
     const streams = await this.prisma.cashflowStream.findMany({
@@ -63,6 +67,9 @@ export class AnalyticsService {
       normativeRefs: [],
     };
 
+    const confidence =
+      await this.confidenceService.evaluateCashflow(userId);
+
     return {
       expenses: Object.entries(expenseByCategory).map(([name, value]) => ({
         name,
@@ -73,6 +80,7 @@ export class AnalyticsService {
         value,
       })),
       explanation,
+      confidence,
     };
   }
 
@@ -128,6 +136,9 @@ export class AnalyticsService {
       normativeRefs: [],
     };
 
+    const confidence =
+      await this.confidenceService.evaluateInvestments(userId);
+
     return {
       netWorth: totalInvestments,
       totalReturn,
@@ -136,22 +147,55 @@ export class AnalyticsService {
         value,
       })),
       explanation,
+      confidence,
     };
   }
 
   async getTaxAnalytics(userId: string) {
+    const confidence = await this.confidenceService.evaluateTax(userId);
+
     const profile = await this.prisma.taxProfile.findFirst({
       where: { userId },
       orderBy: [{ taxYear: 'desc' }, { updatedAt: 'desc' }],
     });
-    if (!profile) return null;
+    if (!profile) {
+      const explanation = {
+        ...emptyFinancialExplanation(
+          'analytics.tax_dashboard',
+          'Sin perfil fiscal: no hay escenarios guardados',
+        ),
+        assumptions: ['Completa tu perfil y genera un plan en Fiscal.'],
+        missingData: ['TaxProfile y TaxPlan'],
+        normativeRefs: [],
+      };
+      return {
+        scenariosComparison: null,
+        explanation,
+        confidence,
+      };
+    }
 
     const plan = await this.prisma.taxPlan.findFirst({
       where: { profileId: profile.id },
       orderBy: { generatedAt: 'desc' },
       include: { scenarios: true },
     });
-    if (!plan) return null;
+    if (!plan) {
+      const explanation = {
+        ...emptyFinancialExplanation(
+          'analytics.tax_dashboard',
+          'Perfil sin plan fiscal persistido',
+        ),
+        assumptions: ['Genera un plan en Fiscal para ver comparativa aquí.'],
+        missingData: ['TaxPlan'],
+        normativeRefs: [],
+      };
+      return {
+        scenariosComparison: null,
+        explanation,
+        confidence,
+      };
+    }
 
     const explanation = {
       ...emptyFinancialExplanation(
@@ -183,6 +227,7 @@ export class AnalyticsService {
           Number(s.estimatedDeductions) + Number(s.estimatedExemptions),
       })),
       explanation,
+      confidence,
     };
   }
 }

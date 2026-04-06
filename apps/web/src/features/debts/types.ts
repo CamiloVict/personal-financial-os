@@ -1,4 +1,7 @@
-import type { FinancialExplanation } from '@personal-finance-os/explanation';
+import type {
+  FinancialConfidence,
+  FinancialExplanation,
+} from '@personal-finance-os/explanation';
 
 /** Respuesta de GET /debts/leverage-analysis (usuario autenticado) */
 export interface LeverageAnalysis {
@@ -11,6 +14,7 @@ export interface LeverageAnalysis {
   leverageRatio: number;
   leverageHealthStatus: string;
   explanation: FinancialExplanation;
+  confidence: FinancialConfidence;
 }
 
 export interface BadDebtRow {

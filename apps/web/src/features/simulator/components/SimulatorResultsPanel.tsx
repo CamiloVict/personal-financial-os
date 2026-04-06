@@ -1,6 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { SimulationResult } from '../types';
 import { getMetricClasses } from '../utils/metricStyles';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 interface SimulatorResultsPanelProps {
   result: SimulationResult;
@@ -9,6 +10,9 @@ interface SimulatorResultsPanelProps {
 export function SimulatorResultsPanel({ result }: SimulatorResultsPanelProps) {
   return (
     <div className="space-y-3 animate-in slide-in-from-right-8 duration-500 h-full flex flex-col">
+      <div className="flex justify-end">
+        <ConfidenceBadge confidence={result.confidence} />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="glass-card p-2 rounded-lg border border-slate-200 shadow-sm bg-white">
           <h3 className="text-[8px] font-bold text-slate-500 uppercase tracking-wider mb-1">Veredicto</h3>

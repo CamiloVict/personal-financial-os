@@ -1,4 +1,7 @@
-import type { FinancialExplanation } from '@personal-finance-os/explanation';
+import type {
+  FinancialConfidence,
+  FinancialExplanation,
+} from '@personal-finance-os/explanation';
 
 export interface AllocatorInput {
   /** Ignored by the API; usuario viene del token. Opcional por compatibilidad con clientes antiguos. */
@@ -24,4 +27,5 @@ export interface AllocatorResult {
   unallocatedCapital: number;
   recommendations: AllocationRecommendation[];
   explanation: FinancialExplanation;
+  confidence: FinancialConfidence;
 }

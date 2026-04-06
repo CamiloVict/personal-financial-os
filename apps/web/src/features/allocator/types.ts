@@ -1,4 +1,7 @@
-import type { FinancialExplanation } from '@personal-finance-os/explanation';
+import type {
+  FinancialConfidence,
+  FinancialExplanation,
+} from '@personal-finance-os/explanation';
 
 export interface AllocatorRecommendation {
   id: string;
@@ -17,4 +20,5 @@ export interface AllocatorPlan {
   unallocatedCapital: number;
   recommendations: AllocatorRecommendation[];
   explanation: FinancialExplanation;
+  confidence: FinancialConfidence;
 }

@@ -1,4 +1,7 @@
-import type { FinancialExplanation } from '@personal-finance-os/explanation';
+import type {
+  FinancialConfidence,
+  FinancialExplanation,
+} from '@personal-finance-os/explanation';
 
 export interface DebtItem {
   id: string;
@@ -41,4 +44,5 @@ export interface LeverageAnalysisResult {
   leverageRatio: number; // Debt / Total Assets
   leverageHealthStatus: 'EXCELLENT' | 'GOOD' | 'WARNING' | 'CRITICAL';
   explanation: FinancialExplanation;
+  confidence: FinancialConfidence;
 }

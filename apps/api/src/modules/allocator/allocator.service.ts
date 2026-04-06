@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { createNode, emptyFinancialExplanation } from '@personal-finance-os/explanation';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { ConfidenceService } from '../confidence/confidence.service';
 import { AllocatorResult, AllocationRecommendation } from './allocator.contracts';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AllocatorService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly confidenceService: ConfidenceService,
+  ) {}
 
   async generateAllocationPlan(
     userId: string,
@@ -190,12 +194,16 @@ export class AllocatorService {
       normativeRefs: [],
     };
 
+    const confidence =
+      await this.confidenceService.evaluateAllocator(userId);
+
     return {
       userId,
       availableCapital,
       unallocatedCapital,
       recommendations,
       explanation,
+      confidence,
     };
   }
 }

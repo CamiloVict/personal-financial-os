@@ -1,6 +1,7 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 const EXPENSE_COLORS = ['#dc2626', '#ef4444', '#f87171', '#fca5a5', '#fecaca'];
 
@@ -11,7 +12,11 @@ interface CashflowChartsProps {
 
 export function CashflowCharts({ isLoadingAnalytics, cashflowAnalytics }: CashflowChartsProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+    <div className="space-y-3 mb-4">
+      <div className="flex justify-end">
+        <ConfidenceBadge confidence={cashflowAnalytics?.confidence} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div className="glass-card rounded-xl p-4">
         <h3 className="text-sm font-bold text-slate-800 tracking-tight mb-4">Distribución de Gastos por Categoría</h3>
         {isLoadingAnalytics ? (
@@ -61,6 +66,7 @@ export function CashflowCharts({ isLoadingAnalytics, cashflowAnalytics }: Cashfl
         ) : (
           <div className="h-48 flex justify-center items-center text-slate-400/50 border border-dashed border-slate-300/50 rounded-xl text-xs">No hay datos suficientes de ingresos</div>
         )}
+      </div>
       </div>
     </div>
   );

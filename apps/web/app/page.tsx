@@ -33,8 +33,9 @@ export default function HomePage() {
   const { data: cashflowAnalytics, isLoading: isLoadingCashflow } =
     useCashflowAnalytics();
   const { data: taxAnalytics, isLoading: isLoadingTax } = useTaxAnalytics();
-  const { data: positions = [], isLoading: loadingPositions } =
+  const { data: positionsPayload, isLoading: loadingPositions } =
     useInvestmentPositions();
+  const positions = positionsPayload?.positions ?? [];
 
   const gateReady = !loadingStreams && !loadingPositions;
   const hasSetup = useMemo(
@@ -119,7 +120,10 @@ export default function HomePage() {
           </div>
 
           <div className="lg:col-span-3">
-            <TopInvestments positions={positions} />
+            <TopInvestments
+              positions={positions}
+              confidence={positionsPayload?.confidence}
+            />
           </div>
         </div>
       </>

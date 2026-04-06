@@ -20,12 +20,16 @@ import {
   type FinancialExplanation,
 } from '@personal-finance-os/explanation';
 import { augmentTaxExplanation } from '../../common/explanation/tax-context';
+import { ConfidenceService } from '../confidence/confidence.service';
 
 @Injectable()
 export class TaxService {
   private readonly engine = new ColombiaTaxEngineAG2026();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly confidenceService: ConfidenceService,
+  ) {}
 
   async getProfile(userId: string) {
     return this.prisma.taxProfile.findFirst({
@@ -237,15 +241,19 @@ export class TaxService {
       ],
     });
 
+    const confidence = await this.confidenceService.evaluateTax(userId);
+
     return {
       profile,
       classifications,
       scenarios,
       explanation,
+      confidence,
     };
   }
 
   async getClassifications(userId: string) {
+    const confidence = await this.confidenceService.evaluateTax(userId);
     const profile = await this.getProfile(userId);
     if (!profile) {
       return {
@@ -254,6 +262,7 @@ export class TaxService {
           'tax.co.classifications',
           'Clasificación tributaria de ingresos',
         ),
+        confidence,
       };
     }
 
@@ -317,7 +326,7 @@ export class TaxService {
       normativeRefs: [...CO_AG2026_NORMATIVE_REFS],
     };
 
-    return { classifications: items, explanation };
+    return { classifications: items, explanation, confidence };
   }
 
   async getLatestPlan(userId: string) {
@@ -331,6 +340,8 @@ export class TaxService {
     });
 
     if (!latestPlan) return null;
+
+    const confidence = await this.confidenceService.evaluateTax(userId);
 
     const explanation: FinancialExplanation = {
       ...emptyFinancialExplanation(
@@ -360,7 +371,12 @@ export class TaxService {
       normativeRefs: [...CO_AG2026_NORMATIVE_REFS],
     };
 
-    return { ...latestPlan, scenarios: latestPlan.scenarios, explanation };
+    return {
+      ...latestPlan,
+      scenarios: latestPlan.scenarios,
+      explanation,
+      confidence,
+    };
   }
 
   /**
@@ -469,6 +485,8 @@ export class TaxService {
       ],
     });
 
+    const confidence = await this.confidenceService.evaluateTax(userId);
+
     return {
       showDeclarationModule,
       hasEstablishedIncome,
@@ -477,6 +495,7 @@ export class TaxService {
       engineVersion: this.engine.version,
       leverComparison,
       explanation,
+      confidence,
     };
   }
 
@@ -543,6 +562,8 @@ export class TaxService {
       ],
     });
 
+    const confidence = await this.confidenceService.evaluateTax(userId);
+
     return {
       leverIds: unique,
       estimatedGrossIncome: totalAnnual,
@@ -554,6 +575,7 @@ export class TaxService {
           ? 'Combinación: 1 beneficio'
           : `Combinación: ${unique.length} beneficios`,
       explanation,
+      confidence,
     };
   }
 }

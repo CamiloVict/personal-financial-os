@@ -16,9 +16,13 @@ import {
   PositionCharts,
   PositionEventModal
 } from '@/features/investments/components';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 export default function InvestmentPositionsPage() {
-  const { data: positions = [], isLoading: isLoadingPos } = useInvestmentPositions();
+  const { data: positionsPayload, isLoading: isLoadingPos } =
+    useInvestmentPositions();
+  const positions = positionsPayload?.positions ?? [];
+  const positionsConfidence = positionsPayload?.confidence;
   const { data: types = [], isLoading: isLoadingTypes } = useInvestmentTypes();
 
   const createPositionMutation = useCreateInvestmentPosition();
@@ -162,7 +166,7 @@ export default function InvestmentPositionsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <header className="flex justify-between items-end border-b border-slate-200/50 pb-6 mb-8">
+      <header className="flex flex-wrap justify-between items-end gap-3 border-b border-slate-200/50 pb-6 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <div className="p-1.5 bg-blue-100 rounded-lg">
@@ -174,6 +178,7 @@ export default function InvestmentPositionsPage() {
             Registra tus activos y realiza un seguimiento detallado de capital, valorización y flujo.
           </p>
         </div>
+        <ConfidenceBadge confidence={positionsConfidence} />
       </header>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">

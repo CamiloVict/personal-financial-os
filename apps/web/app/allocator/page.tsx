@@ -9,6 +9,7 @@ import {
   AllocatorRecommendationsSection,
 } from '@/features/allocator/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 export default function AllocatorPage() {
   const generatePlanMutation = useGenerateAllocatorPlan();
@@ -38,6 +39,9 @@ export default function AllocatorPage() {
 
       {plan ? (
         <>
+          <div className="flex justify-end">
+            <ConfidenceBadge confidence={plan.confidence} />
+          </div>
           <ExplanationPanel explanation={plan.explanation} defaultOpen={false} />
           <AllocatorRecommendationsSection plan={plan} />
         </>

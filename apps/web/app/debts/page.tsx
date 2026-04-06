@@ -29,7 +29,7 @@ export default function DebtsPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
-      <DebtsPageHeader />
+      <DebtsPageHeader confidence={a.confidence} />
 
       <ExplanationPanel explanation={a.explanation} defaultOpen={false} />
 

@@ -1,4 +1,7 @@
-import type { FinancialExplanation } from '@personal-finance-os/explanation';
+import type {
+  FinancialConfidence,
+  FinancialExplanation,
+} from '@personal-finance-os/explanation';
 
 export type ScenarioType =
   | 'PROPERTY'
@@ -32,4 +35,5 @@ export interface SimulationResult {
   roiDifference: number;
   metrics: SimulationMetric[];
   explanation: FinancialExplanation;
+  confidence: FinancialConfidence;
 }

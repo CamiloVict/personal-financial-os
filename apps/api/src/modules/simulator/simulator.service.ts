@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { buildSimulatorExplanation } from '../../common/explanation/simulator-explanation';
+import { ConfidenceService } from '../confidence/confidence.service';
 import {
   SimulationResult,
   SimulationYearData,
@@ -12,6 +13,8 @@ import {
 
 @Injectable()
 export class SimulatorService {
+  constructor(private readonly confidenceService: ConfidenceService) {}
+
   // 1. Property Purchase vs Market
   async simulatePropertyPurchase(userId: string, input: SimulatePropertyPurchaseInput): Promise<SimulationResult> {
     const loanAmount = input.propertyValue - input.downPayment;
@@ -140,6 +143,7 @@ export class SimulatorService {
         { label: 'Veredicto Patrimonial', value: `${roiDiff > 0 ? '+' : ''}${roiDiff.toFixed(1)}% vs Base`, color: roiDiff >= 0 ? 'amber' : 'slate' }
       ],
       explanation,
+      confidence: this.confidenceService.evaluateSimulation(),
     };
   }
 
@@ -265,6 +269,7 @@ export class SimulatorService {
         { label: 'Diferencia', value: `${roiDiff > 0 ? '+' : ''}${roiDiff.toFixed(1)}%`, color: roiDiff >= 0 ? 'emerald' : 'slate' }
       ],
       explanation,
+      confidence: this.confidenceService.evaluateSimulation(),
     };
   }
 
@@ -351,6 +356,7 @@ export class SimulatorService {
         { label: 'Ventaja del Escudo', value: `+${roiDiff.toFixed(1)}%`, color: 'indigo' }
       ],
       explanation,
+      confidence: this.confidenceService.evaluateSimulation(),
     };
   }
 
@@ -439,6 +445,7 @@ export class SimulatorService {
         { label: 'Spread Patrimonial', value: `${roiDiff > 0 ? '+' : ''}${roiDiff.toFixed(1)}%`, color: roiDiff >= 0 ? 'amber' : 'slate' }
       ],
       explanation,
+      confidence: this.confidenceService.evaluateSimulation(),
     };
   }
 
@@ -522,6 +529,7 @@ export class SimulatorService {
         { label: 'Diferencia', value: `${roiDiff > 0 ? '+' : ''}${roiDiff.toFixed(1)}%`, color: roiDiff >= 0 ? 'emerald' : 'slate' }
       ],
       explanation,
+      confidence: this.confidenceService.evaluateSimulation(),
     };
   }
 }

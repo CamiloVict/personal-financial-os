@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { buildLeverageAnalysisExplanation } from '../../common/explanation/debts-leverage-explanation';
+import { ConfidenceService } from '../confidence/confidence.service';
 import { LeverageAnalysisResult, DebtItem } from './debts.contracts';
 
 @Injectable()
 export class DebtsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly confidenceService: ConfidenceService,
+  ) {}
 
   private mapDebt(d: {
     id: string;
@@ -145,6 +149,9 @@ export class DebtsService {
       positionCount: userPositions.length,
     });
 
+    const confidence =
+      await this.confidenceService.evaluateLeverageContext(userId);
+
     return {
       userId,
       totalDebt,
@@ -157,6 +164,7 @@ export class DebtsService {
       leverageRatio,
       leverageHealthStatus,
       explanation,
+      confidence,
     };
   }
 

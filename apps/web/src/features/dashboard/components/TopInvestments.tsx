@@ -1,16 +1,22 @@
+import type { FinancialConfidence } from '@personal-finance-os/explanation';
 import React from 'react';
 import Link from 'next/link';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 interface TopInvestmentsProps {
   positions: any[];
+  confidence?: FinancialConfidence | null;
 }
 
-export function TopInvestments({ positions }: TopInvestmentsProps) {
+export function TopInvestments({ positions, confidence }: TopInvestmentsProps) {
   return (
     <div className="glass-card rounded-xl p-4 flex-1 flex flex-col">
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
         <h3 className="text-xs font-bold text-slate-800">Top Inversiones</h3>
-        <Link href="/investment-positions" className="text-[9px] text-blue-600 hover:underline">Ver todo</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <ConfidenceBadge confidence={confidence} />
+          <Link href="/investment-positions" className="text-[9px] text-blue-600 hover:underline">Ver todo</Link>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         {positions.length === 0 ? (

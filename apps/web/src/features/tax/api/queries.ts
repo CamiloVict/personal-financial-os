@@ -20,6 +20,7 @@ export function useTaxProfile() {
 export type TaxClassificationsPayload = {
   classifications: any[];
   explanation?: import('@personal-finance-os/explanation').FinancialExplanation;
+  confidence?: import('@personal-finance-os/explanation').FinancialConfidence;
 };
 
 export function useTaxClassifications(enabled: boolean) {
@@ -34,6 +35,7 @@ export function useTaxClassifications(enabled: boolean) {
         return {
           classifications: res.classifications ?? [],
           explanation: res.explanation,
+          confidence: res.confidence,
         };
       } catch {
         return { classifications: [] };

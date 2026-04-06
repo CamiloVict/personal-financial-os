@@ -19,6 +19,7 @@ import {
   TaxDeclarationSection,
 } from '@/features/tax/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
+import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 export default function TaxDashboard() {
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'PLAN'>('PROFILE');
@@ -34,6 +35,7 @@ export default function TaxDashboard() {
   const { data: classificationPayload } = useTaxClassifications(!!profile);
   const classifications = classificationPayload?.classifications ?? [];
   const classificationsExplanation = classificationPayload?.explanation;
+  const classificationsConfidence = classificationPayload?.confidence;
   const { data: plan, isLoading: loadingPlan } = useTaxPlan(!!profile);
   const { data: declarationInsights, isLoading: loadingDeclaration } = useTaxDeclarationInsights(!!profile);
 
@@ -310,10 +312,16 @@ export default function TaxDashboard() {
             defaultOpen={false}
           />
 
+          <div className="flex justify-end">
+            <ConfidenceBadge confidence={classificationsConfidence} />
+          </div>
           <TaxClassifications classifications={classifications} pieData={classificationsPieData} />
 
           <ExplanationPanel explanation={classificationsExplanation} defaultOpen={false} />
 
+          <div className="flex justify-end">
+            <ConfidenceBadge confidence={plan?.confidence} />
+          </div>
           <ExplanationPanel explanation={plan?.explanation} defaultOpen={false} />
 
           {loadingPlan ? (

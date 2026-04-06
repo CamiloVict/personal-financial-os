@@ -1,4 +1,7 @@
-import type { FinancialExplanation } from '@personal-finance-os/explanation';
+import type {
+  FinancialConfidence,
+  FinancialExplanation,
+} from '@personal-finance-os/explanation';
 
 // Base Result Interfaces
 export interface SimulationYearData {
@@ -25,6 +28,7 @@ export interface SimulationResult {
   metrics: { label: string; value: string; color: string }[];
   /** Cómo se construyó la simulación (reglas, supuestos, entradas). */
   explanation: FinancialExplanation;
+  confidence: FinancialConfidence;
 }
 
 // 1. Property Purchase (Existing)

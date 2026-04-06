@@ -25,7 +25,9 @@ import {
 export default function CashflowPage() {
   const { data: categories = [], isLoading: isLoadingCat } = useCategories();
   const { data: streams = [], isLoading: isLoadingStreams } = useCashflowStreams();
-  const { data: positions = [], isLoading: isLoadingPositions } = useInvestmentPositions();
+  const { data: positionsPayload, isLoading: isLoadingPositions } =
+    useInvestmentPositions();
+  const positions = positionsPayload?.positions ?? [];
   const { data: cashflowAnalytics, isLoading: isLoadingAnalytics } = useCashflowAnalytics();
 
   const setupHelpLoading = isLoadingStreams || isLoadingPositions;
