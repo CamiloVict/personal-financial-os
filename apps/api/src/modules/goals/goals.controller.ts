@@ -22,12 +22,16 @@ export class GoalsController {
   }
 
   @Get(':id/scenarios')
-  getScenarios(@Param('id') id: string) {
-    return this.goalsService.getLatestScenarioSnapshot(id);
+  getScenarios(@Param('id') id: string, @DbUserId() userId: string) {
+    return this.goalsService.getLatestScenarioSnapshot(id, userId);
   }
 
   @Post(':id/scenarios/simulate')
-  simulateScenarios(@Param('id') id: string, @Body() _input: Record<string, unknown>) {
-    return this.goalsService.simulateGoalScenarios(id);
+  simulateScenarios(
+    @Param('id') id: string,
+    @DbUserId() userId: string,
+    @Body() _input: Record<string, unknown>,
+  ) {
+    return this.goalsService.simulateGoalScenarios(id, userId);
   }
 }

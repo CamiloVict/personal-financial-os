@@ -14,6 +14,7 @@ import {
   SIMULATOR_SCENARIO_TYPES,
   SimulatorScenarioTypeKey,
 } from './simulator.contracts';
+import { monthlyMortgagePaymentFrench } from './mortgage-math';
 
 @Injectable()
 export class SimulatorService {
@@ -35,13 +36,12 @@ export class SimulatorService {
     const loanAmount = input.propertyValue - input.downPayment;
     const r = (input.interestRateAnnual / 100) / 12;
     const n = input.loanTermYears * 12;
-    
-    let monthlyMortgagePayment = 0;
-    if (r > 0) {
-      monthlyMortgagePayment = loanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    } else {
-      monthlyMortgagePayment = loanAmount / n;
-    }
+
+    const monthlyMortgagePayment = monthlyMortgagePaymentFrench(
+      loanAmount,
+      input.interestRateAnnual,
+      n,
+    );
     
     const annualMortgagePayment = monthlyMortgagePayment * 12;
     const initialMonthlyCashflowImpact = input.expectedMonthlyRent - monthlyMortgagePayment - ((input.propertyValue * (input.maintenanceAnnualPercentage / 100)) / 12);
@@ -99,6 +99,23 @@ export class SimulatorService {
       ? `Al cierre del horizonte modelado, el patrimonio del escenario vivienda quedaría ${roiDiff.toFixed(1)}% por encima de la línea base.`
       : `En el modelo, la línea base supera al escenario vivienda en ${Math.abs(roiDiff).toFixed(1)}% (costo de deuda y supuestos incluidos).`;
 
+    const outcomeTradeOff =
+      roiDiff > 0 && initialMonthlyCashflowImpact < 0
+        ? {
+            wealthImproves: true,
+            cashflowWorsens: true,
+            summary:
+              'Esta simulación mejora el patrimonio neto al cierre del horizonte en el modelo, pero el flujo mensual inicial del escenario es más ajustado que invertir solo el enganche (arriendo vs cuota y gastos).',
+          }
+        : roiDiff < 0 && initialMonthlyCashflowImpact > 0
+          ? {
+              wealthImproves: false,
+              cashflowWorsens: false,
+              summary:
+                'En el modelo, la línea base gana en patrimonio al cierre y el escenario muestra flujo mensual inicial más holgado; revisa supuestos de apreciación y arriendo.',
+            }
+          : null;
+
     const explanation = buildSimulatorExplanation({
       domain: 'simulator.property_purchase',
       title: 'Vivienda en arriendo vs cartera alternativa',
@@ -148,6 +165,7 @@ export class SimulatorService {
       primaryInsight: netWorthInsight,
       secondaryInsight: cashflowInsight,
       tertiaryInsight: taxInsight,
+      outcomeTradeOff,
       years,
       finalScenarioNetWorth: finalYear.scenarioNetWorth,
       finalBaselineNetWorth: finalYear.baselineNetWorth,

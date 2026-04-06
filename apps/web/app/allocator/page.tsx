@@ -13,6 +13,8 @@ import {
   AllocatorCapitalForm,
   AllocatorScenariosSection,
   AllocatorSnapshotBar,
+  AllocatorPrimaryRecommendation,
+  AllocatorQuickCapitalChips,
 } from '@/features/allocator/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
@@ -129,6 +131,10 @@ export default function AllocatorPage() {
         isForgetting={deleteSnapshot.isPending}
       />
 
+      <AllocatorQuickCapitalChips
+        onPick={(n) => setAvailableCapital(String(n))}
+        disabled={simulateMutation.isPending}
+      />
       <AllocatorCapitalForm
         availableCapital={availableCapital}
         onCapitalChange={setAvailableCapital}
@@ -138,6 +144,7 @@ export default function AllocatorPage() {
 
       {plan ? (
         <>
+          <AllocatorPrimaryRecommendation plan={plan} />
           <div className="flex justify-end">
             <ConfidenceBadge confidence={plan.confidence} />
           </div>

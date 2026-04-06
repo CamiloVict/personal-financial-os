@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 @Injectable()
@@ -40,7 +40,11 @@ export class CashflowService {
     });
   }
 
-  updateStream(id: string, payload: Record<string, unknown>) {
+  async updateStream(userId: string, id: string, payload: Record<string, unknown>) {
+    const existing = await this.prisma.cashflowStream.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) throw new NotFoundException('Stream no encontrado');
     const data: any = { ...payload };
     if (payload.startDate) data.startDate = new Date(payload.startDate as string);
     if (payload.endDate !== undefined) {
@@ -54,18 +58,30 @@ export class CashflowService {
     });
   }
 
-  deleteStream(id: string) {
+  async deleteStream(userId: string, id: string) {
+    const existing = await this.prisma.cashflowStream.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) throw new NotFoundException('Stream no encontrado');
     return this.prisma.cashflowStream.delete({ where: { id } });
   }
 
-  getEvents(streamId: string) {
+  async getEvents(userId: string, streamId: string) {
+    const stream = await this.prisma.cashflowStream.findFirst({
+      where: { id: streamId, userId },
+    });
+    if (!stream) throw new NotFoundException('Stream no encontrado');
     return this.prisma.cashflowEvent.findMany({
       where: { streamId },
       orderBy: { date: 'desc' },
     });
   }
 
-  createEvent(streamId: string, payload: Record<string, unknown>) {
+  async createEvent(userId: string, streamId: string, payload: Record<string, unknown>) {
+    const stream = await this.prisma.cashflowStream.findFirst({
+      where: { id: streamId, userId },
+    });
+    if (!stream) throw new NotFoundException('Stream no encontrado');
     return this.prisma.cashflowEvent.create({
       data: {
         ...payload,

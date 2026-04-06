@@ -3,6 +3,7 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { ErrorState } from '@/shared/ui/ErrorState';
 
 export type ChartCardProps = {
   title: string;
@@ -10,6 +11,8 @@ export type ChartCardProps = {
   chartClassName?: string;
   isLoading?: boolean;
   presentationLoading?: boolean;
+  /** Si está definido, se muestra en lugar del gráfico (fallo recuperable). */
+  errorMessage?: string;
   isEmpty?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -24,6 +27,7 @@ export function ChartCard({
   chartClassName = 'h-36 sm:h-40',
   isLoading,
   presentationLoading,
+  errorMessage,
   isEmpty,
   emptyTitle = 'Sin datos',
   emptyDescription = 'Agrega información en el módulo correspondiente para ver el gráfico.',
@@ -31,7 +35,7 @@ export function ChartCard({
   headerRight,
   className = '',
 }: ChartCardProps) {
-  const loading = Boolean(isLoading || presentationLoading);
+  const loading = Boolean(isLoading || presentationLoading) && !errorMessage;
 
   return (
     <div
@@ -49,7 +53,16 @@ export function ChartCard({
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
       </div>
 
-      {loading ? (
+      {errorMessage ? (
+        <div className={`flex min-h-[8rem] items-center ${chartClassName}`}>
+          <ErrorState
+            title="No se pudo cargar el gráfico"
+            description={errorMessage}
+            variant="compact"
+            className="w-full border-0 bg-transparent py-4 shadow-none"
+          />
+        </div>
+      ) : loading ? (
         <div
           className={`flex min-h-[8rem] w-full items-center justify-center rounded-xl bg-slate-50/80 ${chartClassName}`}
           aria-busy

@@ -6,6 +6,8 @@
  * - Llamada directa al API (sin proxy): `NEXT_PUBLIC_API_DIRECT=true` en `.env.local`
  */
 
+import { ApiRequestError } from './api-error';
+
 const stripTrailingSlash = (s: string) => s.replace(/\/+$/, '');
 
 function backendBaseForServer(): string {
@@ -64,14 +66,48 @@ async function parseJson<T>(response: Response): Promise<T> {
   }
 }
 
+function nestMessageFromBody(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const m = (body as { message?: unknown }).message;
+  if (typeof m === 'string') return m;
+  if (Array.isArray(m) && m.every((x) => typeof x === 'string')) {
+    return m.join('; ');
+  }
+  return undefined;
+}
+
+async function throwIfNotOk(response: Response): Promise<void> {
+  if (response.ok) return;
+  const requestId = response.headers.get('x-request-id') ?? undefined;
+  let backendMessage: string | undefined;
+  try {
+    const text = await response.text();
+    if (text) {
+      try {
+        backendMessage = nestMessageFromBody(JSON.parse(text));
+      } catch {
+        backendMessage = text.slice(0, 200);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  const summary =
+    backendMessage ||
+    `${response.status} ${response.statusText || 'Error'}`.trim();
+  throw new ApiRequestError(`API Error: ${summary}`, {
+    status: response.status,
+    requestId,
+    backendMessage,
+  });
+}
+
 export const apiClient = {
   get: async <T>(endpoint: string): Promise<T> => {
     const response = await fetch(buildApiUrl(endpoint), {
       headers: await authHeaders(),
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     return parseJson<T>(response);
   },
 
@@ -81,9 +117,7 @@ export const apiClient = {
       headers: await authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body),
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     return parseJson<T>(response);
   },
 
@@ -93,9 +127,7 @@ export const apiClient = {
       headers: await authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body),
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     return parseJson<T>(response);
   },
 
@@ -105,9 +137,7 @@ export const apiClient = {
       headers: await authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body),
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     return parseJson<T>(response);
   },
 
@@ -116,9 +146,7 @@ export const apiClient = {
       method: 'DELETE',
       headers: await authHeaders(),
     });
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     return parseJson<T>(response);
   },
 };

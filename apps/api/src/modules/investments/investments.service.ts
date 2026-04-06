@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import {
@@ -81,14 +81,22 @@ export class InvestmentsService {
     });
   }
 
-  updateType(id: string, payload: Record<string, unknown>) {
+  async updateType(userId: string, id: string, payload: Record<string, unknown>) {
+    const row = await this.prisma.investmentTypeDefinition.findFirst({
+      where: { id, userId, isSystem: false },
+    });
+    if (!row) throw new NotFoundException('Tipo de inversión no encontrado');
     return this.prisma.investmentTypeDefinition.update({
       where: { id },
       data: payload as any,
     });
   }
 
-  deleteType(id: string) {
+  async deleteType(userId: string, id: string) {
+    const row = await this.prisma.investmentTypeDefinition.findFirst({
+      where: { id, userId, isSystem: false },
+    });
+    if (!row) throw new NotFoundException('Tipo de inversión no encontrado');
     return this.prisma.investmentTypeDefinition.delete({ where: { id } });
   }
 
@@ -112,7 +120,11 @@ export class InvestmentsService {
     });
   }
 
-  updatePosition(id: string, payload: Record<string, unknown>) {
+  async updatePosition(userId: string, id: string, payload: Record<string, unknown>) {
+    const existing = await this.prisma.investmentPosition.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) throw new NotFoundException('Posición no encontrada');
     const data: any = { ...payload };
     if (payload.startDate) data.startDate = new Date(payload.startDate as string);
     return this.prisma.investmentPosition.update({
@@ -121,18 +133,30 @@ export class InvestmentsService {
     });
   }
 
-  deletePosition(id: string) {
+  async deletePosition(userId: string, id: string) {
+    const existing = await this.prisma.investmentPosition.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) throw new NotFoundException('Posición no encontrada');
     return this.prisma.investmentPosition.delete({ where: { id } });
   }
 
-  getEvents(positionId: string) {
+  async getEvents(userId: string, positionId: string) {
+    const pos = await this.prisma.investmentPosition.findFirst({
+      where: { id: positionId, userId },
+    });
+    if (!pos) throw new NotFoundException('Posición no encontrada');
     return this.prisma.investmentEvent.findMany({
       where: { investmentId: positionId },
       orderBy: { date: 'desc' },
     });
   }
 
-  async createEvent(positionId: string, payload: Record<string, unknown>) {
+  async createEvent(userId: string, positionId: string, payload: Record<string, unknown>) {
+    const pos = await this.prisma.investmentPosition.findFirst({
+      where: { id: positionId, userId },
+    });
+    if (!pos) throw new NotFoundException('Posición no encontrada');
     return this.prisma.$transaction(async (tx) => {
       const event = await tx.investmentEvent.create({
         data: {

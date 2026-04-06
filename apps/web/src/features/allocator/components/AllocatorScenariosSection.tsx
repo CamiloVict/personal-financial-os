@@ -27,9 +27,13 @@ export function AllocatorScenariosSection({
 }: AllocatorScenariosSectionProps) {
   return (
     <div className="mt-6 animate-in slide-in-from-bottom-8 duration-500">
-      <h2 className="text-sm font-bold text-slate-800 tracking-tight mb-3 flex items-center gap-1.5">
-        Escenarios modelados (orden ilustrativo)
+      <h2 className="text-sm font-bold text-slate-800 tracking-tight mb-1 flex items-center gap-1.5">
+        Distribución sugerida
       </h2>
+      <p className="text-[10px] text-slate-500 mb-3 leading-relaxed max-w-3xl">
+        Cada tarjeta es un uso posible del capital con impacto <strong className="font-medium text-slate-600">modelado</strong>{' '}
+        en liquidez, deuda, patrimonio o ahorro fiscal. El orden no es una orden de ejecución legal.
+      </p>
 
       <AllocatorPlanSummary
         plan={plan}
@@ -39,6 +43,20 @@ export function AllocatorScenariosSection({
         presentedCurrency={presentedCurrency}
         presentationLoading={presentationLoading}
       />
+
+      {plan.engineNotes && plan.engineNotes.length > 0 ? (
+        <ul className="mt-3 space-y-2">
+          {plan.engineNotes.map((note, i) => (
+            <li
+              key={i}
+              className="rounded-lg border border-sky-200/80 bg-sky-50/80 px-3 py-2 text-[10px] text-sky-950/90 leading-snug"
+            >
+              <span className="font-semibold text-sky-900">Liquidez: </span>
+              {note}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {plan.scenarios.length === 0 ? (
         <AllocatorScenariosEmpty />

@@ -27,6 +27,9 @@ import {
 import { useTaxPageValuation } from '@/features/tax/hooks/useTaxPageValuation';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
+import { ErrorState } from '@/shared/ui/ErrorState';
+import { formatApiErrorForUi } from '@/shared/api/api-error';
+import { TaxTrustContextStrip } from '@/shared/ui/TrustProvenance';
 
 export default function TaxDashboard() {
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'PLAN'>('PROFILE');
@@ -42,11 +45,22 @@ export default function TaxDashboard() {
     error: profileErrorDetail,
     refetch: refetchProfile,
   } = useTaxProfile();
-  const { data: classificationPayload } = useTaxClassifications(!!profile);
+  const {
+    data: classificationPayload,
+    isError: classificationsQueryError,
+    error: classificationsErrorRaw,
+    refetch: refetchClassifications,
+  } = useTaxClassifications(!!profile);
   const classifications = classificationPayload?.classifications ?? [];
   const classificationsExplanation = classificationPayload?.explanation;
   const classificationsConfidence = classificationPayload?.confidence;
-  const { data: plan, isLoading: loadingPlan } = useTaxPlan(!!profile);
+  const {
+    data: plan,
+    isLoading: loadingPlan,
+    isError: planQueryError,
+    error: planErrorRaw,
+    refetch: refetchPlan,
+  } = useTaxPlan(!!profile);
   const { data: declarationInsights, isLoading: loadingDeclaration } = useTaxDeclarationInsights(!!profile);
   const { data: planningOverview, isLoading: loadingPlanningOverview } =
     useTaxPlanningOverview(!!profile);
@@ -268,11 +282,12 @@ export default function TaxDashboard() {
             <div className="p-1 bg-indigo-100 rounded-md">
               <Landmark className="w-4 h-4 text-indigo-600" />
             </div>
-            Planeación Fiscal
+            Fiscal · planeación (Colombia)
           </h1>
           <p className="text-slate-500 mt-1 max-w-2xl text-xs">
-            Planeación tributaria orientativa para Colombia: perfil, clasificación de ingresos, escenarios y
-            checklist de soportes. No sustituye asesoría profesional.
+            Capítulo aparte de tu <strong className="font-medium text-slate-600">posición de hoy</strong>: perfil,
+            clasificación de ingresos, escenarios del motor y checklist. Orientativo; no sustituye asesoría
+            profesional.
           </p>
           {profile ? (
             <p className="text-[11px] text-emerald-700 font-medium mt-2">
@@ -408,6 +423,42 @@ export default function TaxDashboard() {
               </button>
             </div>
           </div>
+
+          <TaxTrustContextStrip />
+
+          {classificationsQueryError ? (
+            <ErrorState
+              title="No se pudieron cargar las clasificaciones de ingreso"
+              description={formatApiErrorForUi(classificationsErrorRaw)}
+              variant="compact"
+              className="glass-card"
+            >
+              <button
+                type="button"
+                onClick={() => refetchClassifications()}
+                className="text-xs font-semibold text-rose-800 underline"
+              >
+                Reintentar
+              </button>
+            </ErrorState>
+          ) : null}
+
+          {planQueryError ? (
+            <ErrorState
+              title="No se pudo cargar el plan fiscal"
+              description={formatApiErrorForUi(planErrorRaw)}
+              variant="compact"
+              className="glass-card"
+            >
+              <button
+                type="button"
+                onClick={() => refetchPlan()}
+                className="text-xs font-semibold text-rose-800 underline"
+              >
+                Reintentar
+              </button>
+            </ErrorState>
+          ) : null}
 
           <TaxNormalizationPanel
             data={normalizedForTax}

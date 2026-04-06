@@ -48,6 +48,8 @@ import {
 import { formatPresentedAmount } from '@/features/currency/format';
 import { useGlobalStore } from '@/shared/store/global';
 import { pickFinancialHealthRecommendation } from '@/features/dashboard/model/financialHealthRecommendation';
+import { TrustBadge } from '@/shared/ui/TrustProvenance';
+import { formatApiErrorForUi } from '@/shared/api/api-error';
 
 function hasFinancialSetup(streams: unknown[], positions: unknown[]) {
   return streams.length > 0 || positions.length > 0;
@@ -72,7 +74,12 @@ export default function HomePage() {
   const { data: streams = [], isLoading: loadingStreams } = useCashflowStreams();
   const { data: cashflowAnalytics, isLoading: isLoadingCashflow } =
     useCashflowAnalytics();
-  const { data: taxAnalytics, isLoading: isLoadingTax } = useTaxAnalytics();
+  const {
+    data: taxAnalytics,
+    isLoading: isLoadingTax,
+    isError: taxAnalyticsError,
+    error: taxAnalyticsErrorRaw,
+  } = useTaxAnalytics();
   const { data: positionsPayload, isLoading: loadingPositions } =
     useInvestmentPositions();
   const positions = positionsPayload?.positions ?? [];
@@ -335,11 +342,22 @@ export default function HomePage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <header className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-end border-b border-slate-200 pb-4 mb-2">
         <div>
-          <h1 className="page-section-title">Salud financiera</h1>
+          <h1 className="page-section-title">Tu posición financiera</h1>
           <p className="page-section-subtitle max-w-xl">
-            Resumen de flujo, patrimonio, metas y fiscal. Profundizá por módulo cuando necesites
-            detalle.
+            <strong className="font-medium text-slate-700">Hoy:</strong> lo que registrás (flujo, deudas, portafolio, metas) en un solo tablero.{' '}
+            <strong className="font-medium text-slate-700">Fiscal</strong> es planeación de impuestos Colombia (modelo).{' '}
+            <strong className="font-medium text-slate-700">Futuro</strong> en el menú: simulaciones y asignación de capital.
           </p>
+          <div className="mt-2 flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
+            <TrustBadge kind="REAL_DATA" />
+            <p className="text-[10px] text-slate-500 leading-snug max-w-2xl">
+              KPIs y gráficos agregan lo registrado en la app y lo convierten con la barra{' '}
+              <strong className="font-medium text-slate-600">Valuación</strong> (modo, fecha FX e IPC si
+              aplica). Fiscal y simuladores pueden mezclar{' '}
+              <span className="font-medium text-slate-600">estimados del modelo</span>; revisá etiquetas en cada
+              pantalla.
+            </p>
+          </div>
         </div>
         <div className="flex gap-2 shrink-0">
           <Link
@@ -452,6 +470,11 @@ export default function HomePage() {
             chartCurrency={chartCurrency}
             presentationLoading={
               taxScenarioLines.length > 0 && presentationLoading
+            }
+            errorMessage={
+              taxAnalyticsError
+                ? formatApiErrorForUi(taxAnalyticsErrorRaw)
+                : undefined
             }
           />
           <PlanningShortcuts />

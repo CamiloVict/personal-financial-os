@@ -20,7 +20,7 @@ export type ProductInsightsPanelProps = {
 export function ProductInsightsPanel({
   insights,
   loading,
-  maxItems = 8,
+  maxItems = 10,
 }: ProductInsightsPanelProps) {
   const rows = useMemo(() => {
     if (!insights?.length) return [];
@@ -102,6 +102,11 @@ function InsightCard({ insight }: { insight: ProductInsight }) {
         </span>
       </div>
       <p className="text-[11px] text-slate-700 leading-relaxed mb-2">{insight.detail}</p>
+      {insight.action ? (
+        <p className="text-[10px] text-slate-800 leading-snug border-l-2 border-indigo-200 bg-indigo-50/50 pl-2 py-1 rounded-r mb-2">
+          <span className="font-semibold text-indigo-900">Acción sugerida:</span> {insight.action}
+        </p>
+      ) : null}
       <p className="text-[10px] text-slate-500 leading-snug border-l-2 border-slate-200 pl-2 mb-2">
         <span className="font-medium text-slate-600">Por qué aparece:</span> {insight.why}
       </p>

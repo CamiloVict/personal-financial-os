@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './auth.constants';
 import { ClerkAuthService } from './clerk-auth.service';
@@ -24,9 +29,10 @@ export class ClerkAuthGuard implements CanActivate {
       dbUserId?: string;
     }>();
 
-    const authDisabled =
-      process.env.AUTH_DISABLED === 'true' && process.env.NODE_ENV !== 'production';
-    if (authDisabled) {
+    if (process.env.AUTH_DISABLED === 'true') {
+      if (process.env.NODE_ENV === 'production') {
+        throw new ForbiddenException('Auth bypass is not allowed in production');
+      }
       req.dbUserId = process.env.DEV_FALLBACK_USER_ID ?? 'u1';
       return true;
     }

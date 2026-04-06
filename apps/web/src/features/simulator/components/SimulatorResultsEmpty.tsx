@@ -7,7 +7,8 @@ export function SimulatorResultsEmpty() {
       <div>
         <p className="font-bold text-xs text-slate-700">El futuro no está escrito</p>
         <p className="text-[9px] mt-0.5 max-w-sm mx-auto leading-relaxed">
-          Ingresa los datos de tu escenario hipotético en el panel izquierdo para simular su impacto a largo plazo.
+          Completá el formulario y pulsá simular: verás la <strong className="font-medium text-slate-600">línea base</strong>{' '}
+          frente al <strong className="font-medium text-slate-600">escenario</strong> y el delta de patrimonio.
         </p>
       </div>
     </div>

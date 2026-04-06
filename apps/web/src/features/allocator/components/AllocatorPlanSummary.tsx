@@ -39,7 +39,7 @@ export function AllocatorPlanSummary({
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
       <div className="glass-card rounded-lg p-3 bg-slate-50 border-slate-200">
         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
-          Capital Original
+          Capital disponible (entrada)
         </p>
         <p className="text-base font-bold text-slate-800">
           {presentationLoading ? '…' : fmt(avail)}

@@ -26,13 +26,17 @@ export class InvestmentsController {
   }
 
   @Put('types/:id')
-  updateInvestmentType(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.investmentsService.updateType(id, body);
+  updateInvestmentType(
+    @DbUserId() userId: string,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return this.investmentsService.updateType(userId, id, body);
   }
 
   @Delete('types/:id')
-  deleteInvestmentType(@Param('id') id: string) {
-    return this.investmentsService.deleteType(id);
+  deleteInvestmentType(@DbUserId() userId: string, @Param('id') id: string) {
+    return this.investmentsService.deleteType(userId, id);
   }
 
   @Get('positions')
@@ -50,22 +54,30 @@ export class InvestmentsController {
   }
 
   @Put('positions/:id')
-  updatePosition(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.investmentsService.updatePosition(id, body);
+  updatePosition(
+    @DbUserId() userId: string,
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return this.investmentsService.updatePosition(userId, id, body);
   }
 
   @Delete('positions/:id')
-  deletePosition(@Param('id') id: string) {
-    return this.investmentsService.deletePosition(id);
+  deletePosition(@DbUserId() userId: string, @Param('id') id: string) {
+    return this.investmentsService.deletePosition(userId, id);
   }
 
   @Get('positions/:id/events')
-  getEvents(@Param('id') positionId: string) {
-    return this.investmentsService.getEvents(positionId);
+  getEvents(@DbUserId() userId: string, @Param('id') positionId: string) {
+    return this.investmentsService.getEvents(userId, positionId);
   }
 
   @Post('positions/:id/events')
-  createEvent(@Param('id') positionId: string, @Body() body: Record<string, unknown>) {
-    return this.investmentsService.createEvent(positionId, body);
+  createEvent(
+    @DbUserId() userId: string,
+    @Param('id') positionId: string,
+    @Body() body: Record<string, unknown>,
+  ) {
+    return this.investmentsService.createEvent(userId, positionId, body);
   }
 }

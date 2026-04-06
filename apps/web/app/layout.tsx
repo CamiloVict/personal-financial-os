@@ -13,7 +13,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Personal Finance OS",
-  description: "Your comprehensive financial operating system",
+  description:
+    'Tu sistema financiero personal: posición de hoy (flujo, deudas, inversiones, metas), fiscal Colombia (modelo) y herramientas de futuro (simulador y asignación).',
 };
 
 export default function RootLayout({
@@ -22,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es-CO">
       <body className={`${inter.className} bg-slate-50 text-slate-900 min-h-screen flex flex-col relative`}>
         <Providers>
           <DevSessionBar />

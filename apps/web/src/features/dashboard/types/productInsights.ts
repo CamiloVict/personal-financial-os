@@ -3,9 +3,12 @@ export type InsightKind =
   | 'LOW_SAVINGS'
   | 'HIGH_FIXED_DEPENDENCY'
   | 'GOAL_BEHIND'
+  | 'GOAL_MONTHLY_GAP'
+  | 'GOAL_EARLIER_OPPORTUNITY'
   | 'REINVESTMENT_OPPORTUNITY'
   | 'LIQUIDITY_ALERT'
   | 'TAX_OPPORTUNITY'
+  | 'TAX_VALIDATION_REMINDER'
   | 'ASSET_CONCENTRATION'
   | 'CASHFLOW_IMPROVEMENT';
 
@@ -25,6 +28,7 @@ export type ProductInsight = {
   title: string;
   detail: string;
   why: string;
+  action?: string;
   module: InsightModule;
   href: string;
 };

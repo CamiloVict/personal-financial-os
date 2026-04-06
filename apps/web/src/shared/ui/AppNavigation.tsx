@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * Navegación por capas (Etapa 2):
- * - Primario: operación / salud financiera.
- * - Planificación: hipótesis de capital y escenarios (dropdown).
- * - Configuración: modelo de tipos de inversión (dropdown).
- * Todas las rutas existentes se conservan.
+ * Arquitectura de información (Etapa 4):
+ * - Hoy: posición financiera (dashboard, flujo, deudas, portafolio, metas).
+ * - Fiscal: planeación tributaria Colombia (ruta dedicada, separada visualmente en desktop).
+ * - Futuro: herramientas hipotéticas (asignación, simulador).
+ * - Modelo: catálogo avanzado (tipos de inversión).
  */
 
 import { useEffect, useState } from 'react';
@@ -38,11 +38,12 @@ type PrimaryNavItem = {
   onboarding?: string;
 };
 
-/** Día a día: visión, flujos, obligaciones, patrimonio líquido, metas, fiscal. */
-const PRIMARY_NAV: PrimaryNavItem[] = [
+/** Hoy · posición financiera (datos que registrás). */
+const HOY_NAV: PrimaryNavItem[] = [
   {
     href: '/',
     label: 'Dashboard',
+    shortDescription: 'Tu posición y KPIs',
     icon: Home,
     onboarding: 'nav-dashboard',
   },
@@ -53,7 +54,12 @@ const PRIMARY_NAV: PrimaryNavItem[] = [
     icon: Banknote,
     onboarding: 'nav-cashflow',
   },
-  { href: '/debts', label: 'Deudas', icon: Scale },
+  {
+    href: '/debts',
+    label: 'Deudas',
+    shortDescription: 'Pasivos y cuotas',
+    icon: Scale,
+  },
   {
     href: '/investment-positions',
     label: 'Portafolio',
@@ -61,21 +67,32 @@ const PRIMARY_NAV: PrimaryNavItem[] = [
     icon: PieChart,
     onboarding: 'nav-portfolio',
   },
-  { href: '/goals', label: 'Metas', icon: Target },
+  {
+    href: '/goals',
+    label: 'Metas',
+    shortDescription: 'Plazos y ahorro',
+    icon: Target,
+  },
+];
+
+/** Fiscal · planeación (motor modelo, distinto del “hoy” contable). */
+const FISCAL_NAV: PrimaryNavItem[] = [
   {
     href: '/tax',
     label: 'Fiscal',
-    shortDescription: 'Perfil e impuestos (Colombia)',
+    shortDescription: 'Impuestos Colombia (modelo)',
     icon: Landmark,
     onboarding: 'nav-tax',
   },
 ];
 
+const PRIMARY_NAV: PrimaryNavItem[] = [...HOY_NAV, ...FISCAL_NAV];
+
 const PLANNING_NAV: NavMenuItem[] = [
   {
     href: '/allocator',
     label: 'Asignación',
-    shortDescription: 'Simulación de escenarios',
+    shortDescription: 'Cómo repartir capital (hipótesis)',
     icon: Network,
     onboarding: undefined,
     variant: 'allocator',
@@ -83,6 +100,7 @@ const PLANNING_NAV: NavMenuItem[] = [
   {
     href: '/simulator',
     label: 'Simulador',
+    shortDescription: '¿Qué pasa si…? (proyecciones)',
     icon: Sparkles,
     variant: 'simulator',
   },
@@ -92,7 +110,7 @@ const CONFIG_NAV: NavMenuItem[] = [
   {
     href: '/investment-types',
     label: 'Tipos de inversión',
-    shortDescription: 'Fondos, bienes, etc.',
+    shortDescription: 'Catálogo del modelo (avanzado)',
     icon: Settings2,
   },
 ];
@@ -158,7 +176,7 @@ export function AppNavigation() {
                 className="font-bold text-slate-900 text-sm truncate tracking-tight"
                 onClick={() => setMobileOpen(false)}
               >
-                Finance OS
+                Personal Finance OS
               </Link>
             </div>
 
@@ -167,25 +185,43 @@ export function AppNavigation() {
                 {PRIMARY_NAV.map((item) => {
                   const active = primaryActive(item.href);
                   const Icon = item.icon;
+                  const isFiscal = item.href === '/tax';
                   return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      data-onboarding={item.onboarding}
-                      className={desktopPrimaryLinkClass(active)}
-                      aria-current={active ? 'page' : undefined}
-                      title={item.shortDescription}
-                    >
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span className="hidden lg:inline">{item.label}</span>
-                      <span className="lg:hidden">{item.label.split(' ')[0]}</span>
-                    </Link>
+                    <span key={item.href} className="contents">
+                      {isFiscal ? (
+                        <span
+                          className="hidden md:inline-block w-px h-5 bg-slate-200 shrink-0 self-center mx-0.5"
+                          aria-hidden
+                        />
+                      ) : null}
+                      <Link
+                        href={item.href}
+                        data-onboarding={item.onboarding}
+                        className={desktopPrimaryLinkClass(active)}
+                        aria-current={active ? 'page' : undefined}
+                        title={item.shortDescription}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="hidden lg:inline">{item.label}</span>
+                        <span className="lg:hidden">{item.label.split(' ')[0]}</span>
+                      </Link>
+                    </span>
                   );
                 })}
               </div>
               <div className="flex shrink-0 items-center gap-1 overflow-visible">
-                <NavMenuDropdown id="nav-planning" buttonLabel="Planificación" items={PLANNING_NAV} />
-                <NavMenuDropdown id="nav-config" buttonLabel="Configuración" items={CONFIG_NAV} />
+                <NavMenuDropdown
+                  id="nav-planning"
+                  buttonLabel="Futuro"
+                  buttonTitle="Planificación y escenarios: proyecciones e hipótesis (no sustituyen tus registros de hoy)"
+                  items={PLANNING_NAV}
+                />
+                <NavMenuDropdown
+                  id="nav-config"
+                  buttonLabel="Modelo"
+                  buttonTitle="Catálogo y estructura: tipos de inversión para clasificar posiciones"
+                  items={CONFIG_NAV}
+                />
               </div>
             </div>
 
@@ -226,10 +262,10 @@ export function AppNavigation() {
 
           <nav className="flex-1 overflow-y-auto overscroll-contain p-3 pb-8">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-2">
-              Resumen y día a día
+              Hoy · posición financiera
             </p>
             <ul className="flex flex-col gap-0.5">
-              {PRIMARY_NAV.map((item) => {
+              {HOY_NAV.map((item) => {
                 const active = primaryActive(item.href);
                 const Icon = item.icon;
                 return (
@@ -257,7 +293,38 @@ export function AppNavigation() {
             </ul>
 
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-2">
-              Planificación
+              Fiscal · impuestos (Colombia)
+            </p>
+            <ul className="flex flex-col gap-0.5">
+              {FISCAL_NAV.map((item) => {
+                const active = primaryActive(item.href);
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      data-onboarding={item.onboarding}
+                      className={itemClass(undefined, active)}
+                      onClick={() => setMobileOpen(false)}
+                      aria-current={active ? 'page' : undefined}
+                    >
+                      <Icon className="w-5 h-5 shrink-0 opacity-90" />
+                      <span className="flex flex-col min-w-0">
+                        <span>{item.label}</span>
+                        {item.shortDescription ? (
+                          <span className="text-[11px] font-normal text-slate-500 leading-snug">
+                            {item.shortDescription}
+                          </span>
+                        ) : null}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-2">
+              Futuro · escenarios
             </p>
             <ul className="flex flex-col gap-0.5">
               {PLANNING_NAV.map((item) => {
@@ -288,7 +355,7 @@ export function AppNavigation() {
             </ul>
 
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-2">
-              Configuración del modelo
+              Modelo · catálogo
             </p>
             <ul className="flex flex-col gap-0.5">
               {CONFIG_NAV.map((item) => {

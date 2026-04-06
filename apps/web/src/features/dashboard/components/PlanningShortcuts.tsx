@@ -8,9 +8,10 @@ import { Network, Sparkles } from 'lucide-react';
 export function PlanningShortcuts() {
   return (
     <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/80 p-4 shadow-sm">
-      <h3 className="text-xs font-bold text-slate-900 mb-0.5">Planificación</h3>
+      <h3 className="text-xs font-bold text-slate-900 mb-0.5">Futuro · planificación</h3>
       <p className="text-[10px] text-slate-500 mb-3 leading-snug">
-        Prueba hipótesis de capital y escenarios; no modifica tus registros.
+        Herramientas <strong className="font-medium text-slate-600">hipotéticas</strong>: probá escenarios sin tocar lo que ya registraste en{' '}
+        <strong className="font-medium text-slate-600">Hoy</strong>.
       </p>
       <div className="flex flex-wrap gap-2">
         <Link

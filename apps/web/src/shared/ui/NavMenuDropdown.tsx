@@ -18,6 +18,8 @@ export type NavMenuItem = {
 type NavMenuDropdownProps = {
   id: string;
   buttonLabel: string;
+  /** Tooltip / accesibilidad: explica el bloque sin abrir el menú. */
+  buttonTitle?: string;
   items: NavMenuItem[];
   align?: 'left' | 'right';
 };
@@ -41,6 +43,7 @@ function linkClasses(variant: NavMenuItem['variant'], active: boolean): string {
 export function NavMenuDropdown({
   id,
   buttonLabel,
+  buttonTitle,
   items,
   align = 'left',
 }: NavMenuDropdownProps) {
@@ -73,6 +76,7 @@ export function NavMenuDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={`${id}-menu`}
+        title={buttonTitle}
         onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-1 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors border ${
           groupActive

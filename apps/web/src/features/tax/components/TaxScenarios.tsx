@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+import { TrustBadge } from '@/shared/ui/TrustProvenance';
 import {
   CHART_PALETTE,
   axisTickProps,
@@ -62,9 +63,11 @@ export function TaxScenarios({
 
   return (
     <div>
-      <h2 className="mb-3 flex items-center gap-1.5 text-lg font-bold text-slate-800">
-        <Landmark className="h-4 w-4 text-indigo-600" />
-        Escenarios y Liquidación Sugerida
+      <h2 className="mb-3 flex flex-wrap items-center gap-2 text-lg font-bold text-slate-800">
+        <Landmark className="h-4 w-4 text-indigo-600 shrink-0" />
+        <span>Escenarios y liquidación sugerida</span>
+        <TrustBadge kind="FISCAL_MODEL" />
+        <TrustBadge kind="ESTIMATED" />
       </h2>
 
       {declarationSimulationActive ? (

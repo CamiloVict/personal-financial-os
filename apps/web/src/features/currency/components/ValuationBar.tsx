@@ -61,13 +61,26 @@ export function ValuationBar() {
   return (
     <div className="border-b border-slate-200/80 bg-slate-50/90 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-[11px] text-slate-600">
-          <Scale className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-          <span className="font-semibold text-slate-700">Valuación</span>
-          <span className="hidden sm:inline text-slate-400">|</span>
-          <span className="text-slate-500 line-clamp-2 sm:line-clamp-1">
-            {valuationModeFootnote(displayValuationMode)}
-          </span>
+        <div className="flex flex-col gap-1 min-w-0 text-[11px] text-slate-600">
+          <div className="flex items-start gap-2 min-w-0 sm:items-center">
+            <Scale className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5 sm:mt-0" />
+            <div className="min-w-0 flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">
+              <span className="font-semibold text-slate-700 shrink-0">Valuación</span>
+              <span className="hidden sm:inline text-slate-400">|</span>
+              <span className="text-slate-500 line-clamp-3 sm:line-clamp-2">
+                {valuationModeFootnote(displayValuationMode)}
+              </span>
+            </div>
+          </div>
+          <p
+            className="text-[10px] text-slate-500 pl-6 sm:pl-0 sm:border-l sm:border-slate-200 sm:ml-6 sm:py-0.5"
+            title="Fecha usada para tipos de cambio al convertir entre monedas en vista nominal. El módulo fiscal calcula en COP; aquí solo afecta cómo ves esos montos si eliges USD u otro modo."
+          >
+            Corte FX / presentación:{' '}
+            <span className="font-mono font-medium text-slate-700">{valuationAsOfDate}</span>
+            {' — '}
+            coincide con el selector &quot;FX asOf&quot; a la derecha.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

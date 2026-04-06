@@ -9,3 +9,5 @@ export { SimulatorFormSubmit } from './SimulatorFormSubmit';
 export { SimulatorResultsEmpty } from './SimulatorResultsEmpty';
 export { SimulatorResultsPanel } from './SimulatorResultsPanel';
 export { SimulatorSnapshotBar } from './SimulatorSnapshotBar';
+export { SimulatorFramingBanner } from './SimulatorFramingBanner';
+export { SimulatorPresetChips } from './SimulatorPresetChips';

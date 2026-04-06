@@ -624,6 +624,9 @@ export class AnalyticsService {
         name: g.name,
         progress,
         expectedProgress,
+        targetAmount: target,
+        currentAmount: current,
+        targetDate: g.targetDate ? g.targetDate.toISOString() : null,
       };
     });
 
@@ -755,7 +758,7 @@ export class AnalyticsService {
   }> {
     const snapshot = await this.buildInsightSnapshot(userId);
     const raw = buildInsightsFromSnapshot(snapshot);
-    const insights = prioritizeInsights(raw, 8);
+    const insights = prioritizeInsights(raw, 10);
     return {
       insights,
       snapshot,

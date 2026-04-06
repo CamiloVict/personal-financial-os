@@ -3,10 +3,11 @@ import {
   Get,
   Post,
   Body,
-  BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { DbUserId } from '../../auth/db-user.decorator';
+import { TaxDeclarationPreviewDto } from './dto/tax-declaration-preview.dto';
 import { TaxService } from './tax.service';
 
 @Controller('tax')
@@ -57,14 +58,12 @@ export class TaxController {
   }
 
   @Post('declaration-preview')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async previewDeclaration(
     @DbUserId() userId: string,
-    @Body() body: { leverIds?: string[] },
+    @Body() body: TaxDeclarationPreviewDto,
   ) {
-    const ids = body?.leverIds;
-    if (!Array.isArray(ids) || ids.length === 0) {
-      throw new BadRequestException('leverIds debe ser un array no vacío');
-    }
+    const ids = body.leverIds;
     const result = await this.taxService.previewLeverCombination(userId, ids);
     if (!result) {
       throw new NotFoundException('No hay perfil fiscal guardado');
@@ -73,6 +72,7 @@ export class TaxController {
   }
 
   @Post('analyze')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   analyzeTaxSituation(@DbUserId() userId: string) {
     return this.taxService.analyzeTaxSituation(userId);
   }
