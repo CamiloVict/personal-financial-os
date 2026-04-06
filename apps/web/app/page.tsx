@@ -17,6 +17,7 @@ import {
   TopInvestments,
   QuickActions,
 } from '@/features/dashboard/components';
+import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 
 /** Al menos un flujo de caja (ingreso o gasto) o una inversión */
 function hasFinancialSetup(
@@ -113,6 +114,7 @@ export default function HomePage() {
               isLoading={isLoadingTax}
               analytics={taxAnalytics}
             />
+            <ExplanationPanel explanation={taxAnalytics?.explanation} defaultOpen={false} />
             <QuickActions />
           </div>
 

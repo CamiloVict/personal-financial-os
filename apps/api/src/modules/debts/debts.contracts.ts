@@ -1,3 +1,5 @@
+import type { FinancialExplanation } from '@personal-finance-os/explanation';
+
 export interface DebtItem {
   id: string;
   userId: string;
@@ -38,4 +40,5 @@ export interface LeverageAnalysisResult {
   weightedAverageInterestRate: number;
   leverageRatio: number; // Debt / Total Assets
   leverageHealthStatus: 'EXCELLENT' | 'GOOD' | 'WARNING' | 'CRITICAL';
+  explanation: FinancialExplanation;
 }

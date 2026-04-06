@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { buildSimulatorExplanation } from '../../common/explanation/simulator-explanation';
 import {
   SimulationResult,
   SimulationYearData,
@@ -80,6 +81,50 @@ export class SimulatorService {
       ? `A pesar de la iliquidez, tu patrimonio superará a tu inversión base en un ${roiDiff.toFixed(1)}%.`
       : `La inversión base supera al apartamento en un ${Math.abs(roiDiff).toFixed(1)}% debido al alto costo de la deuda.`;
 
+    const explanation = buildSimulatorExplanation({
+      domain: 'simulator.property_purchase',
+      title: 'Vivienda en arriendo vs cartera alternativa',
+      summary:
+        'Proyección año a año: cuota hipotecaria, valor del inmueble, arriendo, mantenimiento y escudo por intereses.',
+      paramLabels: [
+        { label: 'Valor propiedad', value: input.propertyValue },
+        { label: 'Cuota inicial', value: input.downPayment },
+        { label: 'Tasa préstamo % EA', value: input.interestRateAnnual },
+        { label: 'Plazo años', value: input.loanTermYears },
+        { label: 'Arriendo mensual esperado', value: input.expectedMonthlyRent },
+        { label: 'Apreciación anual %', value: input.expectedAnnualAppreciation },
+        { label: 'Mantenimiento % anual del valor', value: input.maintenanceAnnualPercentage },
+        { label: 'Retorno alternativo % EA', value: input.baselineInvestmentReturn },
+      ],
+      steps: [
+        {
+          label: 'Cuota hipotecaria (francés mensual)',
+          description: 'Interés y capital sobre saldo; tasa nominal anual / 12.',
+          ruleRef: 'SIM-PMT',
+        },
+        {
+          label: 'Escudo fiscal intereses',
+          description:
+            'Intereses deducibles limitados a 1200 × UVT fija interna del simulador (50.000 COP en código).',
+          ruleRef: 'SIM-TAX-SHIELD',
+        },
+        {
+          label: 'Patrimonio escenario',
+          description:
+            'Valor vivienda − saldo préstamo + cashflows acumulados + escudo fiscal acumulado.',
+        },
+        {
+          label: 'Línea base',
+          description: `Solo inversión del enganche al ${input.baselineInvestmentReturn}% compuesto anual.`,
+        },
+      ],
+      assumptions: [
+        'Tasa marginal 35% fija para valorar escudo fiscal.',
+        'UVT del simulador (50.000) puede diferir del motor fiscal principal (48.000).',
+        'Sin vacantes, costos de transacción ni seguros explícitos.',
+      ],
+    });
+
     return {
       userId,
       primaryInsight: netWorthInsight,
@@ -93,7 +138,8 @@ export class SimulatorService {
         { label: 'Impacto Mensual', value: `$${Math.round(initialMonthlyCashflowImpact).toLocaleString()}`, color: initialMonthlyCashflowImpact >= 0 ? 'emerald' : 'rose' },
         { label: 'Escudo Fiscal Promedio', value: `+$${Math.round(avgTaxShield).toLocaleString()}/año`, color: 'indigo' },
         { label: 'Veredicto Patrimonial', value: `${roiDiff > 0 ? '+' : ''}${roiDiff.toFixed(1)}% vs Base`, color: roiDiff >= 0 ? 'amber' : 'slate' }
-      ]
+      ],
+      explanation,
     };
   }
 
@@ -174,6 +220,36 @@ export class SimulatorService {
 
     const tertiaryInsight = `Basado en aportes extra de $${input.monthlyExtraCapital.toLocaleString()} / mes.`;
 
+    const explanation = buildSimulatorExplanation({
+      domain: 'simulator.debt_vs_invest',
+      title: 'Pagar deuda más rápido vs invertir el excedente',
+      summary:
+        'Escenario A: pago mínimo de deuda + inversión del extra. Escenario B: todo el flujo disponible a deuda hasta saldar, luego inversión.',
+      paramLabels: [
+        { label: 'Saldo deuda', value: input.debtBalance },
+        { label: 'Tasa deuda % EA', value: input.debtInterestRateAnnual },
+        { label: 'Pago mínimo mensual', value: input.minimumMonthlyPayment },
+        { label: 'Capital extra mensual', value: input.monthlyExtraCapital },
+        { label: 'Retorno inversión % EA', value: input.investmentReturnAnnual },
+        { label: 'Años', value: input.yearsToSimulate },
+      ],
+      steps: [
+        {
+          label: 'Interés mensual sobre saldo',
+          description: 'Cada mes se capitaliza interés y se aplican pagos según escenario.',
+          ruleRef: 'SIM-DEBT-INTEREST',
+        },
+        {
+          label: 'Patrimonio neto por año',
+          description: 'Inversión − deuda restante al cierre de cada año.',
+        },
+      ],
+      assumptions: [
+        'Tasas y aportes constantes; sin nuevas deudas ni retiros.',
+        'Mismo retorno de inversión todos los meses (compuesto mensual).',
+      ],
+    });
+
     return {
       userId,
       primaryInsight,
@@ -187,7 +263,8 @@ export class SimulatorService {
         { label: 'Patrimonio Si Inviertes', value: `$${Math.round(finalYear.baselineNetWorth).toLocaleString()}`, color: 'slate' },
         { label: 'Patrimonio Si Pagas Deuda', value: `$${Math.round(finalYear.scenarioNetWorth).toLocaleString()}`, color: roiDiff >= 0 ? 'emerald' : 'amber' },
         { label: 'Diferencia', value: `${roiDiff > 0 ? '+' : ''}${roiDiff.toFixed(1)}%`, color: roiDiff >= 0 ? 'emerald' : 'slate' }
-      ]
+      ],
+      explanation,
     };
   }
 
@@ -235,6 +312,30 @@ export class SimulatorService {
     const secondaryInsight = `El interés compuesto sobre el dinero que le dejaste de pagar al gobierno es magia pura.`;
     const tertiaryInsight = `Asumiendo que logras una retención marginal de ${input.marginalTaxRate}% sobre todo tu aporte.`;
 
+    const explanation = buildSimulatorExplanation({
+      domain: 'simulator.tax_advantaged',
+      title: 'Cuenta con beneficio fiscal vs cuenta tradicional',
+      summary:
+        'Aportes mensuales iguales; en el escenario exento se reinvierte al final de cada año el ahorro tributario estimado.',
+      paramLabels: [
+        { label: 'Aporte mensual', value: input.monthlyContribution },
+        { label: 'Tasa marginal %', value: input.marginalTaxRate },
+        { label: 'Retorno % EA', value: input.investmentReturnAnnual },
+        { label: 'Años', value: input.yearsToSimulate },
+      ],
+      steps: [
+        {
+          label: 'Crecimiento mensual compuesto',
+          description: 'Mismo retorno en ambas carteras; escenario B recibe lump-sum anual por “devolución” simplificada.',
+          ruleRef: 'SIM-TAX-ADV',
+        },
+      ],
+      assumptions: [
+        'La tasa marginal aplica sobre todo el aporte (simplificación).',
+        'Sin retiros anticipados ni penalizaciones; liquidez igual en ambos casos.',
+      ],
+    });
+
     return {
       userId,
       primaryInsight,
@@ -248,7 +349,8 @@ export class SimulatorService {
         { label: 'Inversión Tradicional', value: `$${Math.round(finalYear.baselineNetWorth).toLocaleString()}`, color: 'slate' },
         { label: 'Inversión AFC/FPV', value: `$${Math.round(finalYear.scenarioNetWorth).toLocaleString()}`, color: 'emerald' },
         { label: 'Ventaja del Escudo', value: `+${roiDiff.toFixed(1)}%`, color: 'indigo' }
-      ]
+      ],
+      explanation,
     };
   }
 
@@ -294,6 +396,34 @@ export class SimulatorService {
 
     const tertiaryInsight = `Ojo: Este modelo no cuantifica el valor de las horas extra (sudor) que le metes al negocio vs la pasividad total.`;
 
+    const explanation = buildSimulatorExplanation({
+      domain: 'simulator.business_vs_passive',
+      title: 'Negocio propio vs solo invertir en mercado',
+      summary:
+        'Línea base: capital inicial compuesto al retorno pasivo. Escenario: flujo neto mensual del negocio reinvertido al mismo retorno.',
+      paramLabels: [
+        { label: 'Capital inicial', value: input.initialCapital },
+        { label: 'Costo operativo mensual', value: input.monthlyOperatingCost },
+        { label: 'Ingreso mensual esperado', value: input.expectedMonthlyRevenue },
+        { label: 'Retorno pasivo % EA', value: input.passiveMarketReturnAnnual },
+        { label: 'Años', value: input.yearsToSimulate },
+      ],
+      steps: [
+        {
+          label: 'Flujo neto del negocio',
+          description: 'Ingresos − costos mensuales, acumulado al patrimonio del negocio.',
+        },
+        {
+          label: 'Reinversión al retorno pasivo',
+          description: 'Utilidades del negocio compuestas al mismo r mensual que la línea base.',
+        },
+      ],
+      assumptions: [
+        'No se valora tiempo trabajado ni salario implícito.',
+        'Mismo retorno de mercado para ambos escenarios después del flujo.',
+      ],
+    });
+
     return {
       userId,
       primaryInsight,
@@ -307,7 +437,8 @@ export class SimulatorService {
         { label: 'Mercado (S&P 500)', value: `$${Math.round(finalYear.baselineNetWorth).toLocaleString()}`, color: 'slate' },
         { label: 'Negocio Propio', value: `$${Math.round(finalYear.scenarioNetWorth).toLocaleString()}`, color: roiDiff >= 0 ? 'amber' : 'rose' },
         { label: 'Spread Patrimonial', value: `${roiDiff > 0 ? '+' : ''}${roiDiff.toFixed(1)}%`, color: roiDiff >= 0 ? 'amber' : 'slate' }
-      ]
+      ],
+      explanation,
     };
   }
 
@@ -350,6 +481,32 @@ export class SimulatorService {
     const secondaryInsight = `El interés compuesto hizo que tu capital inicial y tus aportes mensuales crecieran significativamente a lo largo del tiempo.`;
     const tertiaryInsight = `Esta simulación personalizada toma en cuenta tanto los retornos como los costos anuales que parametrizaste.`;
 
+    const explanation = buildSimulatorExplanation({
+      domain: 'simulator.custom',
+      title: 'Comparación custom línea base vs escenario',
+      summary:
+        'Dos trayectorias con aportes mensuales, retornos anuales efectivos mensuales y costo anual deducido del escenario.',
+      paramLabels: [
+        { label: 'Base: capital inicial', value: input.baselineInitialCapital },
+        { label: 'Base: aporte mensual', value: input.baselineMonthlyContribution },
+        { label: 'Base: retorno % EA', value: input.baselineAnnualReturn },
+        { label: 'Escenario: capital inicial', value: input.scenarioInitialCapital },
+        { label: 'Escenario: aporte mensual', value: input.scenarioMonthlyContribution },
+        { label: 'Escenario: retorno % EA', value: input.scenarioAnnualReturn },
+        { label: 'Escenario: costo % EA', value: input.scenarioAnnualCost },
+        { label: 'Años', value: input.yearsToSimulate },
+      ],
+      steps: [
+        {
+          label: 'Valor futuro mes a mes',
+          description:
+            'r_mensual = retorno_anual/12; escenario neto = r_escenario − costo_escenario por mes.',
+          ruleRef: 'SIM-CUSTOM-FV',
+        },
+      ],
+      assumptions: ['Retornos y costos constantes en el horizonte.'],
+    });
+
     return {
       userId,
       primaryInsight,
@@ -363,7 +520,8 @@ export class SimulatorService {
         { label: 'Patrimonio Base', value: `$${Math.round(finalYear.baselineNetWorth).toLocaleString()}`, color: 'slate' },
         { label: 'Patrimonio Customizado', value: `$${Math.round(finalYear.scenarioNetWorth).toLocaleString()}`, color: roiDiff >= 0 ? 'emerald' : 'amber' },
         { label: 'Diferencia', value: `${roiDiff > 0 ? '+' : ''}${roiDiff.toFixed(1)}%`, color: roiDiff >= 0 ? 'emerald' : 'slate' }
-      ]
+      ],
+      explanation,
     };
   }
 }

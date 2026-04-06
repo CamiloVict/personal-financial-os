@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createNode, emptyFinancialExplanation } from '@personal-finance-os/explanation';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { AllocatorResult, AllocationRecommendation } from './allocator.contracts';
 import { v4 as uuidv4 } from 'uuid';
@@ -144,11 +145,57 @@ export class AllocatorService {
 
     recommendations.sort((a, b) => b.priorityScore - a.priorityScore);
 
+    const explanation = {
+      ...emptyFinancialExplanation(
+        'allocator.capital_plan',
+        'Asignación heurística de capital disponible',
+      ),
+      summary:
+        'Prioriza beneficios fiscales (AFC/FPV), luego deudas caras (>15%), luego metas abiertas por fecha.',
+      inputs: [
+        createNode({
+          kind: 'input',
+          label: 'Capital disponible a asignar',
+          value: availableCapital,
+        }),
+        createNode({
+          kind: 'input',
+          label: 'Tasa marginal estimada AFC/FPV',
+          description: '35% fija en modelo',
+          value: 35,
+        }),
+      ],
+      steps: [
+        createNode({
+          kind: 'rule',
+          label: 'Tope rentas exentas',
+          description:
+            'Sugerencias AFC/FPV limitadas a 30% del ingreso anual estimado (heurística del allocator).',
+          ruleRef: 'ALLOC-TAX-CAP-30',
+        }),
+        createNode({
+          kind: 'rule',
+          label: 'Deuda prioritaria',
+          description: 'Solo deudas con tasa > 15% EA.',
+          ruleRef: 'ALLOC-DEBT-15',
+        }),
+      ],
+      assumptions: [
+        'Ingreso anual = suma de streams INCOME × 12 sin ajuste TRM.',
+        'No se modelan límites legales detallados de AFC/FPV del Estatuto.',
+      ],
+      missingData: [
+        'Liquidez de emergencia deseada y otros compromisos no registrados en la app.',
+      ],
+      normativeRefs: [],
+    };
+
     return {
       userId,
       availableCapital,
       unallocatedCapital,
       recommendations,
+      explanation,
     };
   }
 }

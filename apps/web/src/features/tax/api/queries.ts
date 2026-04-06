@@ -17,14 +17,26 @@ export function useTaxProfile() {
   });
 }
 
+export type TaxClassificationsPayload = {
+  classifications: any[];
+  explanation?: import('@personal-finance-os/explanation').FinancialExplanation;
+};
+
 export function useTaxClassifications(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.tax.classifications(),
-    queryFn: async () => {
+    queryFn: async (): Promise<TaxClassificationsPayload> => {
       try {
-        return await apiClient.get<any[]>('/tax/classifications');
+        const res = await apiClient.get<any>('/tax/classifications');
+        if (Array.isArray(res)) {
+          return { classifications: res, explanation: undefined };
+        }
+        return {
+          classifications: res.classifications ?? [],
+          explanation: res.explanation,
+        };
       } catch {
-        return [];
+        return { classifications: [] };
       }
     },
     enabled,
@@ -61,6 +73,7 @@ export type TaxDeclarationPreview = {
   estimatedNetTaxPayable: number;
   savingsVsConservative: number;
   label: string;
+  explanation?: import('@personal-finance-os/explanation').FinancialExplanation;
 };
 
 /** Vista previa del impuesto con varias palancas activas a la vez (POST /tax/declaration-preview). */

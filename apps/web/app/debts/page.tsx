@@ -10,6 +10,7 @@ import {
   DebtsGoodDebtPanel,
   DebtsBadDebtPanel,
 } from '@/features/debts/components';
+import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 
 export default function DebtsPage() {
   const { data: analysis, isLoading } = useLeverageAnalysis();
@@ -29,6 +30,8 @@ export default function DebtsPage() {
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <DebtsPageHeader />
+
+      <ExplanationPanel explanation={a.explanation} defaultOpen={false} />
 
       {a.totalDebt === 0 ? (
         <DebtsEmptyTotal />

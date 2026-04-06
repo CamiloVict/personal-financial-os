@@ -8,6 +8,7 @@ import {
   AllocatorCapitalForm,
   AllocatorRecommendationsSection,
 } from '@/features/allocator/components';
+import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 
 export default function AllocatorPage() {
   const generatePlanMutation = useGenerateAllocatorPlan();
@@ -35,7 +36,12 @@ export default function AllocatorPage() {
         isPending={generatePlanMutation.isPending}
       />
 
-      {plan && <AllocatorRecommendationsSection plan={plan} />}
+      {plan ? (
+        <>
+          <ExplanationPanel explanation={plan.explanation} defaultOpen={false} />
+          <AllocatorRecommendationsSection plan={plan} />
+        </>
+      ) : null}
     </div>
   );
 }

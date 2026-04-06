@@ -1,3 +1,5 @@
+import type { FinancialExplanation } from '@personal-finance-os/explanation';
+
 /** Respuesta de GET /debts/leverage-analysis (usuario autenticado) */
 export interface LeverageAnalysis {
   totalDebt: number;
@@ -8,6 +10,7 @@ export interface LeverageAnalysis {
   weightedAverageInterestRate: number;
   leverageRatio: number;
   leverageHealthStatus: string;
+  explanation: FinancialExplanation;
 }
 
 export interface BadDebtRow {

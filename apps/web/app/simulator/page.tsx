@@ -21,6 +21,7 @@ import {
   SimulatorResultsEmpty,
   SimulatorResultsPanel,
 } from '@/features/simulator/components';
+import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 
 export default function SimulatorPage() {
   const simProperty = useSimulatePropertyPurchase();
@@ -249,8 +250,11 @@ export default function SimulatorPage() {
           </form>
         </div>
 
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 space-y-4">
           {!result ? <SimulatorResultsEmpty /> : <SimulatorResultsPanel result={result} />}
+          {result ? (
+            <ExplanationPanel explanation={result.explanation} defaultOpen={false} />
+          ) : null}
         </div>
       </div>
     </div>

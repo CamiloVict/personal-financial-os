@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { buildLeverageAnalysisExplanation } from '../../common/explanation/debts-leverage-explanation';
 import { LeverageAnalysisResult, DebtItem } from './debts.contracts';
 
 @Injectable()
@@ -139,6 +140,11 @@ export class DebtsService {
       leverageHealthStatus = 'WARNING';
     else if (leverageRatio > 0.2) leverageHealthStatus = 'GOOD';
 
+    const explanation = buildLeverageAnalysisExplanation({
+      debtCount: userDebts.length,
+      positionCount: userPositions.length,
+    });
+
     return {
       userId,
       totalDebt,
@@ -150,6 +156,7 @@ export class DebtsService {
       weightedAverageInterestRate,
       leverageRatio,
       leverageHealthStatus,
+      explanation,
     };
   }
 

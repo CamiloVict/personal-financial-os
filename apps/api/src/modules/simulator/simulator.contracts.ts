@@ -1,3 +1,5 @@
+import type { FinancialExplanation } from '@personal-finance-os/explanation';
+
 // Base Result Interfaces
 export interface SimulationYearData {
   year: number;
@@ -21,6 +23,8 @@ export interface SimulationResult {
   roiDifference: number; // percentage difference
   // Additional metric details
   metrics: { label: string; value: string; color: string }[];
+  /** Cómo se construyó la simulación (reglas, supuestos, entradas). */
+  explanation: FinancialExplanation;
 }
 
 // 1. Property Purchase (Existing)

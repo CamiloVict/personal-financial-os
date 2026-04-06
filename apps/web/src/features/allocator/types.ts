@@ -1,3 +1,5 @@
+import type { FinancialExplanation } from '@personal-finance-os/explanation';
+
 export interface AllocatorRecommendation {
   id: string;
   type: string;
@@ -14,4 +16,5 @@ export interface AllocatorPlan {
   availableCapital: number;
   unallocatedCapital: number;
   recommendations: AllocatorRecommendation[];
+  explanation: FinancialExplanation;
 }

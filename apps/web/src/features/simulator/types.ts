@@ -1,3 +1,5 @@
+import type { FinancialExplanation } from '@personal-finance-os/explanation';
+
 export type ScenarioType =
   | 'PROPERTY'
   | 'DEBT_VS_INVEST'
@@ -29,4 +31,5 @@ export interface SimulationResult {
   finalBaselineNetWorth: number;
   roiDifference: number;
   metrics: SimulationMetric[];
+  explanation: FinancialExplanation;
 }

@@ -18,6 +18,7 @@ import {
   TaxMissedOpportunities,
   TaxDeclarationSection,
 } from '@/features/tax/components';
+import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 
 export default function TaxDashboard() {
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'PLAN'>('PROFILE');
@@ -30,7 +31,9 @@ export default function TaxDashboard() {
     error: profileErrorDetail,
     refetch: refetchProfile,
   } = useTaxProfile();
-  const { data: classifications = [] } = useTaxClassifications(!!profile);
+  const { data: classificationPayload } = useTaxClassifications(!!profile);
+  const classifications = classificationPayload?.classifications ?? [];
+  const classificationsExplanation = classificationPayload?.explanation;
   const { data: plan, isLoading: loadingPlan } = useTaxPlan(!!profile);
   const { data: declarationInsights, isLoading: loadingDeclaration } = useTaxDeclarationInsights(!!profile);
 
@@ -298,7 +301,20 @@ export default function TaxDashboard() {
             />
           ) : null}
 
+          <ExplanationPanel
+            explanation={
+              selectedLeverIds.length > 0
+                ? comboPreview?.explanation ?? declarationInsights?.explanation
+                : declarationInsights?.explanation
+            }
+            defaultOpen={false}
+          />
+
           <TaxClassifications classifications={classifications} pieData={classificationsPieData} />
+
+          <ExplanationPanel explanation={classificationsExplanation} defaultOpen={false} />
+
+          <ExplanationPanel explanation={plan?.explanation} defaultOpen={false} />
 
           {loadingPlan ? (
             <div className="h-40 rounded-xl bg-slate-100 animate-pulse border border-slate-200" aria-hidden />

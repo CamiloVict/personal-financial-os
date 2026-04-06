@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createNode, emptyFinancialExplanation } from '@personal-finance-os/explanation';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 
 @Injectable()
@@ -35,6 +36,33 @@ export class AnalyticsService {
       {},
     );
 
+    const explanation = {
+      ...emptyFinancialExplanation(
+        'analytics.cashflow_distribution',
+        'Distribución de flujos por categoría / tipo',
+      ),
+      inputs: [
+        createNode({
+          kind: 'input',
+          label: 'Streams considerados',
+          value: streams.length,
+        }),
+      ],
+      steps: [
+        createNode({
+          kind: 'aggregation',
+          label: 'Agregación mensual',
+          description:
+            'Gastos agrupados por categoría; ingresos por streamType (FIXED/VARIABLE).',
+        }),
+      ],
+      assumptions: [
+        'Montos expectedAmount por periodo del stream sin anualizar en este gráfico.',
+      ],
+      missingData: [],
+      normativeRefs: [],
+    };
+
     return {
       expenses: Object.entries(expenseByCategory).map(([name, value]) => ({
         name,
@@ -44,6 +72,7 @@ export class AnalyticsService {
         name,
         value,
       })),
+      explanation,
     };
   }
 
@@ -73,6 +102,32 @@ export class AnalyticsService {
       {},
     );
 
+    const explanation = {
+      ...emptyFinancialExplanation(
+        'analytics.net_worth',
+        'Patrimonio desde posiciones de inversión activas',
+      ),
+      inputs: [
+        createNode({
+          kind: 'input',
+          label: 'Posiciones ACTIVE',
+          value: investments.length,
+        }),
+      ],
+      steps: [
+        createNode({
+          kind: 'aggregation',
+          label: 'Suma currentEstimatedValue',
+          description: 'No incluye efectivo, bienes fuera del módulo de inversiones ni deudas netas.',
+        }),
+      ],
+      assumptions: [
+        'Valoraciones manuales o último evento según datos en cada posición.',
+      ],
+      missingData: ['Otros activos/pasivos no modelados en InvestmentPosition.'],
+      normativeRefs: [],
+    };
+
     return {
       netWorth: totalInvestments,
       totalReturn,
@@ -80,6 +135,7 @@ export class AnalyticsService {
         name,
         value,
       })),
+      explanation,
     };
   }
 
@@ -97,6 +153,26 @@ export class AnalyticsService {
     });
     if (!plan) return null;
 
+    const explanation = {
+      ...emptyFinancialExplanation(
+        'analytics.tax_dashboard',
+        'Comparación rápida de escenarios del último plan',
+      ),
+      steps: plan.scenarios.map((s) =>
+        createNode({
+          kind: 'result',
+          label: s.name,
+          value: Number(s.estimatedNetTaxPayable),
+          description: s.explanation ?? undefined,
+        }),
+      ),
+      assumptions: [
+        'Datos del último TaxPlan persistido; no recalcula motor en tiempo real.',
+      ],
+      missingData: [],
+      normativeRefs: [],
+    };
+
     return {
       scenariosComparison: plan.scenarios.map((s) => ({
         name: s.name,
@@ -106,6 +182,7 @@ export class AnalyticsService {
         deductionsAndExemptions:
           Number(s.estimatedDeductions) + Number(s.estimatedExemptions),
       })),
+      explanation,
     };
   }
 }

@@ -9,9 +9,17 @@ import {
   TaxProfileInput,
   IncomeStreamInput,
   applyTaxLeverSelection,
-  computeOptimizedTaxSnapshot,
+  computeOptimizedTaxSnapshotWithExplanation,
   calculateColombiaIncomeTaxUVT2026,
+  CO_AG2026_NORMATIVE_REFS,
 } from '@personal-finance-os/tax-engine';
+import {
+  createNode,
+  emptyFinancialExplanation,
+  mergeFinancialExplanations,
+  type FinancialExplanation,
+} from '@personal-finance-os/explanation';
+import { augmentTaxExplanation } from '../../common/explanation/tax-context';
 
 @Injectable()
 export class TaxService {
@@ -205,16 +213,49 @@ export class TaxService {
       });
     }
 
+    const totalIncome = classifications.reduce(
+      (a, c) => a + (c.annualGrossAmount ?? 0),
+      0,
+    );
+    const foreignTaxes = classifications.reduce(
+      (a, c) => a + (c.foreignTaxPaid || 0),
+      0,
+    );
+    const { explanation: coreExpl } = computeOptimizedTaxSnapshotWithExplanation(
+      profileInput,
+      totalIncome,
+      foreignTaxes,
+    );
+    const explanation = augmentTaxExplanation(coreExpl, {
+      incomeStreamCount: incomeStreams.length,
+      engineVersion: this.engine.version,
+      missingConditions: [
+        ...new Set(classifications.flatMap((c) => c.missingConditions)),
+      ],
+      extraAssumptions: [
+        'Escenarios “conservador” y “optimizado” se generan con el mismo ingreso clasificado.',
+      ],
+    });
+
     return {
       profile,
       classifications,
       scenarios,
+      explanation,
     };
   }
 
   async getClassifications(userId: string) {
     const profile = await this.getProfile(userId);
-    if (!profile) return [];
+    if (!profile) {
+      return {
+        classifications: [] as Array<Record<string, unknown>>,
+        explanation: emptyFinancialExplanation(
+          'tax.co.classifications',
+          'Clasificación tributaria de ingresos',
+        ),
+      };
+    }
 
     const classifications =
       await this.prisma.taxIncomeClassification.findMany({
@@ -229,10 +270,54 @@ export class TaxService {
             where: { id: { in: ids } },
           });
 
-    return classifications.map((c) => ({
+    const items = classifications.map((c) => ({
       ...c,
       stream: streams.find((s) => s.id === c.referenceId) ?? null,
     }));
+
+    const missing = [
+      ...new Set(
+        items.flatMap(
+          (c) => (c.missingConditions as string[] | null | undefined) ?? [],
+        ),
+      ),
+    ];
+
+    const explanation: FinancialExplanation = {
+      ...emptyFinancialExplanation(
+        'tax.co.classifications',
+        'Clasificación tributaria de ingresos',
+      ),
+      summary:
+        'Cada flujo de Cashflow se asocia a una cédula tentativa según moneda, contrato y residencia.',
+      inputs: [
+        createNode({
+          kind: 'input',
+          label: 'Clasificaciones persistidas',
+          value: items.length,
+          meta: { engineVersion: this.engine.version },
+        }),
+      ],
+      steps: items.map((c) =>
+        createNode({
+          kind: 'rule',
+          label: `Ingreso → ${c.suggestedCedula}`,
+          description: (c.explanation as string) || undefined,
+          meta: {
+            confidenceLevel: c.confidenceLevel,
+            referenceId: c.referenceId,
+          },
+        }),
+      ),
+      assumptions: [
+        'Heurística del motor CO-AG2026; no sustituye análisis de un contador.',
+        'Streams en USD se modelan como contrato extranjero sin subordinación salvo ajuste manual futuro.',
+      ],
+      missingData: missing,
+      normativeRefs: [...CO_AG2026_NORMATIVE_REFS],
+    };
+
+    return { classifications: items, explanation };
   }
 
   async getLatestPlan(userId: string) {
@@ -246,7 +331,36 @@ export class TaxService {
     });
 
     if (!latestPlan) return null;
-    return { ...latestPlan, scenarios: latestPlan.scenarios };
+
+    const explanation: FinancialExplanation = {
+      ...emptyFinancialExplanation(
+        'tax.co.plan_latest',
+        'Plan fiscal almacenado',
+      ),
+      summary: `Plan generado con ${latestPlan.scenarios.length} escenario(s).`,
+      inputs: [
+        createNode({
+          kind: 'input',
+          label: 'Fecha de generación',
+          description: latestPlan.generatedAt.toISOString(),
+        }),
+      ],
+      steps: latestPlan.scenarios.map((s) =>
+        createNode({
+          kind: 'result',
+          label: s.name,
+          description: s.explanation ?? undefined,
+          value: Number(s.estimatedNetTaxPayable),
+        }),
+      ),
+      assumptions: [
+        'Cifras congeladas al ejecutar “Recalcular Motor”; cambios en Cashflow no actualizan este plan hasta un nuevo análisis.',
+      ],
+      missingData: [],
+      normativeRefs: [...CO_AG2026_NORMATIVE_REFS],
+    };
+
+    return { ...latestPlan, scenarios: latestPlan.scenarios, explanation };
   }
 
   /**
@@ -333,6 +447,28 @@ export class TaxService {
     /** Siempre que exista perfil fiscal guardado, mostrar bloque de proyección en la web. */
     const showDeclarationModule = true;
 
+    const foreignTaxes = classifications.reduce(
+      (a, c) => a + (c.foreignTaxPaid || 0),
+      0,
+    );
+    const { explanation: coreDeclExpl } = computeOptimizedTaxSnapshotWithExplanation(
+      profileInput,
+      totalAnnual,
+      foreignTaxes,
+    );
+    const explanation = augmentTaxExplanation(coreDeclExpl, {
+      incomeStreamCount: streams.length,
+      engineVersion: this.engine.version,
+      missingConditions: [
+        ...new Set(classifications.flatMap((c) => c.missingConditions)),
+      ],
+      extraAssumptions: [
+        'Comparación por palanca: cada fila recalcula el motor con un subconjunto de beneficios.',
+        `Umbral ingreso “establecido”: stream con antigüedad > 365 días.`,
+        `Umbral filing orientativo: ingreso ≥ ${approxFilingThresholdUvt} UVT × ${UVT_2026} COP/UVT.`,
+      ],
+    });
+
     return {
       showDeclarationModule,
       hasEstablishedIncome,
@@ -340,6 +476,7 @@ export class TaxService {
       totalAnnualIncomeEstimated: totalAnnual,
       engineVersion: this.engine.version,
       leverComparison,
+      explanation,
     };
   }
 
@@ -391,12 +528,20 @@ export class TaxService {
     );
 
     const patched = applyTaxLeverSelection(profileInput, unique);
-    const snap = computeOptimizedTaxSnapshot(
-      patched,
-      totalAnnual,
-      foreignTaxes,
-    );
+    const { snapshot: snap, explanation: corePreviewExpl } =
+      computeOptimizedTaxSnapshotWithExplanation(
+        patched,
+        totalAnnual,
+        foreignTaxes,
+      );
     const conservativeTax = calculateColombiaIncomeTaxUVT2026(totalAnnual);
+
+    const explanation = mergeFinancialExplanations(corePreviewExpl, {
+      assumptions: [
+        `Palancas simuladas (combinación): ${unique.join(', ')}.`,
+        'Resto de beneficios en cero salvo datos de residencia del perfil (applyTaxLeverSelection).',
+      ],
+    });
 
     return {
       leverIds: unique,
@@ -408,6 +553,7 @@ export class TaxService {
         unique.length === 1
           ? 'Combinación: 1 beneficio'
           : `Combinación: ${unique.length} beneficios`,
+      explanation,
     };
   }
 }
