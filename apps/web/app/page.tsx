@@ -15,6 +15,7 @@ import { useLeverageAnalysis } from '@/features/debts/api/queries';
 import {
   useCashflowMonthlyTrend,
   useNetWorthAnalytics,
+  useProductInsights,
 } from '@/features/dashboard/api/queries';
 import {
   CashflowCharts,
@@ -28,6 +29,7 @@ import {
   NetWorthCompositionChart,
   GoalsProgressPanel,
   FiscalHealthAlert,
+  ProductInsightsPanel,
 } from '@/features/dashboard/components';
 import type { GoalProgressRow } from '@/features/dashboard/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
@@ -80,6 +82,8 @@ export default function HomePage() {
     useCashflowMonthlyTrend();
   const { data: netWorthPayload, isLoading: loadingNetWorth } =
     useNetWorthAnalytics();
+  const { data: productInsightsPayload, isLoading: loadingProductInsights } =
+    useProductInsights();
 
   const gateReady = !loadingStreams && !loadingPositions;
   const hasSetup = useMemo(
@@ -346,6 +350,11 @@ export default function HomePage() {
       </header>
 
       <FinancialHealthHero hero={hero} />
+
+      <ProductInsightsPanel
+        insights={productInsightsPayload?.insights}
+        loading={loadingProductInsights}
+      />
 
       <FinancialHealthKpiStrip
         loading={kpiLoading}

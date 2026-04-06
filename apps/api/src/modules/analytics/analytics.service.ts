@@ -2,6 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { createNode, emptyFinancialExplanation } from '@personal-finance-os/explanation';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { ConfidenceService } from '../confidence/confidence.service';
+import {
+  buildInsightsFromSnapshot,
+  prioritizeInsights,
+  type InsightSnapshot,
+  type ProductInsight,
+} from './insights.engine';
 
 @Injectable()
 export class AnalyticsService {
@@ -532,6 +538,228 @@ export class AnalyticsService {
       insights,
       explanation,
       confidence,
+    };
+  }
+
+  private async buildInsightSnapshot(userId: string): Promise<InsightSnapshot> {
+    const streams = await this.prisma.cashflowStream.findMany({
+      where: { userId },
+    });
+    const categories = await this.prisma.category.findMany({
+      where: { userId },
+    });
+
+    let incomeFixed = 0;
+    let incomeVariable = 0;
+    let expenseFixed = 0;
+    let expenseVariable = 0;
+    for (const s of streams) {
+      const amt = Number(s.expectedAmount);
+      if (s.flowType === 'INCOME') {
+        if (s.streamType === 'FIXED') incomeFixed += amt;
+        else incomeVariable += amt;
+      } else {
+        if (s.streamType === 'FIXED') expenseFixed += amt;
+        else expenseVariable += amt;
+      }
+    }
+
+    const incomeTotal = incomeFixed + incomeVariable;
+    const expenseTotal = expenseFixed + expenseVariable;
+    const savingsRate =
+      incomeTotal > 0 ? (incomeTotal - expenseTotal) / incomeTotal : null;
+    const fixedExpenseShareOfIncome =
+      incomeTotal > 0 ? expenseFixed / incomeTotal : null;
+
+    const expenseByCategory: Record<string, number> = {};
+    for (const s of streams) {
+      if (s.flowType !== 'EXPENSE') continue;
+      const cat =
+        categories.find((c) => c.id === s.categoryId)?.name || 'Otros';
+      expenseByCategory[cat] =
+        (expenseByCategory[cat] || 0) + Number(s.expectedAmount);
+    }
+    let topExpenseCategory: { name: string; share: number } | null = null;
+    if (expenseTotal > 0) {
+      for (const [name, value] of Object.entries(expenseByCategory)) {
+        const share = value / expenseTotal;
+        if (!topExpenseCategory || share > topExpenseCategory.share) {
+          topExpenseCategory = { name, share };
+        }
+      }
+    }
+
+    const { series } = await this.buildCashflowMonthlySeries(userId);
+    const nets = series.map((x) => x.net);
+    const mean = (arr: number[]) =>
+      arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length;
+    const avgNet3 = mean(nets.slice(-3));
+    const last = series[series.length - 1];
+    const lastMonthNet = last?.net ?? 0;
+    let vsRolling3Pct: number | null = null;
+    if (nets.length >= 3 && avgNet3 !== 0) {
+      vsRolling3Pct = (lastMonthNet - avgNet3) / Math.abs(avgNet3);
+    } else if (nets.length >= 3 && avgNet3 === 0 && lastMonthNet !== 0) {
+      vsRolling3Pct = lastMonthNet > 0 ? 1 : -1;
+    }
+
+    const goalsDb = await this.prisma.savingGoal.findMany({
+      where: { userId },
+    });
+    const goals = goalsDb.map((g) => {
+      const target = Number(g.targetAmount);
+      const current = Number(g.currentAmount ?? 0);
+      const progress = target > 0 ? current / target : 0;
+      let expectedProgress: number | null = null;
+      if (g.targetDate && g.createdAt) {
+        const start = g.createdAt.getTime();
+        const end = g.targetDate.getTime();
+        const now = Date.now();
+        if (end > start && now >= start) {
+          expectedProgress = Math.min(1, Math.max(0, (now - start) / (end - start)));
+        }
+      }
+      return {
+        id: g.id,
+        name: g.name,
+        progress,
+        expectedProgress,
+      };
+    });
+
+    const positions = await this.prisma.investmentPosition.findMany({
+      where: { userId, status: 'ACTIVE' },
+      include: { type: true },
+    });
+    const totalValue = positions.reduce(
+      (a, p) => a + Number(p.currentEstimatedValue),
+      0,
+    );
+    const byType: Record<string, number> = {};
+    for (const p of positions) {
+      const n = p.type?.name || 'Otro';
+      byType[n] = (byType[n] || 0) + Number(p.currentEstimatedValue);
+    }
+    let topTypeName: string | null = null;
+    let topTypeShare: number | null = null;
+    if (totalValue > 0) {
+      for (const [name, v] of Object.entries(byType)) {
+        const sh = v / totalValue;
+        if (topTypeShare === null || sh > topTypeShare) {
+          topTypeShare = sh;
+          topTypeName = name;
+        }
+      }
+    }
+
+    const invEvents = await this.prisma.investmentEvent.findMany({
+      where: { investment: { userId } },
+      select: { type: true, amount: true },
+    });
+    let dist = 0;
+    let rein = 0;
+    for (const e of invEvents) {
+      if (e.type === 'PROFIT_DISTRIBUTION') dist += Number(e.amount);
+      if (e.type === 'PROFIT_REINVESTMENT') rein += Number(e.amount);
+    }
+    const profitDistributedExceedsReinvest =
+      dist > rein * 1.25 && dist > 0;
+
+    const debts = await this.prisma.debt.findMany({
+      where: { userId },
+    });
+    const totalRemaining = debts.reduce(
+      (a, d) => a + Number(d.remainingAmount),
+      0,
+    );
+    const monthlyPaymentTotal = debts.reduce(
+      (a, d) => a + Number(d.monthlyPayment ?? 0),
+      0,
+    );
+
+    const taxProfile = await this.prisma.taxProfile.findFirst({
+      where: { userId },
+      orderBy: [{ taxYear: 'desc' }, { updatedAt: 'desc' }],
+    });
+    const taxPlan = taxProfile
+      ? await this.prisma.taxPlan.findFirst({
+          where: { profileId: taxProfile.id },
+          orderBy: { generatedAt: 'desc' },
+          include: { scenarios: true },
+        })
+      : null;
+
+    let taxSavingsPotential: number | null = null;
+    if (taxPlan?.scenarios?.length) {
+      const cons = taxPlan.scenarios.find((s) => s.type === 'CONSERVATIVE');
+      const opt = taxPlan.scenarios.find((s) => s.type === 'OPTIMIZED');
+      if (cons && opt) {
+        taxSavingsPotential =
+          Number(cons.estimatedNetTaxPayable) -
+          Number(opt.estimatedNetTaxPayable);
+      }
+    }
+
+    let unclaimedBenefitHints = 0;
+    if (taxProfile) {
+      if (!taxProfile.hasDependents) unclaimedBenefitHints++;
+      if (!taxProfile.hasVoluntaryPension) unclaimedBenefitHints++;
+      if (!taxProfile.hasAFC) unclaimedBenefitHints++;
+      if (!taxProfile.hasPrepaidMedicine) unclaimedBenefitHints++;
+      if (!taxProfile.hasHousingInterest) unclaimedBenefitHints++;
+    }
+
+    const snapshot: InsightSnapshot = {
+      cashflow: {
+        streamsCount: streams.length,
+        incomeTotal,
+        expenseTotal,
+        expenseFixed,
+        savingsRate,
+        fixedExpenseShareOfIncome,
+        topExpenseCategory,
+        lastMonthNet,
+        avgNet3,
+        vsRolling3Pct,
+      },
+      goals,
+      investments: {
+        positionCount: positions.length,
+        totalValue,
+        topTypeShare,
+        topTypeName,
+        profitDistributedExceedsReinvest,
+      },
+      debts: {
+        totalRemaining,
+        monthlyPaymentTotal,
+      },
+      tax: {
+        hasProfile: !!taxProfile,
+        hasPlan: !!taxPlan && (taxPlan.scenarios?.length ?? 0) > 0,
+        taxSavingsPotential,
+        unclaimedBenefitHints,
+      },
+    };
+
+    return snapshot;
+  }
+
+  /**
+   * Insights transversales priorizados (máx. 8) con reglas explicables y bajo ruido.
+   */
+  async getProductInsights(userId: string): Promise<{
+    insights: ProductInsight[];
+    snapshot: InsightSnapshot;
+    generatedAt: string;
+  }> {
+    const snapshot = await this.buildInsightSnapshot(userId);
+    const raw = buildInsightsFromSnapshot(snapshot);
+    const insights = prioritizeInsights(raw, 8);
+    return {
+      insights,
+      snapshot,
+      generatedAt: new Date().toISOString(),
     };
   }
 }

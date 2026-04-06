@@ -23,6 +23,8 @@ import {
   CashflowEventModal,
   CashflowIntelligenceSection,
 } from '@/features/cashflow/components';
+import { useProductInsights } from '@/features/dashboard/api/queries';
+import { InsightsContextStrip } from '@/features/dashboard/components';
 import { valuationModeFootnote } from '@/features/currency/format';
 import { useGlobalStore } from '@/shared/store/global';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
@@ -43,6 +45,8 @@ export default function CashflowPage() {
   const { data: cashflowAnalytics, isLoading: isLoadingAnalytics } = useCashflowAnalytics();
   const { data: cashflowIntelligence, isLoading: isLoadingIntelligence } =
     useCashflowIntelligence();
+  const { data: productInsightsPayload, isLoading: loadingInsights } =
+    useProductInsights();
 
   const setupHelpLoading = isLoadingStreams || isLoadingPositions;
   const showSetupHelp =
@@ -170,6 +174,13 @@ export default function CashflowPage() {
       <CashflowSetupWelcome
         visible={showSetupHelp}
         needsCategoriesFirst={!isLoadingCat && categories.length === 0}
+      />
+
+      <InsightsContextStrip
+        insights={productInsightsPayload?.insights}
+        modules={['cashflow', 'debts']}
+        loading={loadingInsights}
+        max={2}
       />
 
       <header className="flex justify-between items-end border-b border-slate-200/50 pb-4 mb-4">

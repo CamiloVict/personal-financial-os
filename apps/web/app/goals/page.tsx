@@ -3,6 +3,8 @@ import React, { useMemo, useState } from 'react';
 import { Target } from 'lucide-react';
 import { useGoals, useCreateGoal } from '@/features/goals/api/queries';
 import { GoalForm, GoalList } from '@/features/goals/components';
+import { useProductInsights } from '@/features/dashboard/api/queries';
+import { InsightsContextStrip } from '@/features/dashboard/components';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
 import {
   linesFromGoals,
@@ -12,6 +14,8 @@ import { useGlobalStore } from '@/shared/store/global';
 
 export default function GoalsPage() {
   const { data: goals = [], isLoading } = useGoals();
+  const { data: productInsightsPayload, isLoading: loadingInsights } =
+    useProductInsights();
   const createGoalMutation = useCreateGoal();
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
   const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
@@ -84,6 +88,14 @@ export default function GoalsPage() {
           </p>
         </div>
       </header>
+
+      <InsightsContextStrip
+        insights={productInsightsPayload?.insights}
+        modules={['goals']}
+        includeGlobal={false}
+        loading={loadingInsights}
+        max={2}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
         <GoalForm 

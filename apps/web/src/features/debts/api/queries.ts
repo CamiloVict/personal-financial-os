@@ -29,6 +29,7 @@ export function useCreateDebt() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.investments.portfolioAnalytics(),
       });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }
@@ -44,6 +45,7 @@ export function usePatchDebt() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.investments.portfolioAnalytics(),
       });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }

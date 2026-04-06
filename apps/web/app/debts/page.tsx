@@ -22,9 +22,13 @@ import {
   presentedCurrencyFromRows,
 } from '@/features/currency/valuationUtils';
 import { useGlobalStore } from '@/shared/store/global';
+import { useProductInsights } from '@/features/dashboard/api/queries';
+import { InsightsContextStrip } from '@/features/dashboard/components';
 
 export default function DebtsPage() {
   const { data: analysis, isLoading } = useLeverageAnalysis();
+  const { data: productInsightsPayload, isLoading: loadingProductInsights } =
+    useProductInsights();
   const { data: debtsList = [] } = useDebtsList(!isLoading && !!analysis);
   const patchDebt = usePatchDebt();
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
@@ -86,6 +90,14 @@ export default function DebtsPage() {
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <DebtsPageHeader confidence={a.confidence} />
+
+      <InsightsContextStrip
+        insights={productInsightsPayload?.insights}
+        modules={['debts']}
+        includeGlobal={false}
+        loading={loadingProductInsights}
+        max={2}
+      />
 
       <ExplanationPanel explanation={a.explanation} defaultOpen={false} />
 

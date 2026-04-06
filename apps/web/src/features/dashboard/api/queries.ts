@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/query-keys';
+import type { ProductInsightsResponse } from '../types/productInsights';
 
 export type MonthlyCashflowPoint = {
   month: string;
@@ -37,5 +38,15 @@ export function useNetWorthAnalytics(enabled = true) {
       apiClient.get<NetWorthAnalyticsResponse>('/analytics/net-worth'),
     enabled,
     staleTime: 60_000,
+  });
+}
+
+export function useProductInsights(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.analytics.insights(),
+    queryFn: () =>
+      apiClient.get<ProductInsightsResponse>('/analytics/insights'),
+    enabled,
+    staleTime: 45_000,
   });
 }

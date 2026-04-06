@@ -25,6 +25,7 @@ export function useCreateGoal() {
     mutationFn: (newGoal: Record<string, unknown>) => apiClient.post('/goals', newGoal),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }

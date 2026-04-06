@@ -11,6 +11,8 @@ import {
   useTaxDeclarationPreview,
   useTaxPlanningOverview,
 } from '@/features/tax/api/queries';
+import { useProductInsights } from '@/features/dashboard/api/queries';
+import { InsightsContextStrip } from '@/features/dashboard/components';
 
 import {
   TaxProfileForm,
@@ -44,6 +46,8 @@ export default function TaxDashboard() {
   const { data: declarationInsights, isLoading: loadingDeclaration } = useTaxDeclarationInsights(!!profile);
   const { data: planningOverview, isLoading: loadingPlanningOverview } =
     useTaxPlanningOverview(!!profile);
+  const { data: productInsightsPayload, isLoading: loadingProductInsights } =
+    useProductInsights(!!profile);
 
   const previewEnabled =
     !!profile && !!declarationInsights?.showDeclarationModule;
@@ -232,6 +236,16 @@ export default function TaxDashboard() {
           </button>
         </div>
       </header>
+
+      {profile ? (
+        <InsightsContextStrip
+          insights={productInsightsPayload?.insights}
+          modules={['tax']}
+          includeGlobal={false}
+          loading={loadingProductInsights}
+          max={2}
+        />
+      ) : null}
 
       {activeTab === 'PROFILE' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

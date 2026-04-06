@@ -19,6 +19,8 @@ import {
   PositionCharts,
   PositionEventModal,
 } from '@/features/investments/components';
+import { useProductInsights } from '@/features/dashboard/api/queries';
+import { InsightsContextStrip } from '@/features/dashboard/components';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 import { useGlobalStore } from '@/shared/store/global';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
@@ -32,6 +34,8 @@ export default function InvestmentPositionsPage() {
   const { data: types = [], isLoading: isLoadingTypes } = useInvestmentTypes();
   const { data: portfolioAnalytics, isLoading: loadingPortfolioAnalytics } =
     usePortfolioAnalytics(positions.length > 0);
+  const { data: productInsightsPayload, isLoading: loadingProductInsights } =
+    useProductInsights();
 
   const createPositionMutation = useCreateInvestmentPosition();
   const createDebtMutation = useCreateDebt();
@@ -252,6 +256,14 @@ export default function InvestmentPositionsPage() {
         </div>
         <ConfidenceBadge confidence={positionsConfidence} />
       </header>
+
+      <InsightsContextStrip
+        insights={productInsightsPayload?.insights}
+        modules={['investments']}
+        includeGlobal={false}
+        loading={loadingProductInsights}
+        max={2}
+      />
 
       {positions.length > 0 && (
         <PortfolioAnalyticsSection

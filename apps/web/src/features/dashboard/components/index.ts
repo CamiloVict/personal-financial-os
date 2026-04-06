@@ -11,3 +11,5 @@ export { NetWorthCompositionChart } from './NetWorthCompositionChart';
 export { GoalsProgressPanel } from './GoalsProgressPanel';
 export type { GoalProgressRow } from './GoalsProgressPanel';
 export { FiscalHealthAlert } from './FiscalHealthAlert';
+export { ProductInsightsPanel } from './ProductInsightsPanel';
+export { InsightsContextStrip } from './InsightsContextStrip';

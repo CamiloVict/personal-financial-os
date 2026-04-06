@@ -30,6 +30,7 @@ export const queryKeys = {
   },
   analytics: {
     all: ['app-analytics', ME_SCOPE] as const,
+    insights: () => [...queryKeys.analytics.all, 'insights'] as const,
     monthlyTrend: () =>
       [...queryKeys.analytics.all, 'cashflow-monthly'] as const,
     netWorth: () => [...queryKeys.analytics.all, 'net-worth'] as const,

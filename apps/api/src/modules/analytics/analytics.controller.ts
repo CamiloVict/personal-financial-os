@@ -6,6 +6,11 @@ import { AnalyticsService } from './analytics.service';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
+  @Get('insights')
+  getProductInsights(@DbUserId() userId: string) {
+    return this.analyticsService.getProductInsights(userId);
+  }
+
   @Get('cashflow')
   getCashflowAnalytics(@DbUserId() userId: string) {
     return this.analyticsService.getCashflowDistribution(userId);
