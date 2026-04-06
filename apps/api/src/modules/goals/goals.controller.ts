@@ -16,6 +16,11 @@ export class GoalsController {
     return this.goalsService.createGoal({ ...body, userId });
   }
 
+  @Get(':id/projection')
+  getProjection(@Param('id') id: string, @DbUserId() userId: string) {
+    return this.goalsService.getGoalProjection(id, userId);
+  }
+
   @Get(':id/scenarios')
   getScenarios(@Param('id') id: string) {
     return this.goalsService.getLatestScenarioSnapshot(id);

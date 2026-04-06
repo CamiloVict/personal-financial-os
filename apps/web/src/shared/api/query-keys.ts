@@ -23,6 +23,8 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.goals.all, 'detail', id] as const,
     scenarios: (id: string) =>
       [...queryKeys.goals.detail(id), 'scenarios'] as const,
+    projection: (id: string) =>
+      [...queryKeys.goals.detail(id), 'projection'] as const,
   },
   analytics: {
     all: ['app-analytics', ME_SCOPE] as const,

@@ -3,8 +3,12 @@ import React, { useEffect, useMemo } from 'react';
 import { Zap, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useGoalScenarios, useSimulateGoalScenarios } from '@/features/goals/api/queries';
-import { GoalSnapshot, GoalScenarios } from '@/features/goals/components';
+import {
+  useGoalScenarios,
+  useSimulateGoalScenarios,
+  useGoalProjection,
+} from '@/features/goals/api/queries';
+import { GoalSnapshot, GoalScenarios, GoalProjectionPanel } from '@/features/goals/components';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
 import { presentedCurrencyFromRows } from '@/features/currency/valuationUtils';
 import { useGlobalStore } from '@/shared/store/global';
@@ -14,6 +18,8 @@ export default function GoalDetailPage() {
   const goalId = typeof params.id === 'string' ? params.id : '';
 
   const { data: scenarioSnapshot, isLoading } = useGoalScenarios(goalId);
+  const { data: projectionData, isLoading: projectionLoading } =
+    useGoalProjection(goalId);
   const simulateMutation = useSimulateGoalScenarios(goalId);
 
   const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
@@ -233,6 +239,8 @@ export default function GoalDetailPage() {
         presented={presentedSnapshot}
         presentationLoading={simPresLoading}
       />
+
+      <GoalProjectionPanel data={projectionData} isLoading={projectionLoading} />
 
       <GoalScenarios
         scenarios={scenarios}

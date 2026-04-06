@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
+import type { GoalProjectionResponse } from '../types/goalProjection';
 
 export function useGoals() {
   return useQuery({
@@ -35,6 +36,17 @@ export function useSimulateGoalScenarios(id: string) {
     mutationFn: () => apiClient.post(`/goals/${id}/scenarios/simulate`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.goals.scenarios(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.projection(id) });
     },
+  });
+}
+
+export function useGoalProjection(goalId: string) {
+  return useQuery({
+    queryKey: queryKeys.goals.projection(goalId),
+    queryFn: () =>
+      apiClient.get<GoalProjectionResponse>(`/goals/${goalId}/projection`),
+    enabled: Boolean(goalId),
+    staleTime: 30_000,
   });
 }

@@ -1,6 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { FeasibilityLevel, ScenarioType } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import {
+  annualToMonthlyRate,
+  DEFAULT_PROJECTION_SCENARIOS,
+  monthsToReachTarget,
+  splitContributionVsGrowth,
+} from './goal-projection.util';
 
 @Injectable()
 export class GoalsService {
@@ -34,15 +40,168 @@ export class GoalsService {
     return { ...rec, scenarios: rec.scenarios };
   }
 
-  async simulateGoalScenarios(goalId: string) {
-    const goal = await this.prisma.savingGoal.findUnique({
-      where: { id: goalId },
+  /**
+   * Proyecciones y tiempos a meta bajo varias tasas y aportes (sin persistir).
+   * Complementa la simulación de brechas con guidance cuantitativo.
+   */
+  async getGoalProjection(goalId: string, userId: string) {
+    const goal = await this.prisma.savingGoal.findFirst({
+      where: { id: goalId, userId },
     });
-    if (!goal) throw new Error('Goal not found');
+    if (!goal) throw new NotFoundException('Meta no encontrada');
 
     const streams = await this.prisma.cashflowStream.findMany({
-      where: { userId: goal.userId },
+      where: { userId },
     });
+    const ctx = this.computeGoalCashContext(goal, streams);
+    const pv = ctx.currentAmount;
+    const targetBalance = ctx.targetAmount;
+
+    const scenarios = DEFAULT_PROJECTION_SCENARIOS.map((def) => {
+      const monthlyContribution = def.useRequiredMonthly
+        ? ctx.monthlyAmountNeeded
+        : ctx.currentMonthlySavings;
+      const rm = annualToMonthlyRate(def.annualReturnPct);
+      const monthsToTarget = monthsToReachTarget(
+        pv,
+        monthlyContribution,
+        rm,
+        targetBalance,
+      );
+      const est = new Date();
+      if (monthsToTarget != null) {
+        est.setMonth(est.getMonth() + monthsToTarget);
+      }
+      const h5 = splitContributionVsGrowth(pv, monthlyContribution, rm, 60);
+      const h15 = splitContributionVsGrowth(pv, monthlyContribution, rm, 180);
+
+      let feasibilityLevel: FeasibilityLevel = FeasibilityLevel.REASONABLE;
+      if (def.key === 'ACTUAL' || def.key === 'CONSERVATIVE') {
+        feasibilityLevel = FeasibilityLevel.CONSERVATIVE;
+      } else if (def.key === 'OPTIMIZED') {
+        feasibilityLevel = FeasibilityLevel.AGGRESSIVE;
+      } else if (def.key === 'COMBINED') {
+        if (ctx.monthlyShortfall <= 0) {
+          feasibilityLevel = FeasibilityLevel.CONSERVATIVE;
+        } else if (ctx.monthlyAmountNeeded > ctx.currentMonthlySavings * 2) {
+          feasibilityLevel = FeasibilityLevel.UNREALISTIC;
+        } else if (ctx.monthlyAmountNeeded > ctx.currentMonthlySavings) {
+          feasibilityLevel = FeasibilityLevel.AGGRESSIVE;
+        }
+      }
+
+      return {
+        key: def.key,
+        label: def.label,
+        annualReturnPct: def.annualReturnPct,
+        monthlyContributionModel: monthlyContribution,
+        monthsToTarget,
+        estimatedReachDate:
+          monthsToTarget != null ? est.toISOString().slice(0, 10) : null,
+        horizon5y: {
+          months: 60,
+          futureValue: h5.futureValue,
+          contributions: h5.contributions,
+          growth: h5.growth,
+        },
+        horizon15y: {
+          months: 180,
+          futureValue: h15.futureValue,
+          contributions: h15.contributions,
+          growth: h15.growth,
+        },
+        feasibilityLevel,
+        narrative: this.projectionNarrative(
+          def.key,
+          ctx,
+          monthsToTarget,
+          monthlyContribution,
+        ),
+      };
+    });
+
+    const strategy = this.pickStrategyHint(ctx, scenarios);
+
+    return {
+      goalId: goal.id,
+      goalName: goal.name,
+      cashContext: {
+        currentMonthlySavings: ctx.currentMonthlySavings,
+        monthlyAmountNeeded: ctx.monthlyAmountNeeded,
+        monthlyShortfall: ctx.monthlyShortfall,
+        monthsRemainingModel: ctx.monthsRemaining,
+        shortfall: ctx.shortfall,
+        totalIncome: ctx.totalIncome,
+        totalExpense: ctx.totalExpense,
+        currentProjectedMonths: ctx.currentProjectedMonths,
+        feasibilityLevel: ctx.feasibilityLevel,
+      },
+      scenarios,
+      strategy,
+      disclaimers: [
+        'Las tasas de rendimiento son ilustrativas y no constituyen promesa de rentabilidad.',
+        'Los montos siguen la moneda de registro de la meta y de los streams.',
+        'El ahorro mensual del modelo es la suma de ingresos menos gastos esperados (sin anualizar).',
+      ],
+    };
+  }
+
+  private projectionNarrative(
+    key: string,
+    ctx: {
+      shortfall: number;
+      monthsRemaining: number;
+      monthlyShortfall: number;
+      currentMonthlySavings: number;
+      monthlyAmountNeeded: number;
+    },
+    monthsToTarget: number | null,
+    pmt: number,
+  ): string {
+    if (ctx.shortfall <= 0) {
+      return 'La meta ya está alcanzada o superada según saldo actual.';
+    }
+    if (monthsToTarget == null) {
+      return 'Con este aporte y tasa, el modelo no alcanza la meta en el horizonte considerado (revisá aporte o plazo).';
+    }
+    const base = `A ${pmt.toLocaleString('es-CO', { maximumFractionDigits: 0 })} /mes de aporte modelado y la tasa indicada, el saldo alcanzaría el objetivo en ~${monthsToTarget} meses.`;
+    if (key === 'COMBINED' && ctx.monthlyShortfall > 0) {
+      return `${base} Aquí se asume que podés aportar lo requerido (${ctx.monthlyAmountNeeded.toLocaleString('es-CO')}/mes) para cumplir el plazo objetivo del modelo (${ctx.monthsRemaining} meses).`;
+    }
+    if (key === 'ACTUAL') {
+      return `${base} Sin asumir rendimiento sobre el saldo (solo flujo).`;
+    }
+    return base;
+  }
+
+  private pickStrategyHint(
+    ctx: { monthlyShortfall: number; feasibilityLevel: FeasibilityLevel },
+    scenarios: Array<{ key: string; feasibilityLevel: FeasibilityLevel }>,
+  ) {
+    const base = scenarios.find((s) => s.key === 'BASE');
+    if (ctx.monthlyShortfall <= 0) {
+      return {
+        title: 'Flujo alineado con el plazo',
+        detail:
+          'El ahorro mensual modelado cubre lo necesario para la meta en el horizonte; mantené disciplina de registro.',
+        recommendedScenarioKey: 'BASE' as const,
+        feasibility: FeasibilityLevel.REASONABLE,
+      };
+    }
+    return {
+      title: 'Priorizar cierre de brecha mensual',
+      detail: `Hoy el modelo muestra una brecha de ~${Math.round(ctx.monthlyShortfall).toLocaleString('es-CO')} /mes frente al ritmo requerido. La vía más directa suele ser subir ingresos o bajar gastos en ese orden de magnitud antes de asumir rendimientos altos.`,
+      recommendedScenarioKey: 'BASE' as const,
+      feasibility: base?.feasibilityLevel ?? ctx.feasibilityLevel,
+    };
+  }
+
+  /** Contexto numérico compartido entre simulación y proyección. */
+  private computeGoalCashContext(goal: {
+    targetAmount: unknown;
+    currentAmount: unknown;
+    targetDate: Date | null;
+  }, streams: { flowType: string; expectedAmount: unknown }[]) {
     const incomeStreams = streams.filter((s) => s.flowType === 'INCOME');
     const expenseStreams = streams.filter((s) => s.flowType === 'EXPENSE');
 
@@ -70,7 +229,9 @@ export class GoalsService {
     );
 
     const monthlyAmountNeeded = Math.round(shortfall / monthsRemaining);
-    const monthlyShortfall = Math.round(monthlyAmountNeeded - currentMonthlySavings);
+    const monthlyShortfall = Math.round(
+      monthlyAmountNeeded - currentMonthlySavings,
+    );
 
     let currentProjectedMonths: number | null = null;
     if (currentMonthlySavings > 0) {
@@ -84,6 +245,43 @@ export class GoalsService {
       feasibilityLevel = FeasibilityLevel.AGGRESSIVE;
     else if (monthlyShortfall <= 0)
       feasibilityLevel = FeasibilityLevel.CONSERVATIVE;
+
+    return {
+      totalIncome,
+      totalExpense,
+      currentMonthlySavings,
+      targetAmount,
+      currentAmount,
+      shortfall,
+      monthsRemaining,
+      monthlyAmountNeeded,
+      monthlyShortfall,
+      currentProjectedMonths,
+      feasibilityLevel,
+    };
+  }
+
+  async simulateGoalScenarios(goalId: string) {
+    const goal = await this.prisma.savingGoal.findUnique({
+      where: { id: goalId },
+    });
+    if (!goal) throw new Error('Goal not found');
+
+    const streams = await this.prisma.cashflowStream.findMany({
+      where: { userId: goal.userId },
+    });
+
+    const ctx = this.computeGoalCashContext(goal, streams);
+    const {
+      currentMonthlySavings,
+      targetAmount,
+      currentAmount,
+      monthsRemaining,
+      monthlyAmountNeeded,
+      monthlyShortfall,
+      currentProjectedMonths,
+      feasibilityLevel,
+    } = ctx;
 
     const recommendation = await this.prisma.goalRecommendation.create({
       data: {
@@ -102,10 +300,10 @@ export class GoalsService {
     await this.generateScenarios(
       recommendation.id,
       monthlyShortfall,
-      totalIncome,
-      totalExpense,
+      ctx.totalIncome,
+      ctx.totalExpense,
       currentMonthlySavings,
-      shortfall,
+      ctx.shortfall,
       monthsRemaining,
     );
 
