@@ -13,6 +13,8 @@ interface CashflowChartsProps {
   incomeChartData?: { name: string; value: number }[];
   chartCurrency?: string;
   presentationLoading?: boolean;
+  /** Por defecto ocupa 4 columnas en `lg:grid-cols-12`; en dashboard se puede ampliar. */
+  gridClassName?: string;
 }
 
 export function CashflowCharts({
@@ -22,6 +24,7 @@ export function CashflowCharts({
   incomeChartData,
   chartCurrency = 'USD',
   presentationLoading,
+  gridClassName = 'lg:col-span-4 flex flex-col gap-4',
 }: CashflowChartsProps) {
   const expenses =
     expenseChartData && expenseChartData.length > 0
@@ -38,7 +41,7 @@ export function CashflowCharts({
     chartCurrency === 'USD' ? `$${val / 1000}k` : `${(val / 1e6).toFixed(1)}M`;
 
   return (
-    <div className="lg:col-span-4 flex flex-col gap-4">
+    <div className={gridClassName}>
       <div className="flex justify-end">
         <ConfidenceBadge confidence={analytics?.confidence} />
       </div>

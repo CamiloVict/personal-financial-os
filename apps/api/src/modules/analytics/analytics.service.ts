@@ -230,4 +230,92 @@ export class AnalyticsService {
       confidence,
     };
   }
+
+  /**
+   * Serie mensual (últimos 12 meses UTC) desde eventos de cashflow registrados.
+   * Sin eventos, la serie existe con ceros para mantener el eje temporal estable.
+   */
+  async getCashflowMonthlyTrend(userId: string) {
+    const since = new Date();
+    since.setUTCFullYear(since.getUTCFullYear(), since.getUTCMonth() - 11, 1);
+    since.setUTCHours(0, 0, 0, 0);
+
+    const events = await this.prisma.cashflowEvent.findMany({
+      where: {
+        date: { gte: since },
+        stream: { userId },
+      },
+      include: {
+        stream: { select: { flowType: true } },
+      },
+    });
+
+    const byMonth = new Map<string, { income: number; expense: number }>();
+    for (const e of events) {
+      const key = e.date.toISOString().slice(0, 7);
+      const prev = byMonth.get(key) ?? { income: 0, expense: 0 };
+      const amt = Number(e.amount);
+      if (e.stream.flowType === 'INCOME') prev.income += amt;
+      else prev.expense += amt;
+      byMonth.set(key, prev);
+    }
+
+    const series: {
+      month: string;
+      income: number;
+      expense: number;
+      net: number;
+    }[] = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1),
+      );
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      const p = byMonth.get(key) ?? { income: 0, expense: 0 };
+      series.push({
+        month: key,
+        income: p.income,
+        expense: p.expense,
+        net: p.income - p.expense,
+      });
+    }
+
+    const explanation = {
+      ...emptyFinancialExplanation(
+        'analytics.cashflow_monthly_trend',
+        'Tendencia mensual desde eventos de flujo',
+      ),
+      inputs: [
+        createNode({
+          kind: 'input',
+          label: 'Eventos en ventana',
+          value: events.length,
+        }),
+      ],
+      steps: [
+        createNode({
+          kind: 'aggregation',
+          label: 'Suma por mes UTC',
+          description:
+            'Ingresos y gastos según flowType del stream; neto = ingresos − gastos del mes.',
+        }),
+      ],
+      assumptions: [
+        'Solo incluye meses con eventos registrados en streams; meses sin actividad muestran cero.',
+      ],
+      missingData: [],
+      normativeRefs: [],
+    };
+
+    const confidence =
+      await this.confidenceService.evaluateCashflow(userId);
+
+    return {
+      series,
+      eventCount: events.length,
+      explanation,
+      confidence,
+    };
+  }
 }

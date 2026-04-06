@@ -31,6 +31,7 @@ export function useCreateCashflowStream() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams() });
       queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }
@@ -42,6 +43,7 @@ export function useDeleteCashflowStream() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams() });
       queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }
@@ -54,6 +56,7 @@ export function useCreateCashflowEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.streams() });
       queryClient.invalidateQueries({ queryKey: queryKeys.cashflow.analytics() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }

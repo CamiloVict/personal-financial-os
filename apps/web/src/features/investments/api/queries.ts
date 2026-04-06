@@ -50,6 +50,7 @@ export function useCreateInvestmentPosition() {
       apiClient.post('/investments/positions', newPos),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }
@@ -60,6 +61,7 @@ export function useDeleteInvestmentPosition() {
     mutationFn: (id: string) => apiClient.delete(`/investments/positions/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }
@@ -74,6 +76,7 @@ export function useCreateInvestmentEvent() {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
 }

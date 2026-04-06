@@ -24,6 +24,12 @@ export const queryKeys = {
     scenarios: (id: string) =>
       [...queryKeys.goals.detail(id), 'scenarios'] as const,
   },
+  analytics: {
+    all: ['app-analytics', ME_SCOPE] as const,
+    monthlyTrend: () =>
+      [...queryKeys.analytics.all, 'cashflow-monthly'] as const,
+    netWorth: () => [...queryKeys.analytics.all, 'net-worth'] as const,
+  },
   tax: {
     all: ['tax'] as const,
     profile: () => [...queryKeys.tax.all, 'profile', ME_SCOPE] as const,

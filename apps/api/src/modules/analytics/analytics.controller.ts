@@ -20,4 +20,9 @@ export class AnalyticsController {
   getTaxAnalytics(@DbUserId() userId: string) {
     return this.analyticsService.getTaxAnalytics(userId);
   }
+
+  @Get('cashflow-monthly')
+  getCashflowMonthlyTrend(@DbUserId() userId: string) {
+    return this.analyticsService.getCashflowMonthlyTrend(userId);
+  }
 }
