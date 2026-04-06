@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * Navegación por capas (Etapa 2):
+ * - Primario: operación / salud financiera.
+ * - Planificación: hipótesis de capital y escenarios (dropdown).
+ * - Configuración: modelo de tipos de inversión (dropdown).
+ * Todas las rutas existentes se conservan.
+ */
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -18,19 +26,20 @@ import {
   X,
 } from 'lucide-react';
 import { NavAuth } from '@/shared/ui/NavAuth';
+import { NavMenuDropdown, type NavMenuItem } from '@/shared/ui/NavMenuDropdown';
 
 type NavVariant = 'default' | 'allocator' | 'simulator';
 
-type NavItem = {
+type PrimaryNavItem = {
   href: string;
   label: string;
   shortDescription?: string;
   icon: LucideIcon;
   onboarding?: string;
-  variant?: NavVariant;
 };
 
-const NAV_ITEMS: NavItem[] = [
+/** Día a día: visión, flujos, obligaciones, patrimonio líquido, metas, fiscal. */
+const PRIMARY_NAV: PrimaryNavItem[] = [
   {
     href: '/',
     label: 'Dashboard',
@@ -52,12 +61,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: PieChart,
     onboarding: 'nav-portfolio',
   },
-  {
-    href: '/investment-types',
-    label: 'Tipos de inversión',
-    shortDescription: 'Fondos, bienes, etc.',
-    icon: Settings2,
-  },
   { href: '/goals', label: 'Metas', icon: Target },
   {
     href: '/tax',
@@ -65,11 +68,15 @@ const NAV_ITEMS: NavItem[] = [
     icon: Landmark,
     onboarding: 'nav-tax',
   },
+];
+
+const PLANNING_NAV: NavMenuItem[] = [
   {
     href: '/allocator',
     label: 'Asignación',
     shortDescription: 'Simulación de escenarios',
     icon: Network,
+    onboarding: undefined,
     variant: 'allocator',
   },
   {
@@ -77,6 +84,15 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Simulador',
     icon: Sparkles,
     variant: 'simulator',
+  },
+];
+
+const CONFIG_NAV: NavMenuItem[] = [
+  {
+    href: '/investment-types',
+    label: 'Tipos de inversión',
+    shortDescription: 'Fondos, bienes, etc.',
+    icon: Settings2,
   },
 ];
 
@@ -92,14 +108,10 @@ function itemClass(variant: NavVariant | undefined, active: boolean): string {
   return `${base} ${active ? 'bg-slate-100 text-slate-900' : 'text-slate-700 hover:bg-slate-50'}`;
 }
 
-function desktopLinkClass(variant: NavVariant | undefined): string {
-  if (variant === 'allocator') {
-    return 'flex items-center px-3 py-2 text-sm font-semibold text-fuchsia-600 hover:bg-fuchsia-50 rounded-lg transition-colors';
-  }
-  if (variant === 'simulator') {
-    return 'flex items-center px-3 py-2 text-sm font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors border border-amber-100';
-  }
-  return 'flex items-center px-3 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors';
+function desktopPrimaryLinkClass(active: boolean): string {
+  return `flex items-center gap-1.5 px-2.5 py-2 text-sm font-semibold rounded-lg transition-colors shrink-0 ${
+    active ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+  }`;
 }
 
 export function AppNavigation() {
@@ -121,12 +133,14 @@ export function AppNavigation() {
     };
   }, [mobileOpen]);
 
+  const primaryActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
+
   return (
     <>
       <nav className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 gap-2">
-            {/* Móvil: hamburguesa + marca + auth */}
             <div className="flex md:hidden items-center gap-2 min-w-0 flex-1">
               <button
                 type="button"
@@ -147,27 +161,31 @@ export function AppNavigation() {
               </Link>
             </div>
 
-            {/* Escritorio / tablet ancho: enlaces en fila */}
-            <div className="hidden md:flex flex-1 space-x-1 lg:space-x-3 overflow-x-auto no-scrollbar items-center min-w-0">
-              {NAV_ITEMS.map((item) => {
-                const active =
-                  item.href === '/'
-                    ? pathname === '/'
-                    : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    data-onboarding={item.onboarding}
-                    className={desktopLinkClass(item.variant)}
-                    aria-current={active ? 'page' : undefined}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
+            <div className="hidden md:flex flex-1 min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-x-0.5 overflow-x-auto overflow-y-visible no-scrollbar">
+                {PRIMARY_NAV.map((item) => {
+                  const active = primaryActive(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      data-onboarding={item.onboarding}
+                      className={desktopPrimaryLinkClass(active)}
+                      aria-current={active ? 'page' : undefined}
+                      title={item.shortDescription}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="hidden lg:inline">{item.label}</span>
+                      <span className="lg:hidden">{item.label.split(' ')[0]}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="flex shrink-0 items-center gap-1 overflow-visible">
+                <NavMenuDropdown id="nav-planning" buttonLabel="Planificación" items={PLANNING_NAV} />
+                <NavMenuDropdown id="nav-config" buttonLabel="Configuración" items={CONFIG_NAV} />
+              </div>
             </div>
 
             <NavAuth />
@@ -175,7 +193,6 @@ export function AppNavigation() {
         </div>
       </nav>
 
-      {/* Drawer móvil */}
       <div className="md:hidden">
         {mobileOpen ? (
           <button
@@ -207,19 +224,80 @@ export function AppNavigation() {
           </div>
 
           <nav className="flex-1 overflow-y-auto overscroll-contain p-3 pb-8">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-2">
+              Resumen y día a día
+            </p>
             <ul className="flex flex-col gap-0.5">
-              {NAV_ITEMS.map((item) => {
-                const active =
-                  item.href === '/'
-                    ? pathname === '/'
-                    : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              {PRIMARY_NAV.map((item) => {
+                const active = primaryActive(item.href);
                 const Icon = item.icon;
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       data-onboarding={item.onboarding}
-                      className={itemClass(item.variant, active)}
+                      className={itemClass(undefined, active)}
+                      onClick={() => setMobileOpen(false)}
+                      aria-current={active ? 'page' : undefined}
+                    >
+                      <Icon className="w-5 h-5 shrink-0 opacity-90" />
+                      <span className="flex flex-col min-w-0">
+                        <span>{item.label}</span>
+                        {item.shortDescription ? (
+                          <span className="text-[11px] font-normal text-slate-500 leading-snug">
+                            {item.shortDescription}
+                          </span>
+                        ) : null}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-2">
+              Planificación
+            </p>
+            <ul className="flex flex-col gap-0.5">
+              {PLANNING_NAV.map((item) => {
+                const active = primaryActive(item.href);
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      data-onboarding={item.onboarding}
+                      className={itemClass(item.variant as NavVariant | undefined, active)}
+                      onClick={() => setMobileOpen(false)}
+                      aria-current={active ? 'page' : undefined}
+                    >
+                      <Icon className="w-5 h-5 shrink-0 opacity-90" />
+                      <span className="flex flex-col min-w-0">
+                        <span>{item.label}</span>
+                        {item.shortDescription ? (
+                          <span className="text-[11px] font-normal text-slate-500 leading-snug">
+                            {item.shortDescription}
+                          </span>
+                        ) : null}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-4 pb-2">
+              Configuración del modelo
+            </p>
+            <ul className="flex flex-col gap-0.5">
+              {CONFIG_NAV.map((item) => {
+                const active = primaryActive(item.href);
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={itemClass(undefined, active)}
                       onClick={() => setMobileOpen(false)}
                       aria-current={active ? 'page' : undefined}
                     >
