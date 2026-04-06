@@ -39,7 +39,9 @@ export function GoalSnapshot({
             ${isAchievable ? '0' : Number(monthlyShortfall).toLocaleString()}
           </p>
           <p className="text-[10px] text-slate-400 mt-1">
-            {isAchievable ? 'Estás en camino de lograrlo.' : 'Lo que necesitas ajustar cada mes.'}
+            {isAchievable
+              ? 'El modelo no muestra brecha mensual.'
+              : 'Diferencia mensual que el modelo usa para armar escenarios.'}
           </p>
         </div>
       </div>
@@ -52,8 +54,8 @@ export function GoalSnapshot({
               ¿Qué pasa si no hago ningún ajuste?
             </h3>
             <p className="text-blue-800/80 text-[11px] leading-relaxed">
-              Al ritmo actual de ${Number(currentMonthlySavings).toLocaleString()}/mes, alcanzarás la meta en <strong className="text-blue-900">{currentProjectedMonths} meses</strong> 
-              (eso es {currentProjectedMonths - monthsRemaining} meses más tarde de tu objetivo original).
+              Si el ahorro se mantuviera en ${Number(currentMonthlySavings).toLocaleString()}/mes, el modelo proyecta cubrir el faltante en{' '}
+              <strong className="text-blue-900">{currentProjectedMonths} meses</strong> ({currentProjectedMonths - monthsRemaining} meses después del plazo objetivo del modelo).
             </p>
           </div>
         </div>

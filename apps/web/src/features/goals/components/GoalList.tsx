@@ -66,7 +66,7 @@ export function GoalList({ goals, isLoading }: GoalListProps) {
                         href={`/goals/${goal.id}`}
                         className="touch-manipulation inline-flex items-center gap-1 bg-slate-900 active:bg-slate-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-800 text-white px-3 py-2 min-h-9 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all shadow-sm"
                       >
-                        Ver Recomendaciones <ArrowRight className="w-3 h-3" />
+                        Ver escenarios <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>
                   </li>

@@ -222,18 +222,17 @@ export default function TaxDashboard() {
               <FileWarning className="w-4 h-4" /> Importante
             </h3>
             <p className="text-xs leading-relaxed mb-3">
-              Este módulo utiliza un motor de reglas (TaxEngine) para sugerirte{' '}
-              <strong>planeación tributaria legal</strong> basándose exclusivamente en los datos registrados en esta
-              plataforma.
+              Este módulo utiliza un motor de reglas (TaxEngine) para{' '}
+              <strong>simular escenarios tributarios</strong> con base en los datos que registres en la plataforma.
             </p>
             <ul className="list-disc pl-4 space-y-1 text-[11px]">
               <li>
-                El motor <strong>no es un contador público</strong>. Las recomendaciones son sugerencias para optimizar
-                tu carga tributaria.
+                El motor <strong>no es contador ni asesor</strong>. La salida es ilustrativa; la obligación de declarar y
+                soportar corresponde al contribuyente.
               </li>
               <li>
-                Toda recomendación incluye un <strong>nivel de confianza</strong>. Si el nivel es bajo o medio,
-                requerirás aportar documentos soporte.
+                Cada vista incluye un <strong>nivel de confianza</strong> sobre la completitud de datos; si es bajo o
+                medio, conviene validar con documentos y un profesional.
               </li>
               <li>Las simulaciones asumen la Unidad de Valor Tributario (UVT) proyectada.</li>
             </ul>

@@ -9,10 +9,10 @@ export function useGoals() {
   });
 }
 
-export function useGoalRecommendations(id: string) {
+export function useGoalScenarios(id: string) {
   return useQuery({
-    queryKey: queryKeys.goals.recommendations(id),
-    queryFn: () => apiClient.get<any>(`/goals/${id}/recommendations`),
+    queryKey: queryKeys.goals.scenarios(id),
+    queryFn: () => apiClient.get<any>(`/goals/${id}/scenarios`),
     retry: false,
   });
 }
@@ -27,12 +27,12 @@ export function useCreateGoal() {
   });
 }
 
-export function useRecalculateRecommendations(id: string) {
+export function useSimulateGoalScenarios(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => apiClient.post(`/goals/${id}/recommendations/recalculate`, {}),
+    mutationFn: () => apiClient.post(`/goals/${id}/scenarios/simulate`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.goals.recommendations(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.goals.scenarios(id) });
     },
   });
 }

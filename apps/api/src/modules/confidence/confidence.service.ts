@@ -256,7 +256,7 @@ export class ConfidenceService {
     return buildFinancialConfidence(score, reasons, 'composite');
   }
 
-  /** Asignador: promedio de módulos que alimentan recomendaciones. */
+  /** Asignador: promedio de módulos que alimentan la simulación de escenarios. */
   async evaluateAllocator(userId: string): Promise<FinancialConfidence> {
     const [t, d, i] = await Promise.all([
       this.evaluateTax(userId),

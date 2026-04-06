@@ -10,11 +10,11 @@ export function useAllocatorPlan() {
   });
 }
 
-export function useGenerateAllocatorPlan() {
+export function useSimulateAllocatorScenarios() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (availableCapital: number) =>
-      apiClient.post('/allocator/plan', { availableCapital }),
+      apiClient.post('/allocator/scenarios/simulate', { availableCapital }),
     onSuccess: (data) => {
       queryClient.setQueryData(allocatorQueryKeys.plan(), data);
     },

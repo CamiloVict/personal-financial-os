@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useGenerateAllocatorPlan } from '@/features/allocator/api/queries';
+import { useSimulateAllocatorScenarios } from '@/features/allocator/api/queries';
 import type { AllocatorPlan } from '@/features/allocator/types';
 import {
   AllocatorPageHeader,
   AllocatorCapitalForm,
-  AllocatorRecommendationsSection,
+  AllocatorScenariosSection,
 } from '@/features/allocator/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 
 export default function AllocatorPage() {
-  const generatePlanMutation = useGenerateAllocatorPlan();
+  const simulateMutation = useSimulateAllocatorScenarios();
 
   const [availableCapital, setAvailableCapital] = useState('');
   const [plan, setPlan] = useState<AllocatorPlan | null>(null);
@@ -21,7 +21,7 @@ export default function AllocatorPage() {
     e.preventDefault();
     if (!availableCapital || Number(availableCapital) <= 0) return;
 
-    generatePlanMutation.mutate(Number(availableCapital), {
+    simulateMutation.mutate(Number(availableCapital), {
       onSuccess: (data) => setPlan(data as AllocatorPlan),
     });
   };
@@ -34,7 +34,7 @@ export default function AllocatorPage() {
         availableCapital={availableCapital}
         onCapitalChange={setAvailableCapital}
         onSubmit={handleGenerate}
-        isPending={generatePlanMutation.isPending}
+        isPending={simulateMutation.isPending}
       />
 
       {plan ? (
@@ -43,7 +43,7 @@ export default function AllocatorPage() {
             <ConfidenceBadge confidence={plan.confidence} />
           </div>
           <ExplanationPanel explanation={plan.explanation} defaultOpen={false} />
-          <AllocatorRecommendationsSection plan={plan} />
+          <AllocatorScenariosSection plan={plan} />
         </>
       ) : null}
     </div>

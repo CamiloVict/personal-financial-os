@@ -263,9 +263,9 @@ export function TaxDeclarationSection({
         </div>
 
         <p className="text-[10px] text-slate-500 mt-2">
-          En <strong>Oportunidades de optimización</strong> puedes activar varias tarjetas a la vez: el gráfico muestra el
-          impuesto estimado si aplicaras <em>esa combinación</em> (con los topes del motor), junto al escenario conservador
-          y a tu perfil guardado.
+          En <strong>simulación de impacto</strong> puedes activar varias tarjetas a la vez: el gráfico muestra el impuesto
+          estimado <em>si</em> esa combinación de beneficios aplicara según el motor (topes modelados), junto al escenario
+          conservador y a tu perfil guardado.
         </p>
       </div>
     </div>

@@ -30,8 +30,9 @@ export function TaxMissedOpportunities({
       title: 'Ahorro en Cuenta AFC',
       body: (
         <>
-          El dinero depositado cuenta como <strong>Renta Exenta</strong>. Si destinas ahorros a vivienda (hasta el 30%
-          de tu ingreso o 3,800 UVT anuales), reducirás tu base gravable antes del cálculo del impuesto final.
+          Bajo las reglas del modelo, esos aportes pueden tratarse como <strong>Renta Exenta</strong>. Si destinaras ahorros
+          a vivienda dentro de los topes modelados (p. ej. 30% del ingreso o 3,800 UVT anuales), la base gravable
+          estimada sería menor antes del impuesto final.
         </>
       ),
     });
@@ -42,8 +43,8 @@ export function TaxMissedOpportunities({
       title: 'Aportes a Pensión Voluntaria (FPV)',
       body: (
         <>
-          El capital aportado a FPV también es <strong>Renta Exenta</strong>. Funciona como un fondo de inversión, pero
-          te ahorra impuestos inmediatamente (sujeto al límite del 30%) si cumples permanencia o destinas a vivienda.
+          En el modelo, aportes a FPV pueden figurar como <strong>Renta Exenta</strong> dentro del límite del 30%, sujeto a
+          permanencia y destino según normativa; el efecto mostrado es estimado.
         </>
       ),
     });
@@ -54,8 +55,8 @@ export function TaxMissedOpportunities({
       title: 'Intereses de Crédito Hipotecario',
       body: (
         <>
-          Si pagas cuotas de un préstamo de vivienda o leasing habitacional, los intereses que abonas (hasta 100 UVT
-          mensuales) se deducen directamente de tus ingresos.
+          Si aplicara a tu caso, los intereses de vivienda o leasing habitacional (hasta 100 UVT mensuales en el modelo)
+          pueden deducirse de los ingresos según las reglas cargadas en el motor.
         </>
       ),
     });
@@ -66,8 +67,8 @@ export function TaxMissedOpportunities({
       title: 'Medicina Prepagada o Pólizas',
       body: (
         <>
-          Planes de salud adicionales a la EPS otorgan una <strong>Deducción</strong> de hasta 16 UVT mensuales (tú,
-          cónyuge o hijos dependientes).
+          Bajo el modelo, ciertos planes de salud adicionales a la EPS pueden generar una <strong>Deducción</strong> de
+          hasta 16 UVT mensuales (titular, cónyuge o hijos dependientes, según normativa modelada).
         </>
       ),
     });
@@ -78,8 +79,8 @@ export function TaxMissedOpportunities({
       title: 'Dependientes económicos',
       body: (
         <>
-          La deducción por dependientes reduce la base gravable (tope legal anual en UVT). Actívala en tu perfil si
-          aplica y conserva los soportes.
+          Si hubiera dependientes económicos que califiquen, la deducción reduce la base gravable (tope en UVT en el
+          modelo). Puedes reflejarlo en perfil para recalcular y conservar soportes.
         </>
       ),
     });
@@ -91,10 +92,10 @@ export function TaxMissedOpportunities({
     <div className="mt-6 bg-orange-50 border border-orange-200 rounded-xl p-4 shadow-sm">
       <h3 className="text-sm font-bold text-orange-900 mb-1.5 flex items-center gap-1.5">
         <TrendingDown className="w-4 h-4 text-orange-600" />
-        Oportunidades de optimización no aprovechadas
+        Simulación de impacto: beneficios no activados en el perfil
       </h3>
       <p className="text-xs text-slate-700 mb-4">
-        Si aplica a tu caso real, habilita estas opciones en <strong>Perfil y Beneficios</strong> y guarda.{' '}
+        Si aplicara a tu caso, podrías reflejarlo en <strong>Perfil y Beneficios</strong> y guardar para recalcular.{' '}
         {onToggleLever ? (
           <span className="text-orange-800 font-medium">
             Pulsa una o varias tarjetas para simular en el gráfico superior el impuesto con esa combinación de

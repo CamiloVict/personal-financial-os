@@ -18,7 +18,7 @@ export function AllocatorPlanSummary({ plan }: AllocatorPlanSummaryProps) {
       </div>
       <div className="glass-card rounded-lg p-3 bg-emerald-50/50 border-emerald-100">
         <p className="text-[9px] font-bold text-emerald-600/80 uppercase tracking-wider mb-0.5">
-          Capital Asignado
+          Usado en escenarios
         </p>
         <p className="text-base font-bold text-emerald-700">${assigned.toLocaleString()}</p>
       </div>

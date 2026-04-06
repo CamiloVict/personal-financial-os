@@ -41,7 +41,7 @@ export default function GoalsPage() {
             Metas Financieras
           </h1>
           <p className="text-slate-500 mt-2 text-sm leading-relaxed">
-            Define tus objetivos a largo plazo y obtén recomendaciones accionables sobre cómo alcanzarlos más rápido.
+            Registra objetivos y abre la simulación para ver escenarios condicionales según el cashflow que tengas en la app.
           </p>
         </div>
       </header>

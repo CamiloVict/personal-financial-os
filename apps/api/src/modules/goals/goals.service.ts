@@ -24,7 +24,7 @@ export class GoalsService {
     });
   }
 
-  async getGoalRecommendations(goalId: string) {
+  async getLatestScenarioSnapshot(goalId: string) {
     const rec = await this.prisma.goalRecommendation.findFirst({
       where: { goalId },
       orderBy: { generatedAt: 'desc' },
@@ -34,7 +34,7 @@ export class GoalsService {
     return { ...rec, scenarios: rec.scenarios };
   }
 
-  async recalculateRecommendations(goalId: string) {
+  async simulateGoalScenarios(goalId: string) {
     const goal = await this.prisma.savingGoal.findUnique({
       where: { id: goalId },
     });
@@ -109,7 +109,7 @@ export class GoalsService {
       monthsRemaining,
     );
 
-    return this.getGoalRecommendations(goalId);
+    return this.getLatestScenarioSnapshot(goalId);
   }
 
   private async generateScenarios(
@@ -132,7 +132,7 @@ export class GoalsService {
         data: {
           recommendationId,
           type: ScenarioType.COMBINED_STRATEGY,
-          explanation: `A tu ritmo actual de ahorro ($${Math.round(currentMonthlySavings).toLocaleString()}/mes), alcanzarás la meta en ${projectedMonths} meses, lo cual es antes del tiempo estimado. ¡Sigue así!`,
+          explanation: `Si mantuvieras el ahorro mensual modelado ($${Math.round(currentMonthlySavings).toLocaleString()}), el tiempo estimado para cubrir el faltante sería unos ${projectedMonths} meses, antes del plazo objetivo del modelo.`,
           feasibilityLevel: FeasibilityLevel.CONSERVATIVE,
           newProjectedMonths: projectedMonths,
           monthsSaved,
@@ -156,7 +156,7 @@ export class GoalsService {
         recommendationId,
         type: ScenarioType.INCREASE_INCOME,
         incomeIncreaseAmount: Math.round(monthlyShortfall),
-        explanation: `Necesitas aumentar tus ingresos mensuales libres en $${Math.round(monthlyShortfall).toLocaleString()} (aprox. ${incomeIncreasePercent.toFixed(1)}%). Puedes lograrlo consiguiendo un trabajo paralelo, trabajos freelance, o negociando un aumento salarial. Al hacerlo, lograrás tu meta exactamente a tiempo.`,
+        explanation: `Si tus ingresos netos mensuales aumentaran en $${Math.round(monthlyShortfall).toLocaleString()} (≈${incomeIncreasePercent.toFixed(1)}% frente al ingreso modelado), el modelo cerraría la brecha en el plazo objetivo (${originalMonthsRemaining} meses).`,
         feasibilityLevel: incomeFeasibility,
         newProjectedMonths: originalMonthsRemaining,
         monthsSaved: 0,
@@ -176,9 +176,9 @@ export class GoalsService {
 
     let expExplanation = '';
     if (expenseReductionPercent >= 100) {
-      expExplanation = `Reducir tus gastos en $${Math.round(monthlyShortfall).toLocaleString()} no es realista, ya que supera o iguala tus gastos totales actuales ($${Math.round(expense).toLocaleString()}).`;
+      expExplanation = `Si se redujeran gastos en $${Math.round(monthlyShortfall).toLocaleString()}, el monto superaría o igualaría los gastos totales modelados ($${Math.round(expense).toLocaleString()}); el escenario queda fuera del rango del modelo.`;
     } else {
-      expExplanation = `Podrías lograr tu meta a tiempo si reduces tus gastos mensuales en $${Math.round(monthlyShortfall).toLocaleString()} (aprox. ${expenseReductionPercent.toFixed(1)}%). Revisa tus suscripciones, salidas a restaurantes o gastos discrecionales que puedan ser recortados temporalmente.`;
+      expExplanation = `Si los gastos mensuales bajaran en $${Math.round(monthlyShortfall).toLocaleString()} (≈${expenseReductionPercent.toFixed(1)}% del gasto modelado), el modelo alinearía el flujo con el plazo objetivo (${originalMonthsRemaining} meses).`;
     }
 
     await this.prisma.recommendationScenario.create({
@@ -219,7 +219,7 @@ export class GoalsService {
         type: ScenarioType.COMBINED_STRATEGY,
         incomeIncreaseAmount: Math.round(combIncomeAmount),
         expenseReductionAmount: Math.round(combExpenseAmount),
-        explanation: `Estrategia balanceada (Recomendada): Aumenta tus ingresos en $${Math.round(combIncomeAmount).toLocaleString()} (${combIncomePercent.toFixed(1)}%) y a la vez recorta tus gastos en $${Math.round(combExpenseAmount).toLocaleString()} (${combExpensePercent.toFixed(1)}%). Esta estrategia dual divide el esfuerzo y es estadísticamente más sostenible a largo plazo para llegar a tu objetivo en ${originalMonthsRemaining} meses.`,
+        explanation: `Escenario combinado (modelo): si el ingreso neto subiera $${Math.round(combIncomeAmount).toLocaleString()} (${combIncomePercent.toFixed(1)}%) y el gasto bajara $${Math.round(combExpenseAmount).toLocaleString()} (${combExpensePercent.toFixed(1)}%), el modelo cerraría la brecha en ${originalMonthsRemaining} meses.`,
         feasibilityLevel: combFeasibility,
         newProjectedMonths: originalMonthsRemaining,
         monthsSaved: 0,

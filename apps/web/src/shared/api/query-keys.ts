@@ -19,8 +19,8 @@ export const queryKeys = {
     all: ['goals'] as const,
     list: () => [...queryKeys.goals.all, 'list', ME_SCOPE] as const,
     detail: (id: string) => [...queryKeys.goals.all, 'detail', id] as const,
-    recommendations: (id: string) =>
-      [...queryKeys.goals.detail(id), 'recommendations'] as const,
+    scenarios: (id: string) =>
+      [...queryKeys.goals.detail(id), 'scenarios'] as const,
   },
   tax: {
     all: ['tax'] as const,
