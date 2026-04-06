@@ -6,6 +6,7 @@ import {
   useCategories,
   useCashflowStreams,
   useCashflowAnalytics,
+  useCashflowIntelligence,
   useSeedCategories,
   useCreateCashflowStream,
   useDeleteCashflowStream,
@@ -20,6 +21,7 @@ import {
   CashflowForm,
   CashflowList,
   CashflowEventModal,
+  CashflowIntelligenceSection,
 } from '@/features/cashflow/components';
 import { valuationModeFootnote } from '@/features/currency/format';
 import { useGlobalStore } from '@/shared/store/global';
@@ -39,6 +41,8 @@ export default function CashflowPage() {
     useInvestmentPositions();
   const positions = positionsPayload?.positions ?? [];
   const { data: cashflowAnalytics, isLoading: isLoadingAnalytics } = useCashflowAnalytics();
+  const { data: cashflowIntelligence, isLoading: isLoadingIntelligence } =
+    useCashflowIntelligence();
 
   const setupHelpLoading = isLoadingStreams || isLoadingPositions;
   const showSetupHelp =
@@ -194,6 +198,12 @@ export default function CashflowPage() {
         presentedCurrency={presCcy}
         presentationLoading={presentationLoading}
         presentationLabel={valuationModeFootnote(displayValuationMode)}
+      />
+
+      <CashflowIntelligenceSection
+        data={cashflowIntelligence}
+        isLoading={isLoadingIntelligence}
+        chartCurrency={hasPresentedCharts ? presCcy : 'USD'}
       />
 
       <CashflowCharts

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
+import type { CashflowIntelligenceResponse } from '../types/cashflowIntelligence';
 
 export function useCashflowStreams() {
   return useQuery({
@@ -13,6 +14,16 @@ export function useCashflowAnalytics() {
   return useQuery({
     queryKey: queryKeys.cashflow.analytics(),
     queryFn: () => apiClient.get<any>('/analytics/cashflow'),
+  });
+}
+
+export function useCashflowIntelligence(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.analytics.cashflowIntelligence(),
+    queryFn: () =>
+      apiClient.get<CashflowIntelligenceResponse>('/analytics/cashflow-intelligence'),
+    enabled,
+    staleTime: 45_000,
   });
 }
 

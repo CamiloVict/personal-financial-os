@@ -29,6 +29,8 @@ export const queryKeys = {
     monthlyTrend: () =>
       [...queryKeys.analytics.all, 'cashflow-monthly'] as const,
     netWorth: () => [...queryKeys.analytics.all, 'net-worth'] as const,
+    cashflowIntelligence: () =>
+      [...queryKeys.analytics.all, 'cashflow-intelligence'] as const,
   },
   tax: {
     all: ['tax'] as const,

@@ -25,4 +25,9 @@ export class AnalyticsController {
   getCashflowMonthlyTrend(@DbUserId() userId: string) {
     return this.analyticsService.getCashflowMonthlyTrend(userId);
   }
+
+  @Get('cashflow-intelligence')
+  getCashflowIntelligence(@DbUserId() userId: string) {
+    return this.analyticsService.getCashflowIntelligence(userId);
+  }
 }
