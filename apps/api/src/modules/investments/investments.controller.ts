@@ -10,6 +10,11 @@ export class InvestmentsController {
     private readonly confidenceService: ConfidenceService,
   ) {}
 
+  @Get('portfolio-analytics')
+  getPortfolioAnalytics(@DbUserId() userId: string) {
+    return this.investmentsService.getPortfolioAnalytics(userId);
+  }
+
   @Get('types')
   getInvestmentTypes(@DbUserId() userId: string) {
     return this.investmentsService.getTypes(userId);

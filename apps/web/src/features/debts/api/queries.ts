@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
+import { queryKeys } from '../../../shared/api/query-keys';
 import { debtsQueryKeys } from './query-keys';
 
 export function useLeverageAnalysis() {
@@ -25,6 +26,9 @@ export function useCreateDebt() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: debtsQueryKeys.leverageAnalysis() });
       queryClient.invalidateQueries({ queryKey: debtsQueryKeys.list() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.investments.portfolioAnalytics(),
+      });
     },
   });
 }
@@ -37,6 +41,9 @@ export function usePatchDebt() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: debtsQueryKeys.leverageAnalysis() });
       queryClient.invalidateQueries({ queryKey: debtsQueryKeys.list() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.investments.portfolioAnalytics(),
+      });
     },
   });
 }

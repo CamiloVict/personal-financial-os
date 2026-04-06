@@ -74,9 +74,24 @@ export function PositionList({
           <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50">
             <div>
               <h4 className="text-lg font-bold text-slate-900 tracking-tight">{pos.name}</h4>
-              <span className="inline-block mt-1 bg-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                {pos.type?.name}
-              </span>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className="inline-block bg-indigo-100 text-indigo-900 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-indigo-200/80">
+                  {pos.type?.name ?? 'Sin tipo'}
+                </span>
+                {pos.type?.generatesCashflow ? (
+                  <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                    Genera flujo
+                  </span>
+                ) : null}
+                {pos.type?.fiscalAssetTreatment ? (
+                  <span
+                    className="text-[10px] text-slate-500 max-w-[220px] truncate"
+                    title={pos.type.fiscalAssetTreatment}
+                  >
+                    {pos.type.fiscalAssetTreatment}
+                  </span>
+                ) : null}
+              </div>
             </div>
             <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
               {pos.status}

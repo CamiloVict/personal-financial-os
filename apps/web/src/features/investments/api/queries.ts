@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
+import type { PortfolioAnalyticsResponse } from '../types/portfolioAnalytics';
+
+export type { PortfolioAnalyticsResponse };
 
 export function useInvestmentTypes() {
   return useQuery({
@@ -43,6 +46,17 @@ export function useInvestmentPositions() {
   });
 }
 
+export function usePortfolioAnalytics(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.investments.portfolioAnalytics(),
+    queryFn: () =>
+      apiClient.get<PortfolioAnalyticsResponse>(
+        '/investments/portfolio-analytics',
+      ),
+    enabled,
+  });
+}
+
 export function useCreateInvestmentPosition() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -50,6 +64,9 @@ export function useCreateInvestmentPosition() {
       apiClient.post('/investments/positions', newPos),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.investments.portfolioAnalytics(),
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
@@ -61,6 +78,9 @@ export function useDeleteInvestmentPosition() {
     mutationFn: (id: string) => apiClient.delete(`/investments/positions/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.investments.portfolioAnalytics(),
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });
@@ -76,6 +96,9 @@ export function useCreateInvestmentEvent() {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.investments.positions() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.investments.portfolioAnalytics(),
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
     },
   });

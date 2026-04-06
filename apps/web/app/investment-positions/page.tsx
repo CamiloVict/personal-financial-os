@@ -8,14 +8,16 @@ import {
   useCreateInvestmentPosition,
   useDeleteInvestmentPosition,
   useCreateInvestmentEvent,
+  usePortfolioAnalytics,
 } from '@/features/investments/api/queries';
 import { useCreateDebt } from '@/features/debts/api/queries';
 
 import {
+  PortfolioAnalyticsSection,
   PositionForm,
   PositionList,
   PositionCharts,
-  PositionEventModal
+  PositionEventModal,
 } from '@/features/investments/components';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 import { useGlobalStore } from '@/shared/store/global';
@@ -28,6 +30,8 @@ export default function InvestmentPositionsPage() {
   const positions = positionsPayload?.positions ?? [];
   const positionsConfidence = positionsPayload?.confidence;
   const { data: types = [], isLoading: isLoadingTypes } = useInvestmentTypes();
+  const { data: portfolioAnalytics, isLoading: loadingPortfolioAnalytics } =
+    usePortfolioAnalytics(positions.length > 0);
 
   const createPositionMutation = useCreateInvestmentPosition();
   const createDebtMutation = useCreateDebt();
@@ -248,7 +252,15 @@ export default function InvestmentPositionsPage() {
         </div>
         <ConfidenceBadge confidence={positionsConfidence} />
       </header>
-      
+
+      {positions.length > 0 && (
+        <PortfolioAnalyticsSection
+          analytics={portfolioAnalytics}
+          loading={loadingPortfolioAnalytics}
+          chartCurrency={chartCurrency}
+        />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
         
         <PositionForm

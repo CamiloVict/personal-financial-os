@@ -16,6 +16,8 @@ export const queryKeys = {
     all: ['investments'] as const,
     types: () => [...queryKeys.investments.all, 'types', ME_SCOPE] as const,
     positions: () => [...queryKeys.investments.all, 'positions', ME_SCOPE] as const,
+    portfolioAnalytics: () =>
+      [...queryKeys.investments.all, 'portfolio-analytics', ME_SCOPE] as const,
   },
   goals: {
     all: ['goals'] as const,
