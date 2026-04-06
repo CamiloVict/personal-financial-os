@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { HelpCircle } from 'lucide-react';
 import { DevSessionBar } from '@/shared/ui/DevSessionBar';
 import { AppNavigation } from '@/shared/ui/AppNavigation';
+import { ValuationBar } from '@/features/currency/components';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,6 +27,7 @@ export default function RootLayout({
         <Providers>
           <DevSessionBar />
           <AppNavigation />
+          <ValuationBar />
 
           <main className="grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
             {children}

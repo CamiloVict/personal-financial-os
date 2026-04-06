@@ -1,13 +1,24 @@
 import React from 'react';
 import { Target, Activity, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface GoalListProps {
   goals: any[];
   isLoading: boolean;
+  presentedByGoalId?: Record<
+    string,
+    { target: number; current: number; currency: string }
+  >;
+  presentationLoading?: boolean;
 }
 
-export function GoalList({ goals, isLoading }: GoalListProps) {
+export function GoalList({
+  goals,
+  isLoading,
+  presentedByGoalId,
+  presentationLoading,
+}: GoalListProps) {
   return (
     <div className="lg:col-span-8">
       <div className="glass-card rounded-xl flex flex-col h-full min-h-[300px]">
@@ -25,9 +36,15 @@ export function GoalList({ goals, isLoading }: GoalListProps) {
           ) : (
             <ul className="divide-y divide-slate-100">
               {goals.map((goal: any) => {
-                const target = Number(goal.targetAmount);
-                const current = Number(goal.currentAmount || 0);
-                const progress = target > 0 ? Math.min(100, (current / target) * 100) : 0;
+                const targetNom = Number(goal.targetAmount);
+                const currentNom = Number(goal.currentAmount || 0);
+                const pres = presentedByGoalId?.[goal.id];
+                const target =
+                  pres && !presentationLoading ? pres.target : targetNom;
+                const current =
+                  pres && !presentationLoading ? pres.current : currentNom;
+                const progress =
+                  target > 0 ? Math.min(100, (current / target) * 100) : 0;
 
                 return (
                   <li
@@ -42,8 +59,33 @@ export function GoalList({ goals, isLoading }: GoalListProps) {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-base font-bold tracking-tight text-blue-600">${target.toLocaleString()}</p>
-                        <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Actual: ${current.toLocaleString()}</p>
+                        {pres && !presentationLoading ? (
+                          <>
+                            <p className="text-base font-bold tracking-tight text-blue-600">
+                              {formatPresentedAmount(
+                                target,
+                                pres.currency,
+                              )}
+                            </p>
+                            <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                              Actual:{' '}
+                              {formatPresentedAmount(current, pres.currency)}
+                            </p>
+                            <p className="text-[8px] text-slate-400 mt-0.5">
+                              Nom. obj.: ${targetNom.toLocaleString()} · Actual: $
+                              {currentNom.toLocaleString()}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-base font-bold tracking-tight text-blue-600">
+                              ${targetNom.toLocaleString()}
+                            </p>
+                            <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
+                              Actual: ${currentNom.toLocaleString()}
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
 

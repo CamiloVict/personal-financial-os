@@ -35,6 +35,9 @@ importers:
       '@personal-finance-os/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@personal-finance-os/explanation':
+        specifier: workspace:*
+        version: link:../../packages/explanation
       '@personal-finance-os/tax-engine':
         specifier: workspace:^
         version: link:../../packages/tax-engine
@@ -90,6 +93,12 @@ importers:
       '@personal-finance-os/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@personal-finance-os/explanation':
+        specifier: workspace:*
+        version: link:../../packages/explanation
+      '@personal-finance-os/tax-engine':
+        specifier: workspace:*
+        version: link:../../packages/tax-engine
       '@personal-finance-os/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -177,8 +186,17 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  packages/explanation:
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   packages/tax-engine:
     dependencies:
+      '@personal-finance-os/explanation':
+        specifier: workspace:*
+        version: link:../explanation
       typescript:
         specifier: ^5.4.5
         version: 5.9.3

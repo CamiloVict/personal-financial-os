@@ -1,11 +1,18 @@
 import { CreditCard, TrendingDown } from 'lucide-react';
 import type { BadDebtRow } from '../types';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface DebtsBadDebtPanelProps {
   badDebts: BadDebtRow[];
+  presentedByDebtId?: Record<string, { amount: number; currency: string }>;
+  presentationLoading?: boolean;
 }
 
-export function DebtsBadDebtPanel({ badDebts }: DebtsBadDebtPanelProps) {
+export function DebtsBadDebtPanel({
+  badDebts,
+  presentedByDebtId,
+  presentationLoading,
+}: DebtsBadDebtPanelProps) {
   return (
     <div className="glass-card rounded-xl p-4 shadow-sm border border-rose-100">
       <h3 className="text-sm font-bold text-rose-800 mb-1 flex items-center gap-1.5">
@@ -29,9 +36,26 @@ export function DebtsBadDebtPanel({ badDebts }: DebtsBadDebtPanelProps) {
               <div className="flex justify-between items-end mt-3 pt-2 border-t border-rose-50/50">
                 <div>
                   <p className="text-[8px] text-slate-400 font-bold uppercase mb-0.5">Saldo Pendiente</p>
-                  <p className="text-base font-bold text-slate-800">
-                    ${Number(bd.remainingAmount).toLocaleString()}
-                  </p>
+                  <div>
+                    {presentedByDebtId?.[bd.id] && !presentationLoading ? (
+                      <>
+                        <p className="text-base font-bold text-slate-800">
+                          {formatPresentedAmount(
+                            presentedByDebtId[bd.id].amount,
+                            presentedByDebtId[bd.id].currency,
+                          )}
+                        </p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">
+                          Nom.: $
+                          {Number(bd.remainingAmount).toLocaleString()}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-base font-bold text-slate-800">
+                        ${Number(bd.remainingAmount).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[8px] text-rose-400 font-bold uppercase mb-0.5">Tasa Interés</p>

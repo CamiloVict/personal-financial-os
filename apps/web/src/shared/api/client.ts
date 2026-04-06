@@ -99,6 +99,18 @@ export const apiClient = {
     return parseJson<T>(response);
   },
 
+  patch: async <T>(endpoint: string, body: unknown): Promise<T> => {
+    const response = await fetch(buildApiUrl(endpoint), {
+      method: 'PATCH',
+      headers: await authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+    return parseJson<T>(response);
+  },
+
   delete: async <T>(endpoint: string): Promise<T> => {
     const response = await fetch(buildApiUrl(endpoint), {
       method: 'DELETE',

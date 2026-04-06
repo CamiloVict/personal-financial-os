@@ -1,13 +1,29 @@
 import React from 'react';
 import { AlertTriangle, TrendingUp, TrendingDown, Combine, HelpCircle } from 'lucide-react';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface GoalScenariosProps {
   scenarios: any[];
   isAchievable: boolean;
   currentMonthlySavings: number;
+  presentedSavings?: number | null;
+  presentedSavingsCurrency?: string;
+  presentedByScenarioId?: Record<
+    string,
+    { income?: number; expense?: number; currency: string }
+  >;
+  presentationLoading?: boolean;
 }
 
-export function GoalScenarios({ scenarios, isAchievable, currentMonthlySavings }: GoalScenariosProps) {
+export function GoalScenarios({
+  scenarios,
+  isAchievable,
+  currentMonthlySavings,
+  presentedSavings,
+  presentedSavingsCurrency,
+  presentedByScenarioId,
+  presentationLoading,
+}: GoalScenariosProps) {
   const renderFeasibilityBadge = (level: string) => {
     switch (level) {
       case 'CONSERVATIVE': return <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs px-2 py-1 rounded-md font-bold uppercase tracking-wider">Conservador (Fácil)</span>;
@@ -38,7 +54,16 @@ export function GoalScenarios({ scenarios, isAchievable, currentMonthlySavings }
         <div className="glass-card bg-emerald-50/50 border-emerald-200/50 p-6 rounded-xl text-center">
           <h3 className="text-emerald-800 font-bold text-base tracking-tight mb-2">Según el modelo, la meta encaja en el plazo.</h3>
           <p className="text-emerald-700/80 text-xs mb-4">
-            Si se mantuviera el ahorro mensual modelado (${Number(currentMonthlySavings).toLocaleString()}), el tiempo estimado quedaría por debajo del plazo objetivo.
+            Si se mantuviera el ahorro mensual modelado (
+            {presentedSavings != null &&
+            presentedSavingsCurrency &&
+            !presentationLoading
+              ? formatPresentedAmount(
+                  presentedSavings,
+                  presentedSavingsCurrency,
+                )
+              : `$${Number(currentMonthlySavings).toLocaleString()}`}
+            ), el tiempo estimado quedaría por debajo del plazo objetivo.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             {scenarios?.map((s: any) => (
@@ -77,13 +102,29 @@ export function GoalScenarios({ scenarios, isAchievable, currentMonthlySavings }
                 {scenario.incomeIncreaseAmount > 0 && (
                   <div className="flex justify-between items-center text-[11px] mb-1.5">
                     <span className="text-slate-600">Nuevos Ingresos:</span>
-                    <span className="font-bold text-emerald-600">+${Number(scenario.incomeIncreaseAmount).toLocaleString()}</span>
+                    <span className="font-bold text-emerald-600">
+                      {presentedByScenarioId?.[scenario.id]?.income != null &&
+                      !presentationLoading
+                        ? `+${formatPresentedAmount(
+                            presentedByScenarioId[scenario.id].income!,
+                            presentedByScenarioId[scenario.id].currency,
+                          )}`
+                        : `+$${Number(scenario.incomeIncreaseAmount).toLocaleString()}`}
+                    </span>
                   </div>
                 )}
                 {scenario.expenseReductionAmount > 0 && (
                   <div className="flex justify-between items-center text-[11px] mb-1.5">
                     <span className="text-slate-600">Reducción Gastos:</span>
-                    <span className="font-bold text-blue-600">-${Number(scenario.expenseReductionAmount).toLocaleString()}</span>
+                    <span className="font-bold text-blue-600">
+                      {presentedByScenarioId?.[scenario.id]?.expense != null &&
+                      !presentationLoading
+                        ? `-${formatPresentedAmount(
+                            presentedByScenarioId[scenario.id].expense!,
+                            presentedByScenarioId[scenario.id].currency,
+                          )}`
+                        : `-$${Number(scenario.expenseReductionAmount).toLocaleString()}`}
+                    </span>
                   </div>
                 )}
                 {scenario.newProjectedMonths && (

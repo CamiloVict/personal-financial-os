@@ -1,14 +1,28 @@
 import React from 'react';
 import { Calendar, ListPlus, Trash2 } from 'lucide-react';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface PositionListProps {
   positions: any[];
   onSelectPosition: (pos: any) => void;
   onDeletePosition: (id: string) => void;
   isDeleting: boolean;
+  /** Valuación coherente (mismo modo que barra global) */
+  presentedById?: Record<
+    string,
+    { capital: number; value: number; currency: string }
+  >;
+  presentationLoading?: boolean;
 }
 
-export function PositionList({ positions, onSelectPosition, onDeletePosition, isDeleting }: PositionListProps) {
+export function PositionList({
+  positions,
+  onSelectPosition,
+  onDeletePosition,
+  isDeleting,
+  presentedById,
+  presentationLoading,
+}: PositionListProps) {
   return (
     <div className="space-y-4">
       {positions.map(pos => (
@@ -31,11 +45,53 @@ export function PositionList({ positions, onSelectPosition, onDeletePosition, is
           <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>
               <div className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wide">Capital Base</div>
-              <div className="text-lg font-bold text-slate-700 tracking-tight">${Number(pos.initialCapital).toLocaleString()} <span className="text-xs font-normal text-slate-400">{pos.currency}</span></div>
+              {presentedById?.[pos.id] && !presentationLoading ? (
+                <>
+                  <div className="text-lg font-bold text-slate-700 tracking-tight">
+                    {formatPresentedAmount(
+                      presentedById[pos.id].capital,
+                      presentedById[pos.id].currency,
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Nom.: $
+                    {Number(pos.initialCapital).toLocaleString()}{' '}
+                    {pos.currency}
+                  </div>
+                </>
+              ) : (
+                <div className="text-lg font-bold text-slate-700 tracking-tight">
+                  ${Number(pos.initialCapital).toLocaleString()}{' '}
+                  <span className="text-xs font-normal text-slate-400">
+                    {pos.currency}
+                  </span>
+                </div>
+              )}
             </div>
             <div>
               <div className="text-xs text-blue-600 font-semibold mb-1 uppercase tracking-wide">Valorización Actual</div>
-              <div className="text-lg font-bold text-blue-600 tracking-tight">${Number(pos.currentEstimatedValue).toLocaleString()} <span className="text-xs font-normal text-blue-400">{pos.currency}</span></div>
+              {presentedById?.[pos.id] && !presentationLoading ? (
+                <>
+                  <div className="text-lg font-bold text-blue-600 tracking-tight">
+                    {formatPresentedAmount(
+                      presentedById[pos.id].value,
+                      presentedById[pos.id].currency,
+                    )}
+                  </div>
+                  <div className="text-[10px] text-blue-400/80 mt-0.5">
+                    Nom.: $
+                    {Number(pos.currentEstimatedValue).toLocaleString()}{' '}
+                    {pos.currency}
+                  </div>
+                </>
+              ) : (
+                <div className="text-lg font-bold text-blue-600 tracking-tight">
+                  ${Number(pos.currentEstimatedValue).toLocaleString()}{' '}
+                  <span className="text-xs font-normal text-blue-400">
+                    {pos.currency}
+                  </span>
+                </div>
+              )}
             </div>
             <div>
               <div className="text-xs text-slate-500 font-semibold mb-1 flex items-center gap-1 uppercase tracking-wide">

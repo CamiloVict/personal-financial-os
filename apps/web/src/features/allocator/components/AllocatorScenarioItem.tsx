@@ -1,13 +1,25 @@
 import { ArrowRight } from 'lucide-react';
 import type { AllocatorScenario } from '../types';
 import { scenarioCardClass, scenarioIcon } from './scenarioMeta';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface AllocatorScenarioItemProps {
   scenario: AllocatorScenario;
   index: number;
+  presentedModeled?: number | null;
+  presentedReturn?: number | null;
+  presentedCurrency?: string;
+  presentationLoading?: boolean;
 }
 
-export function AllocatorScenarioItem({ scenario, index }: AllocatorScenarioItemProps) {
+export function AllocatorScenarioItem({
+  scenario,
+  index,
+  presentedModeled,
+  presentedReturn,
+  presentedCurrency = 'USD',
+  presentationLoading,
+}: AllocatorScenarioItemProps) {
   return (
     <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
       <div className="flex items-center justify-center w-8 h-8 rounded-full border-2 border-white bg-slate-100 text-slate-500 shadow-sm shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
@@ -35,8 +47,20 @@ export function AllocatorScenarioItem({ scenario, index }: AllocatorScenarioItem
               Monto en escenario
             </p>
             <p className="font-black text-slate-800 text-sm">
-              ${Number(scenario.modeledAmount).toLocaleString()}
+              {presentationLoading
+                ? '…'
+                : presentedModeled != null
+                  ? formatPresentedAmount(
+                      presentedModeled,
+                      presentedCurrency,
+                    )
+                  : `$${Number(scenario.modeledAmount).toLocaleString()}`}
             </p>
+            {presentedModeled != null && !presentationLoading ? (
+              <p className="text-[8px] text-slate-400 mt-0.5">
+                Nom.: ${Number(scenario.modeledAmount).toLocaleString()}
+              </p>
+            ) : null}
           </div>
           <div className="text-right">
             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
@@ -44,7 +68,14 @@ export function AllocatorScenarioItem({ scenario, index }: AllocatorScenarioItem
             </p>
             {scenario.expectedReturnAmount > 0 ? (
               <p className="font-bold text-emerald-600 text-xs">
-                +${Number(scenario.expectedReturnAmount).toLocaleString()}{' '}
+                {presentationLoading
+                  ? '…'
+                  : presentedReturn != null
+                    ? `+${formatPresentedAmount(
+                        presentedReturn,
+                        presentedCurrency,
+                      )} `
+                    : `+$${Number(scenario.expectedReturnAmount).toLocaleString()} `}
                 <span className="text-[9px]">({scenario.returnPercentage}%)</span>
               </p>
             ) : (
@@ -52,6 +83,14 @@ export function AllocatorScenarioItem({ scenario, index }: AllocatorScenarioItem
                 Solo asignación <ArrowRight className="w-3 h-3" />
               </p>
             )}
+            {presentedReturn != null &&
+            !presentationLoading &&
+            scenario.expectedReturnAmount > 0 ? (
+              <p className="text-[8px] text-slate-400 mt-0.5">
+                Nom.: +$
+                {Number(scenario.expectedReturnAmount).toLocaleString()}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

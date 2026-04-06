@@ -16,12 +16,14 @@ import { AllocatorModule } from './modules/allocator/allocator.module';
 import { SimulatorModule } from './modules/simulator/simulator.module';
 import { DebtsModule } from './modules/debts/debts.module';
 import { ConfidenceModule } from './modules/confidence/confidence.module';
+import { CurrencyModule } from './modules/currency/currency.module';
 
 @Module({
   imports: [
     AuthModule,
     PrismaModule,
     ConfidenceModule,
+    CurrencyModule,
     CashflowModule,
     InvestmentsModule,
     GoalsModule,

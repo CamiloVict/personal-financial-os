@@ -35,7 +35,7 @@ export interface TaxClassificationResult {
   missingConditions: string[];
 }
 
-/** Fila para comparar impuesto aproximado al activar una palanca de optimización */
+/** Fila para comparar impuesto aproximado al activar una palanca en simulación */
 export interface TaxLeverComparisonRow {
   id: string;
   label: string;
@@ -67,10 +67,15 @@ export interface TaxScenarioOutput {
 export interface TaxRuleEngine {
   version: string;
   classifyIncome(stream: IncomeStreamInput, profile: TaxProfileInput): TaxClassificationResult;
-  generateScenarios(profile: TaxProfileInput, classifiedIncome: TaxClassificationResult[]): TaxScenarioOutput[];
+  generateScenarios(
+    profile: TaxProfileInput,
+    classifiedIncome: TaxClassificationResult[],
+    normalized?: import('./tax-normalization').NormalizedTaxFinancials,
+  ): TaxScenarioOutput[];
   /** Comparación conservador vs cada beneficio aislado vs tu perfil completo */
   compareLeverScenarios(
     actualProfile: TaxProfileInput,
     classifiedIncome: TaxClassificationResult[],
+    normalized?: import('./tax-normalization').NormalizedTaxFinancials,
   ): TaxLeverComparisonRow[];
 }

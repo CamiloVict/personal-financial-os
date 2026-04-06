@@ -1,12 +1,47 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Target } from 'lucide-react';
 import { useGoals, useCreateGoal } from '@/features/goals/api/queries';
 import { GoalForm, GoalList } from '@/features/goals/components';
+import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
+import {
+  linesFromGoals,
+  presentedCurrencyFromRows,
+} from '@/features/currency/valuationUtils';
+import { useGlobalStore } from '@/shared/store/global';
 
 export default function GoalsPage() {
   const { data: goals = [], isLoading } = useGoals();
   const createGoalMutation = useCreateGoal();
+  const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
+
+  const goalLines = useMemo(() => linesFromGoals(goals), [goals]);
+  const { data: goalPresRows, isLoading: goalPresLoading } =
+    useValuationPresentation(goalLines, goalLines.length > 0);
+
+  const presentedByGoalId = useMemo(() => {
+    if (!goalPresRows?.length) return undefined;
+    const ccy = presentedCurrencyFromRows(
+      goalPresRows,
+      displayValuationMode,
+    );
+    const m: Record<
+      string,
+      { target: number; current: number; currency: string }
+    > = {};
+    for (const g of goals) {
+      const t = goalPresRows.find((r) => r.id === `${g.id}-target`);
+      const c = goalPresRows.find((r) => r.id === `${g.id}-current`);
+      if (t && c) {
+        m[g.id] = {
+          target: t.presentedAmount,
+          current: c.presentedAmount,
+          currency: ccy,
+        };
+      }
+    }
+    return Object.keys(m).length ? m : undefined;
+  }, [goalPresRows, goals, displayValuationMode]);
 
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState<string>('');
@@ -56,9 +91,11 @@ export default function GoalsPage() {
           isPending={createGoalMutation.isPending}
         />
 
-        <GoalList 
-          goals={goals} 
-          isLoading={isLoading} 
+        <GoalList
+          goals={goals}
+          isLoading={isLoading}
+          presentedByGoalId={presentedByGoalId}
+          presentationLoading={goalPresLoading}
         />
       </div>
     </div>

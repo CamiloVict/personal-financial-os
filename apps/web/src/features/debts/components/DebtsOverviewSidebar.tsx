@@ -1,12 +1,25 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { LeverageAnalysis } from '../types';
 import { leverageHealthBadgeClass, leverageHealthLabel } from '../utils';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface DebtsOverviewSidebarProps {
   analysis: LeverageAnalysis;
+  /** Montos alineados con la barra global (FX / términos reales). Si no hay, se usan los del análisis en USD nominal. */
+  presentedTotals?: {
+    totalDebt: number;
+    goodDebtTotal: number;
+    badDebtTotal: number;
+    currency: string;
+  } | null;
+  presentationLoading?: boolean;
 }
 
-export function DebtsOverviewSidebar({ analysis }: DebtsOverviewSidebarProps) {
+export function DebtsOverviewSidebar({
+  analysis,
+  presentedTotals,
+  presentationLoading,
+}: DebtsOverviewSidebarProps) {
   const {
     totalDebt,
     goodDebtTotal,
@@ -16,9 +29,30 @@ export function DebtsOverviewSidebar({ analysis }: DebtsOverviewSidebarProps) {
     leverageHealthStatus,
   } = analysis;
 
+  const usePresented =
+    presentedTotals != null && !presentationLoading;
+
+  const displayTotal = usePresented
+    ? presentedTotals.totalDebt
+    : totalDebt;
+  const displayGood = usePresented
+    ? presentedTotals.goodDebtTotal
+    : goodDebtTotal;
+  const displayBad = usePresented
+    ? presentedTotals.badDebtTotal
+    : badDebtTotal;
+  const displayCcy = usePresented
+    ? presentedTotals.currency
+    : 'USD';
+
+  const fmtMoney = (n: number) =>
+    usePresented
+      ? formatPresentedAmount(n, displayCcy)
+      : `$${n.toLocaleString()}`;
+
   const pieData = [
-    { name: 'Deuda Buena (Apalancamiento)', value: goodDebtTotal, color: '#10b981' },
-    { name: 'Deuda Mala (Consumo)', value: badDebtTotal, color: '#ef4444' },
+    { name: 'Deuda Buena (Apalancamiento)', value: displayGood, color: '#10b981' },
+    { name: 'Deuda Mala (Consumo)', value: displayBad, color: '#ef4444' },
   ].filter((d) => d.value > 0);
 
   return (
@@ -30,7 +64,9 @@ export function DebtsOverviewSidebar({ analysis }: DebtsOverviewSidebarProps) {
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
             Deuda Total
           </p>
-          <p className="text-xl font-black text-slate-800 tracking-tight">${totalDebt.toLocaleString()}</p>
+          <p className="text-xl font-black text-slate-800 tracking-tight">
+            {presentationLoading ? '…' : fmtMoney(displayTotal)}
+          </p>
         </div>
 
         <div className="space-y-3">
@@ -75,7 +111,11 @@ export function DebtsOverviewSidebar({ analysis }: DebtsOverviewSidebarProps) {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: unknown) => `$${Number(value).toLocaleString()}`} />
+                <Tooltip
+                  formatter={(value: unknown) =>
+                    fmtMoney(Number(value ?? 0))
+                  }
+                />
                 <Legend wrapperStyle={{ fontSize: '9px' }} />
               </PieChart>
             </ResponsiveContainer>

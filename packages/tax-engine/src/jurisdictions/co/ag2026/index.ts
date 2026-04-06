@@ -1,4 +1,10 @@
 import {
+  createNode,
+  emptyFinancialExplanation,
+  type FinancialExplanation,
+  type NormativeRef,
+} from '@personal-finance-os/explanation';
+import {
   TaxProfileInput,
   IncomeStreamInput,
   TaxClassificationResult,
@@ -6,18 +12,60 @@ import {
   TaxRuleEngine,
   TaxLeverComparisonRow,
 } from '../../../core/contracts';
+import type {
+  NormalizedTaxFinancials,
+  TaxMonetaryLineKind,
+} from '../../../core/tax-normalization';
 
-const UVT_2026 = 48000; // Estimated 2026 UVT for Colombia
+/** UVT de referencia del modelo CO-AG2026 (estimada). */
+export const UVT_2026 = 48000;
 
-export function calculateColombiaIncomeTaxUVT2026(taxableBase: number, uvt: number = UVT_2026): number {
+export const CO_AG2026_NORMATIVE_REFS: NormativeRef[] = [
+  {
+    id: 'CO-AG2026-MODEL',
+    title: 'Modelo educativo Colombia cédula general (no es asesoría legal)',
+    article:
+      'Topes 40% ingreso / 1340 UVT; 25% renta exenta laboral hasta 790 UVT; deducciones simplificadas en motor',
+  },
+];
+
+export function calculateColombiaIncomeTaxUVT2026Detailed(
+  taxableBase: number,
+  uvt: number = UVT_2026,
+): { tax: number; uvtBase: number; bracketLabel: string } {
   const uvtBase = taxableBase / uvt;
-  if (uvtBase <= 1090) return 0;
-  if (uvtBase <= 1700) return (uvtBase - 1090) * 0.19 * uvt;
-  if (uvtBase <= 4100) return ((uvtBase - 1700) * 0.28 + 116) * uvt;
-  if (uvtBase <= 8670) return ((uvtBase - 4100) * 0.33 + 788) * uvt;
-  if (uvtBase <= 18970) return ((uvtBase - 8670) * 0.35 + 2296) * uvt;
-  if (uvtBase <= 31000) return ((uvtBase - 18970) * 0.37 + 5901) * uvt;
-  return ((uvtBase - 31000) * 0.39 + 10352) * uvt;
+  let tax = 0;
+  let bracketLabel = '';
+  if (uvtBase <= 1090) {
+    tax = 0;
+    bracketLabel = 'Hasta 1090 UVT: 0%';
+  } else if (uvtBase <= 1700) {
+    tax = (uvtBase - 1090) * 0.19 * uvt;
+    bracketLabel = '1090–1700 UVT: 19% sobre excedente de 1090 UVT';
+  } else if (uvtBase <= 4100) {
+    tax = ((uvtBase - 1700) * 0.28 + 116) * uvt;
+    bracketLabel = '1700–4100 UVT: tramo 28% + constante en UVT (modelo motor)';
+  } else if (uvtBase <= 8670) {
+    tax = ((uvtBase - 4100) * 0.33 + 788) * uvt;
+    bracketLabel = '4100–8670 UVT: tramo 33% + constante en UVT (modelo motor)';
+  } else if (uvtBase <= 18970) {
+    tax = ((uvtBase - 8670) * 0.35 + 2296) * uvt;
+    bracketLabel = '8670–18970 UVT: tramo 35% + constante en UVT (modelo motor)';
+  } else if (uvtBase <= 31000) {
+    tax = ((uvtBase - 18970) * 0.37 + 5901) * uvt;
+    bracketLabel = '18970–31000 UVT: tramo 37% + constante en UVT (modelo motor)';
+  } else {
+    tax = ((uvtBase - 31000) * 0.39 + 10352) * uvt;
+    bracketLabel = 'Más de 31000 UVT: tramo 39% + constante en UVT (modelo motor)';
+  }
+  return { tax, uvtBase, bracketLabel };
+}
+
+export function calculateColombiaIncomeTaxUVT2026(
+  taxableBase: number,
+  uvt: number = UVT_2026,
+): number {
+  return calculateColombiaIncomeTaxUVT2026Detailed(taxableBase, uvt).tax;
 }
 
 function sumAnnualIncome(classifiedIncome: TaxClassificationResult[]): number {
@@ -28,40 +76,177 @@ function sumForeignTaxes(classifiedIncome: TaxClassificationResult[]): number {
   return classifiedIncome.reduce((acc, c) => acc + (c.foreignTaxPaid || 0), 0);
 }
 
-/** Detalle del escenario optimizado (deducciones, exenciones, tope 40% / 1340 UVT, 25% laboral). */
-export function computeOptimizedTaxSnapshot(
-  profile: TaxProfileInput,
-  totalIncome: number,
-  foreignTaxes: number,
-  uvt: number = UVT_2026,
-): {
+function sumNormalizedDeductions(
+  normalized: NormalizedTaxFinancials | undefined,
+  kind: TaxMonetaryLineKind,
+): number {
+  if (!normalized) return 0;
+  return normalized.deductions
+    .filter((d) => d.kind === kind)
+    .reduce((a, d) => a + Math.max(0, d.annualAmountCOP), 0);
+}
+
+type OptimizedSnapshot = {
   appliedDeductions: number;
   appliedExemptions: number;
   taxableBase: number;
   taxLiability: number;
   foreignCredit: number;
   netPayable: number;
-} {
+};
+
+/** Detalle del escenario optimizado (deducciones, exenciones, tope 40% / 1340 UVT, 25% laboral). */
+export function computeOptimizedTaxSnapshot(
+  profile: TaxProfileInput,
+  totalIncome: number,
+  foreignTaxes: number,
+  uvt: number = UVT_2026,
+  normalized?: NormalizedTaxFinancials,
+): OptimizedSnapshot {
+  return computeOptimizedTaxSnapshotWithExplanation(
+    profile,
+    totalIncome,
+    foreignTaxes,
+    uvt,
+    normalized,
+  ).snapshot;
+}
+
+/** Igual que `computeOptimizedTaxSnapshot` más grafo de explicación serializable. */
+export function computeOptimizedTaxSnapshotWithExplanation(
+  profile: TaxProfileInput,
+  totalIncome: number,
+  foreignTaxes: number,
+  uvt: number = UVT_2026,
+  normalized?: NormalizedTaxFinancials,
+): { snapshot: OptimizedSnapshot; explanation: FinancialExplanation } {
   let totalDeductions = 0;
   let explicitExemptions = 0;
+  const stepChildren: ReturnType<typeof createNode>[] = [];
 
   if (profile.hasDependents) {
     const maxDependents = 384 * uvt;
-    totalDeductions += Math.min(totalIncome * 0.1, maxDependents);
+    const amt = Math.min(totalIncome * 0.1, maxDependents);
+    totalDeductions += amt;
+    stepChildren.push(
+      createNode({
+        kind: 'rule',
+        label: 'Deducción por dependientes',
+        description: 'Hasta 10% del ingreso, tope 384 UVT anuales (modelo motor).',
+        value: -amt,
+        ruleRef: 'CO-AG2026-DED-DEP',
+        normativeRefs: CO_AG2026_NORMATIVE_REFS,
+      }),
+    );
   }
-  if (profile.hasPrepaidMedicine) {
-    const maxMedicine = 192 * uvt;
-    totalDeductions += Math.min(totalIncome * 0.05, maxMedicine);
+  const capPrepaid = Math.min(totalIncome * 0.05, 192 * uvt);
+  const dataPrepaidRaw = sumNormalizedDeductions(normalized, 'PREPAID_MEDICINE');
+  const dataPrepaid = Math.min(dataPrepaidRaw, capPrepaid);
+  const profilePrepaid = profile.hasPrepaidMedicine ? capPrepaid : 0;
+  if (dataPrepaidRaw > 0 || profile.hasPrepaidMedicine) {
+    const amt = Math.min(Math.max(profilePrepaid, dataPrepaid), capPrepaid);
+    if (amt > 0) {
+      totalDeductions += amt;
+      stepChildren.push(
+        createNode({
+          kind: 'rule',
+          label: 'Deducción medicina prepagada / pólizas',
+          description:
+            dataPrepaidRaw > 0
+              ? `Tope 5% del ingreso / 192 UVT. Se usa el mayor entre perfil y gastos Cashflow normalizados (${dataPrepaidRaw.toFixed(0)} COP/año bruto).`
+              : 'Hasta 5% del ingreso, tope 192 UVT (modelo motor).',
+          value: -amt,
+          ruleRef: 'CO-AG2026-DED-PREP',
+        }),
+      );
+    }
   }
-  if (profile.hasHousingInterest) {
-    const maxHousing = 1200 * uvt;
-    totalDeductions += Math.min(totalIncome * 0.15, maxHousing);
+
+  const capHousing = Math.min(totalIncome * 0.15, 1200 * uvt);
+  const dataHousingRaw = sumNormalizedDeductions(normalized, 'HOUSING_INTEREST');
+  const dataHousing = Math.min(dataHousingRaw, capHousing);
+  const profileHousing = profile.hasHousingInterest ? capHousing : 0;
+  if (dataHousingRaw > 0 || profile.hasHousingInterest) {
+    const amt = Math.min(Math.max(profileHousing, dataHousing), capHousing);
+    if (amt > 0) {
+      totalDeductions += amt;
+      stepChildren.push(
+        createNode({
+          kind: 'rule',
+          label: 'Deducción intereses de vivienda',
+          description:
+            dataHousingRaw > 0
+              ? `Tope 15% / 1200 UVT. Incluye intereses modelados desde deudas (hipoteca) y/o gastos Cashflow (${dataHousingRaw.toFixed(0)} COP/año bruto).`
+              : 'Hasta 15% del ingreso, tope 1200 UVT (modelo motor).',
+          value: -amt,
+          ruleRef: 'CO-AG2026-DED-VIV',
+        }),
+      );
+    }
   }
-  if (profile.hasAFC) {
-    explicitExemptions += totalIncome * 0.1;
+
+  const capAfc = totalIncome * 0.1;
+  const dataAfcRaw = sumNormalizedDeductions(normalized, 'AFC_CONTRIBUTION');
+  const dataAfc = Math.min(dataAfcRaw, capAfc);
+  const profileAfc = profile.hasAFC ? capAfc : 0;
+  if (dataAfcRaw > 0 || profile.hasAFC) {
+    const amt = Math.min(Math.max(profileAfc, dataAfc), capAfc);
+    if (amt > 0) {
+      explicitExemptions += amt;
+      stepChildren.push(
+        createNode({
+          kind: 'rule',
+          label: 'Renta exenta AFC (simplificada)',
+          description:
+            dataAfcRaw > 0
+              ? `10% del ingreso en motor; considera aportes AFC desde Cashflow (${dataAfcRaw.toFixed(0)} COP/año bruto). Topes legales adicionales no modelados.`
+              : '10% del ingreso en motor; topes legales adicionales no modelados aquí.',
+          value: -amt,
+          ruleRef: 'CO-AG2026-EX-AFC',
+        }),
+      );
+    }
   }
-  if (profile.hasVoluntaryPension) {
-    explicitExemptions += totalIncome * 0.1;
+
+  const capFpv = totalIncome * 0.1;
+  const dataFpvRaw = sumNormalizedDeductions(
+    normalized,
+    'VOLUNTARY_PENSION_CONTRIBUTION',
+  );
+  const dataFpv = Math.min(dataFpvRaw, capFpv);
+  const profileFpv = profile.hasVoluntaryPension ? capFpv : 0;
+  if (dataFpvRaw > 0 || profile.hasVoluntaryPension) {
+    const amt = Math.min(Math.max(profileFpv, dataFpv), capFpv);
+    if (amt > 0) {
+      explicitExemptions += amt;
+      stepChildren.push(
+        createNode({
+          kind: 'rule',
+          label: 'Renta exenta pensión voluntaria FPV (simplificada)',
+          description:
+            dataFpvRaw > 0
+              ? `10% del ingreso en motor; aportes FPV desde Cashflow (${dataFpvRaw.toFixed(0)} COP/año bruto). Topes legales adicionales no modelados.`
+              : '10% del ingreso en motor; topes legales adicionales no modelados aquí.',
+          value: -amt,
+          ruleRef: 'CO-AG2026-EX-FPV',
+        }),
+      );
+    }
+  }
+
+  const otherDed = sumNormalizedDeductions(normalized, 'OTHER_DEDUCTIBLE');
+  if (otherDed > 0) {
+    totalDeductions += otherDed;
+    stepChildren.push(
+      createNode({
+        kind: 'rule',
+        label: 'Otros gastos deducibles (Cashflow)',
+        description:
+          'Categorías con fiscalExpenseHint OTHER_DEDUCTIBLE; validar contra norma y topes globales del motor.',
+        value: -otherDed,
+        ruleRef: 'CO-AG2026-DED-OTHER-CF',
+      }),
+    );
   }
 
   const subtotalBase = totalIncome - totalDeductions - explicitExemptions;
@@ -71,22 +256,49 @@ export function computeOptimizedTaxSnapshot(
   let appliedExemptions = explicitExemptions + exempt25;
   let appliedDeductions = totalDeductions;
 
+  stepChildren.push(
+    createNode({
+      kind: 'rule',
+      label: '25% renta exenta laboral (automática)',
+      description: 'Hasta 25% de la subbase o 790 UVT, lo menor (modelo motor).',
+      value: -exempt25,
+      ruleRef: 'CO-AG2026-EX-25PCT',
+    }),
+  );
+
+  let capReductionNode: ReturnType<typeof createNode> | null = null;
   if (appliedExemptions + appliedDeductions > maxAllowedDeductions) {
+    const beforeExempt = appliedExemptions;
+    const beforeDed = appliedDeductions;
     const excess = appliedExemptions + appliedDeductions - maxAllowedDeductions;
     appliedExemptions -= excess;
     if (appliedExemptions < 0) {
       appliedDeductions += appliedExemptions;
       appliedExemptions = 0;
     }
+    capReductionNode = createNode({
+      kind: 'rule',
+      label: 'Tope conjunto deducciones + exenciones',
+      description: `Mínimo entre 40% del ingreso (${(totalIncome * 0.4).toFixed(0)}) y 1340 UVT (${1340 * uvt}). Se recortaron exenciones/deducciones aplicadas.`,
+      value: -excess,
+      ruleRef: 'CO-AG2026-CAP-40-1340',
+      meta: {
+        maxAllowedDeductions,
+        excessRemoved: excess,
+        beforeSum: beforeExempt + beforeDed,
+        afterSum: appliedExemptions + appliedDeductions,
+      },
+    });
   }
 
   const taxableBase = totalIncome - appliedDeductions - appliedExemptions;
-  const taxLiability = calculateColombiaIncomeTaxUVT2026(taxableBase, uvt);
+  const taxDet = calculateColombiaIncomeTaxUVT2026Detailed(taxableBase, uvt);
+  const taxLiability = taxDet.tax;
   const foreignCredit =
     foreignTaxes > 0 ? Math.min(foreignTaxes, taxLiability) : 0;
   const netPayable = Math.max(0, taxLiability - foreignCredit);
 
-  return {
+  const snapshot: OptimizedSnapshot = {
     appliedDeductions,
     appliedExemptions,
     taxableBase,
@@ -94,6 +306,129 @@ export function computeOptimizedTaxSnapshot(
     foreignCredit,
     netPayable,
   };
+
+  const inputs = [
+    createNode({
+      kind: 'input',
+      label: 'Ingreso bruto anual (agregado)',
+      value: totalIncome,
+      meta: { key: 'annualGross' },
+    }),
+    createNode({
+      kind: 'input',
+      label: 'Impuestos pagados en el exterior (para crédito)',
+      value: foreignTaxes,
+      meta: { key: 'foreignTaxPaid' },
+    }),
+    createNode({
+      kind: 'input',
+      label: 'UVT referencia motor',
+      value: uvt,
+      ruleRef: 'CO-AG2026-UVT',
+    }),
+    createNode({
+      kind: 'input',
+      label: 'Beneficios activos en perfil',
+      description: [
+        profile.hasDependents && 'Dependientes',
+        profile.hasPrepaidMedicine && 'Prepagada',
+        profile.hasHousingInterest && 'Vivienda',
+        profile.hasAFC && 'AFC',
+        profile.hasVoluntaryPension && 'FPV',
+      ]
+        .filter(Boolean)
+        .join(', ') || 'Ninguno marcado en este cálculo',
+      meta: {
+        hasDependents: profile.hasDependents,
+        hasPrepaidMedicine: profile.hasPrepaidMedicine,
+        hasHousingInterest: profile.hasHousingInterest,
+        hasAFC: profile.hasAFC,
+        hasVoluntaryPension: profile.hasVoluntaryPension,
+      },
+    }),
+    ...(normalized &&
+    (normalized.deductions.length > 0 ||
+      normalized.liabilities.length > 0 ||
+      normalized.investments.length > 0)
+      ? [
+          createNode({
+            kind: 'input',
+            label: 'Datos integrados (Cashflow / Deudas / Inversiones)',
+            description: `${normalized.deductions.length} líneas deducción, ${normalized.liabilities.length} pasivos con interés, ${normalized.investments.length} posiciones etiquetadas.`,
+            meta: {
+              liabilityIds: normalized.liabilities.map((l) => l.id),
+              warnings: normalized.warnings,
+            },
+          }),
+        ]
+      : []),
+  ];
+
+  const taxStep = createNode({
+    kind: 'aggregation',
+    label: 'Impuesto sobre base gravable (tarifa UVT)',
+    description: `${taxDet.bracketLabel}. Base en UVT: ${taxDet.uvtBase.toFixed(2)}.`,
+    value: taxLiability,
+    ruleRef: 'CO-AG2026-TARIFF',
+    children: [
+      createNode({
+        kind: 'result',
+        label: 'Base gravable',
+        value: taxableBase,
+      }),
+    ],
+  });
+
+  const creditStep =
+    foreignCredit > 0
+      ? createNode({
+          kind: 'rule',
+          label: 'Crédito por impuestos pagos en el exterior',
+          description: 'No superior al impuesto calculado en Colombia (modelo motor).',
+          value: -foreignCredit,
+          ruleRef: 'CO-AG2026-FOREIGN-CREDIT',
+        })
+      : null;
+
+  const steps = [
+    createNode({
+      kind: 'aggregation',
+      label: 'Construcción de base gravable',
+      description:
+        'Deducciones y rentas exentas según perfil y datos normalizados (gastos, deudas), luego tope 40%/1340 UVT.',
+      children: [...stepChildren, ...(capReductionNode ? [capReductionNode] : [])],
+    }),
+    taxStep,
+    ...(creditStep ? [creditStep] : []),
+    createNode({
+      kind: 'result',
+      label: 'Impuesto neto a pagar (aprox.)',
+      value: netPayable,
+    }),
+  ];
+
+  const assumptions = [
+    'Motor simplificado AG2026: no incluye todas las exenciones ni deducciones del Estatuto Tributario.',
+    'Sin ajuste por inflación ni TRM; montos como ingreso anual único.',
+    'AFC/FPV al 10% del ingreso c/u en simulación; límites legales reales pueden ser menores.',
+    ...(normalized?.warnings ?? []),
+  ];
+
+  const explanation: FinancialExplanation = {
+    ...emptyFinancialExplanation('tax.co.optimized_snapshot', 'Cálculo impuesto cédula general (modelo)'),
+    summary: `Base gravable ${taxableBase.toFixed(0)} → impuesto ${taxLiability.toFixed(0)}; neto ${netPayable.toFixed(0)}.`,
+    inputs,
+    steps,
+    assumptions,
+    missingData: [],
+    normativeRefs: CO_AG2026_NORMATIVE_REFS,
+    result: {
+      label: 'Impuesto neto estimado',
+      value: netPayable,
+    },
+  };
+
+  return { snapshot, explanation };
 }
 
 function minimalBenefitProfile(base: TaxProfileInput): TaxProfileInput {
@@ -107,7 +442,7 @@ function minimalBenefitProfile(base: TaxProfileInput): TaxProfileInput {
   };
 }
 
-/** Aplica varias palancas de optimización sobre un perfil “en blanco” de beneficios (para simular combinaciones). */
+/** Aplica varias palancas fiscales en simulación sobre un perfil “en blanco” de beneficios (combinaciones hipotéticas). */
 export function applyTaxLeverSelection(
   base: TaxProfileInput,
   leverIds: readonly string[],
@@ -195,6 +530,7 @@ export class ColombiaTaxEngineAG2026 implements TaxRuleEngine {
   generateScenarios(
     profile: TaxProfileInput,
     classifiedIncome: TaxClassificationResult[],
+    normalized?: NormalizedTaxFinancials,
   ): TaxScenarioOutput[] {
     const totalIncome = sumAnnualIncome(classifiedIncome);
     const foreignTaxes = sumForeignTaxes(classifiedIncome);
@@ -249,7 +585,13 @@ export class ColombiaTaxEngineAG2026 implements TaxRuleEngine {
     }
     explanationParts.push('el 25% de Renta Exenta Laboral Automática');
 
-    const snap = computeOptimizedTaxSnapshot(profile, totalIncome, foreignTaxes, UVT_2026);
+    const snap = computeOptimizedTaxSnapshot(
+      profile,
+      totalIncome,
+      foreignTaxes,
+      UVT_2026,
+      normalized,
+    );
     let creditApplied = snap.foreignCredit;
     if (foreignTaxes > 0) {
       requirements.push(
@@ -259,7 +601,7 @@ export class ColombiaTaxEngineAG2026 implements TaxRuleEngine {
     }
 
     scenarios.push({
-      name: 'Escenario Optimizado (Recomendado)',
+      name: 'Escenario con supuestos ampliados (modelo)',
       type: 'OPTIMIZED',
       estimatedGrossIncome: totalIncome,
       estimatedDeductions: snap.appliedDeductions,
@@ -279,6 +621,7 @@ export class ColombiaTaxEngineAG2026 implements TaxRuleEngine {
   compareLeverScenarios(
     actualProfile: TaxProfileInput,
     classifiedIncome: TaxClassificationResult[],
+    normalized?: NormalizedTaxFinancials,
   ): TaxLeverComparisonRow[] {
     const totalIncome = sumAnnualIncome(classifiedIncome);
     const foreignTaxes = sumForeignTaxes(classifiedIncome);
@@ -352,7 +695,13 @@ export class ColombiaTaxEngineAG2026 implements TaxRuleEngine {
       });
     }
 
-    const fullSnap = computeOptimizedTaxSnapshot(actualProfile, totalIncome, foreignTaxes, UVT_2026);
+    const fullSnap = computeOptimizedTaxSnapshot(
+      actualProfile,
+      totalIncome,
+      foreignTaxes,
+      UVT_2026,
+      normalized,
+    );
     rows.push({
       id: 'OPTIMIZED_ACTUAL',
       label: 'Tu perfil actual (combinado)',

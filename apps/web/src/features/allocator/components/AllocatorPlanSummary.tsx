@@ -1,11 +1,36 @@
 import type { AllocatorPlan } from '../types';
+import { formatPresentedAmount } from '@/features/currency/format';
 
 interface AllocatorPlanSummaryProps {
   plan: AllocatorPlan;
+  presentedAvailable?: number | null;
+  presentedUnallocated?: number | null;
+  presentedAssigned?: number | null;
+  presentedCurrency?: string;
+  presentationLoading?: boolean;
 }
 
-export function AllocatorPlanSummary({ plan }: AllocatorPlanSummaryProps) {
-  const assigned = Number(plan.availableCapital) - Number(plan.unallocatedCapital);
+export function AllocatorPlanSummary({
+  plan,
+  presentedAvailable,
+  presentedUnallocated,
+  presentedAssigned,
+  presentedCurrency = 'USD',
+  presentationLoading,
+}: AllocatorPlanSummaryProps) {
+  const assignedNom =
+    Number(plan.availableCapital) - Number(plan.unallocatedCapital);
+  const useP =
+    presentedAvailable != null &&
+    presentedUnallocated != null &&
+    presentedAssigned != null &&
+    !presentationLoading;
+  const avail = useP ? presentedAvailable! : Number(plan.availableCapital);
+  const unalloc = useP ? presentedUnallocated! : Number(plan.unallocatedCapital);
+  const assigned = useP ? presentedAssigned! : assignedNom;
+  const fmt = (n: number) =>
+    useP ? formatPresentedAmount(n, presentedCurrency) : `$${n.toLocaleString()}`;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
       <div className="glass-card rounded-lg p-3 bg-slate-50 border-slate-200">
@@ -13,22 +38,39 @@ export function AllocatorPlanSummary({ plan }: AllocatorPlanSummaryProps) {
           Capital Original
         </p>
         <p className="text-base font-bold text-slate-800">
-          ${Number(plan.availableCapital).toLocaleString()}
+          {presentationLoading ? '…' : fmt(avail)}
         </p>
+        {useP ? (
+          <p className="text-[9px] text-slate-400 mt-0.5">
+            Nom.: ${Number(plan.availableCapital).toLocaleString()}
+          </p>
+        ) : null}
       </div>
       <div className="glass-card rounded-lg p-3 bg-emerald-50/50 border-emerald-100">
         <p className="text-[9px] font-bold text-emerald-600/80 uppercase tracking-wider mb-0.5">
           Usado en escenarios
         </p>
-        <p className="text-base font-bold text-emerald-700">${assigned.toLocaleString()}</p>
+        <p className="text-base font-bold text-emerald-700">
+          {presentationLoading ? '…' : fmt(assigned)}
+        </p>
+        {useP ? (
+          <p className="text-[9px] text-emerald-700/70 mt-0.5">
+            Nom.: ${assignedNom.toLocaleString()}
+          </p>
+        ) : null}
       </div>
       <div className="glass-card rounded-lg p-3 bg-amber-50/50 border-amber-100">
         <p className="text-[9px] font-bold text-amber-600/80 uppercase tracking-wider mb-0.5">
           Sobrante
         </p>
         <p className="text-base font-bold text-amber-700">
-          ${Number(plan.unallocatedCapital).toLocaleString()}
+          {presentationLoading ? '…' : fmt(unalloc)}
         </p>
+        {useP ? (
+          <p className="text-[9px] text-amber-800/70 mt-0.5">
+            Nom.: ${Number(plan.unallocatedCapital).toLocaleString()}
+          </p>
+        ) : null}
       </div>
     </div>
   );

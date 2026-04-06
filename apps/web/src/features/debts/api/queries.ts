@@ -9,6 +9,15 @@ export function useLeverageAnalysis() {
   });
 }
 
+export function useDebtsList(enabled = true) {
+  return useQuery({
+    queryKey: debtsQueryKeys.list(),
+    queryFn: () => apiClient.get<any[]>('/debts'),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
 export function useCreateDebt() {
   const queryClient = useQueryClient();
   return useMutation({

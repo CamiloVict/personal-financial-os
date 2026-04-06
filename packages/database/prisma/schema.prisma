@@ -103,6 +103,8 @@ model TaxPlan {
   id          String   @id @default(uuid())
   profileId   String
   generatedAt DateTime @default(now())
+  /// Último paquete `NormalizedTaxFinancials` del análisis (gastos/deudas/inversiones → motor).
+  normalizedSnapshot Json?
 
   // Scenarios
   scenarios TaxScenario[]
@@ -140,6 +142,13 @@ model UserPreference {
   country             String?
   onboardingCompleted Boolean @default(false)
 
+  /// NOMINAL_COP | NOMINAL_USD | REAL_COP (IPC Colombia, poder adquisitivo constante en COP)
+  displayValuationMode String  @default("NOMINAL_COP") @db.VarChar(32)
+  /// Mes base para términos reales (primer día del mes, UTC)
+  realTermsBaseMonth   DateTime? @db.Date
+  /// Fecha única de tipo de cambio para vistas nominales coherentes (snapshot)
+  valuationAsOfDate    DateTime? @db.Date
+
   // Modules configuration
   enableBudgets       Boolean @default(false)
   enableInvestments   Boolean @default(false)
@@ -148,6 +157,44 @@ model UserPreference {
   enableSubscriptions Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// FX & INFLATION (multi-moneda / términos reales)
+// ==========================================
+
+/// 1 unidad de quoteCurrency = copPerUnit COP (triangulación vía COP).
+model FxRateDaily {
+  id            String   @id @default(uuid())
+  asOfDate      DateTime @db.Date
+  quoteCurrency String   @db.VarChar(8)
+  copPerUnit    Decimal  @db.Decimal(24, 8)
+  source        String?  @db.VarChar(64)
+  createdAt     DateTime @default(now())
+
+  @@unique([asOfDate, quoteCurrency])
+  @@index([quoteCurrency, asOfDate])
+}
+
+model InflationSeries {
+  id          String                @id @default(uuid())
+  code        String                @unique @db.VarChar(32)
+  name        String
+  description String?
+  points      InflationIndexPoint[]
+}
+
+/// Nivel de índice al primer día del mes (ej. IPC Colombia).
+model InflationIndexPoint {
+  id         String   @id @default(uuid())
+  seriesId   String
+  period     DateTime @db.Date
+  indexValue Decimal  @db.Decimal(24, 8)
+
+  series InflationSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([seriesId, period])
+  @@index([seriesId, period])
 }
 
 model Account {
@@ -183,6 +230,8 @@ model Category {
   userId        String
   name          String
   type          TransactionType
+  /// Pista fiscal opcional para mapear gastos Cashflow → deducción/exención en el motor (ej. PREPAID_MEDICINE).
+  fiscalExpenseHint String?    @db.VarChar(64)
   color         String?
   icon          String?
   parentId      String? // Para subcategorías
@@ -396,6 +445,8 @@ model InvestmentTypeDefinition {
   userId      String? // Nullable for system-wide default types
   name        String
   description String?
+  /// Tratamiento tributario orientativo para etiquetar posiciones (ej. RENTA_EXENTA_STYLE_AFC).
+  fiscalAssetTreatment String? @db.VarChar(64)
 
   // Configuration flags
   generatesCashflow        Boolean          @default(false)
