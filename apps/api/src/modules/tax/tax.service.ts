@@ -28,6 +28,12 @@ import {
 } from '@personal-finance-os/explanation';
 import { augmentTaxExplanation } from '../../common/explanation/tax-context';
 import { ConfidenceService } from '../confidence/confidence.service';
+import {
+  buildSupportChecklistSections,
+  CO_PLANNING_BENEFITS,
+  mapClassificationComplianceRisk,
+  TAX_PLANNING_FRAMING,
+} from './tax-planning-overview.constants';
 
 export type TaxCalculationAuditKind =
   | 'PLAN_RECALC'
@@ -801,6 +807,241 @@ export class TaxService {
           ? 'Combinación: 1 beneficio'
           : `Combinación: ${unique.length} beneficios`,
       explanation,
+      confidence,
+    };
+  }
+
+  /**
+   * Vista consolidada para planeación tributaria (CO): perfil, rutas prudente/eficiente condicionada,
+   * checklist y riesgos de clasificación — sin recalcular el motor si ya hay plan persistido.
+   */
+  async getPlanningOverview(userId: string) {
+    const confidence = await this.confidenceService.evaluateTax(userId);
+    const framing = TAX_PLANNING_FRAMING;
+
+    const profile = await this.getProfile(userId);
+    if (!profile) {
+      return {
+        framing,
+        profileSnapshot: null,
+        routes: {
+          prudent: null,
+          efficientSubjectToValidation: null,
+        },
+        incomeComposition: [] as Array<{
+          cedula: string;
+          label: string;
+          annualAmount: number;
+          sharePct: number;
+        }>,
+        classificationRiskRows: [] as Array<Record<string, unknown>>,
+        scenariosComparison: [] as Array<Record<string, unknown>>,
+        benefits: [] as Array<Record<string, unknown>>,
+        supportChecklist: [] as Array<{ category: string; items: string[] }>,
+        pendingConditions: [] as string[],
+        estimatedTaxBurden: {
+          conservativeNet: null as number | null,
+          optimizedNet: null as number | null,
+          difference: null as number | null,
+        },
+        planGeneratedAt: null as string | null,
+        needsRecalculation: true,
+        normalizationWarnings: [] as string[],
+        annualPlanHighlights: [] as string[],
+        engineVersion: this.engine.version,
+        uvtReferenceCop: UVT_2026,
+        confidence,
+      };
+    }
+
+    const classificationsDb =
+      await this.prisma.taxIncomeClassification.findMany({
+        where: { profileId: profile.id },
+      });
+    const refIds = classificationsDb.map((c) => c.referenceId);
+    const streams =
+      refIds.length === 0
+        ? []
+        : await this.prisma.cashflowStream.findMany({
+            where: { id: { in: refIds } },
+          });
+
+    const items = classificationsDb.map((c) => ({
+      ...c,
+      stream: streams.find((s) => s.id === c.referenceId) ?? null,
+    }));
+
+    const latestPlan = await this.prisma.taxPlan.findFirst({
+      where: { profileId: profile.id },
+      orderBy: { generatedAt: 'desc' },
+      include: { scenarios: true },
+    });
+
+    const normalized = latestPlan?.normalizedSnapshot as unknown as
+      | NormalizedTaxFinancials
+      | null
+      | undefined;
+    const normalizedWarnings = normalized?.warnings ?? [];
+
+    const prudent =
+      latestPlan?.scenarios.find((s) => s.type === 'CONSERVATIVE') ?? null;
+    const optimized =
+      latestPlan?.scenarios.find((s) => s.type === 'OPTIMIZED') ?? null;
+
+    const totalIncomeAnnual = items.reduce((acc, c) => {
+      const amt = Number(c.stream?.expectedAmount ?? 0) * 12;
+      return acc + amt;
+    }, 0);
+
+    const byCedula = new Map<string, number>();
+    for (const c of items) {
+      const amt = Number(c.stream?.expectedAmount ?? 0) * 12;
+      const k = c.suggestedCedula;
+      byCedula.set(k, (byCedula.get(k) ?? 0) + amt);
+    }
+    const incomeComposition = [...byCedula.entries()].map(
+      ([cedula, annualAmount]) => ({
+        cedula,
+        label: cedula.replace(/_/g, ' '),
+        annualAmount,
+        sharePct:
+          totalIncomeAnnual > 0 ? (annualAmount / totalIncomeAnnual) * 100 : 0,
+      }),
+    );
+
+    const classificationRiskRows = items.map((c) => {
+      const r = mapClassificationComplianceRisk(c.confidenceLevel);
+      const streamName = c.stream?.name ?? 'Ingreso sin nombre';
+      return {
+        streamName,
+        referenceId: c.referenceId,
+        suggestedCedula: c.suggestedCedula,
+        confidenceLevel: c.confidenceLevel,
+        complianceRiskLevel: r.level,
+        complianceRiskDetail: r.detail,
+        missingConditions: (c.missingConditions as string[]) ?? [],
+      };
+    });
+
+    const classificationMissing = items.flatMap(
+      (c) => (c.missingConditions as string[]) ?? [],
+    );
+
+    const optimizedRequirements = optimized?.requirements ?? [];
+
+    const supportChecklist = buildSupportChecklistSections({
+      optimizedRequirements,
+      classificationMissing,
+      normalizedWarnings,
+    });
+
+    const pendingConditions = [
+      ...new Set([...classificationMissing, ...normalizedWarnings]),
+    ];
+
+    const benefits = CO_PLANNING_BENEFITS.map((def) => ({
+      id: def.id,
+      label: def.label,
+      enabledInProfile: Boolean(profile[def.profileKey]),
+      conditionsPending: profile[def.profileKey]
+        ? ([] as string[])
+        : [def.pendingHint],
+      typicalSupports: def.typicalSupports,
+    }));
+
+    const conservativeNet = prudent
+      ? Number(prudent.estimatedNetTaxPayable)
+      : null;
+    const optimizedNet = optimized
+      ? Number(optimized.estimatedNetTaxPayable)
+      : null;
+    const difference =
+      conservativeNet != null && optimizedNet != null
+        ? conservativeNet - optimizedNet
+        : null;
+
+    const annualPlanHighlights = [
+      `Año gravable de referencia: ${profile.taxYear} (${profile.jurisdiction}).`,
+      `UVT de referencia del motor: ${UVT_2026.toLocaleString('es-CO')} COP.`,
+      'Antes de declarar, valida retenciones en la fuente y certificados de ingresos y aportes.',
+    ];
+
+    if (profile.hasForeignIncome) {
+      annualPlanHighlights.push(
+        'Marcaste ingreso del exterior: conserva certificados de impuesto pagado en el país fuente si aplica descuento.',
+      );
+    }
+
+    return {
+      framing,
+      profileSnapshot: {
+        taxYear: profile.taxYear,
+        jurisdiction: profile.jurisdiction,
+        isResident: profile.isResident,
+        daysInCountry: profile.daysInCountry,
+        primaryNationality: profile.primaryNationality,
+        hasForeignIncome: profile.hasForeignIncome,
+        hasForeignAssets: profile.hasForeignAssets,
+        benefitFlags: {
+          hasDependents: profile.hasDependents,
+          hasVoluntaryPension: profile.hasVoluntaryPension,
+          hasAFC: profile.hasAFC,
+          hasPrepaidMedicine: profile.hasPrepaidMedicine,
+          hasHousingInterest: profile.hasHousingInterest,
+        },
+      },
+      routes: {
+        prudent: prudent
+          ? {
+              name: prudent.name,
+              description: prudent.explanation,
+              estimatedNetTaxPayable: Number(prudent.estimatedNetTaxPayable),
+              estimatedTaxableBase: Number(prudent.estimatedTaxableBase),
+              scenarioType: prudent.type,
+            }
+          : null,
+        efficientSubjectToValidation: optimized
+          ? {
+              name: optimized.name,
+              description: optimized.explanation,
+              estimatedNetTaxPayable: Number(optimized.estimatedNetTaxPayable),
+              estimatedTaxableBase: Number(optimized.estimatedTaxableBase),
+              scenarioType: optimized.type,
+              validationNote:
+                'Cifras condicionadas a acreditar beneficios con certificados y a respetar topes legales del año gravable. Revisión profesional recomendada.',
+              requiredSupports: optimized.requirements ?? [],
+              riskLevel: optimized.riskLevel,
+            }
+          : null,
+      },
+      incomeComposition,
+      classificationRiskRows,
+      scenariosComparison:
+        latestPlan?.scenarios.map((s) => ({
+          id: s.id,
+          name: s.name,
+          type: s.type,
+          estimatedGrossIncome: Number(s.estimatedGrossIncome),
+          estimatedDeductions: Number(s.estimatedDeductions),
+          estimatedExemptions: Number(s.estimatedExemptions),
+          estimatedTaxableBase: Number(s.estimatedTaxableBase),
+          estimatedNetTaxPayable: Number(s.estimatedNetTaxPayable),
+          riskLevel: s.riskLevel,
+        })) ?? [],
+      benefits,
+      supportChecklist,
+      pendingConditions,
+      estimatedTaxBurden: {
+        conservativeNet,
+        optimizedNet,
+        difference,
+      },
+      planGeneratedAt: latestPlan?.generatedAt.toISOString() ?? null,
+      needsRecalculation: !latestPlan || latestPlan.scenarios.length === 0,
+      normalizationWarnings: normalizedWarnings,
+      annualPlanHighlights,
+      engineVersion: this.engine.version,
+      uvtReferenceCop: UVT_2026,
       confidence,
     };
   }

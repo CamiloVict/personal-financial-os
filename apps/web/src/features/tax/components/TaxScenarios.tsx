@@ -133,8 +133,8 @@ export function TaxScenarios({
               className={`glass-card rounded-xl p-4 shadow-sm border-2 ${sc.type === 'OPTIMIZED' ? 'border-indigo-500 relative' : 'border-slate-200'}`}
             >
               {sc.type === 'OPTIMIZED' && (
-                <span className="absolute -top-2.5 right-3 bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  Mejor Escenario
+                <span className="absolute -top-2.5 right-3 bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full max-w-[200px] text-center leading-tight">
+                  Sujeto a validación documental
                 </span>
               )}
 

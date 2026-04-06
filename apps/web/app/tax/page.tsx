@@ -9,6 +9,7 @@ import {
   useAnalyzeTax,
   useTaxDeclarationInsights,
   useTaxDeclarationPreview,
+  useTaxPlanningOverview,
 } from '@/features/tax/api/queries';
 
 import {
@@ -18,6 +19,7 @@ import {
   TaxMissedOpportunities,
   TaxDeclarationSection,
   TaxNormalizationPanel,
+  TaxPlanningDashboard,
 } from '@/features/tax/components';
 import { useTaxPageValuation } from '@/features/tax/hooks/useTaxPageValuation';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
@@ -40,6 +42,8 @@ export default function TaxDashboard() {
   const classificationsConfidence = classificationPayload?.confidence;
   const { data: plan, isLoading: loadingPlan } = useTaxPlan(!!profile);
   const { data: declarationInsights, isLoading: loadingDeclaration } = useTaxDeclarationInsights(!!profile);
+  const { data: planningOverview, isLoading: loadingPlanningOverview } =
+    useTaxPlanningOverview(!!profile);
 
   const previewEnabled =
     !!profile && !!declarationInsights?.showDeclarationModule;
@@ -192,7 +196,8 @@ export default function TaxDashboard() {
             Planeación Fiscal
           </h1>
           <p className="text-slate-500 mt-1 max-w-2xl text-xs">
-            Simula tu declaración de renta y obtén escenarios legales optimizados basados en tus ingresos registrados.
+            Planeación tributaria orientativa para Colombia: perfil, clasificación de ingresos, escenarios y
+            checklist de soportes. No sustituye asesoría profesional.
           </p>
           {profile ? (
             <p className="text-[11px] text-emerald-700 font-medium mt-2">
@@ -259,8 +264,8 @@ export default function TaxDashboard() {
             </p>
             <ul className="list-disc pl-4 space-y-1 text-[11px]">
               <li>
-                El motor <strong>no es contador ni asesor</strong>. La salida es ilustrativa; la obligación de declarar y
-                soportar corresponde al contribuyente.
+                El motor <strong>no es contador ni asesor</strong>. La salida es ilustrativa; la obligación de declarar,
+                retener cuando corresponda y acreditar la información corresponde al contribuyente.
               </li>
               <li>
                 Cada vista incluye un <strong>nivel de confianza</strong> sobre la completitud de datos; si es bajo o
@@ -289,6 +294,8 @@ export default function TaxDashboard() {
 
       {activeTab === 'PLAN' && profile && (
         <div className="space-y-6">
+          <TaxPlanningDashboard data={planningOverview} loading={loadingPlanningOverview} />
+
           <div className="flex flex-wrap justify-between items-center gap-2 glass-card p-3 rounded-lg shadow-sm">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Estado del Análisis</p>

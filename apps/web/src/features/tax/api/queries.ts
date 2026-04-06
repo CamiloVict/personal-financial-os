@@ -8,6 +8,7 @@ import type { NormalizedTaxFinancials } from '@personal-finance-os/tax-engine';
 import { apiClient } from '../../../shared/api/client';
 import { queryKeys } from '../../../shared/api/query-keys';
 import { ME_SCOPE } from '../../../shared/api/query-scope';
+import type { TaxPlanningOverview } from '../types/taxPlanningOverview';
 
 export function useTaxProfile() {
   return useQuery({
@@ -15,6 +16,15 @@ export function useTaxProfile() {
     queryFn: () => apiClient.get<any | null>('/tax/profile'),
     retry: 1,
     staleTime: 60 * 1000,
+  });
+}
+
+export function useTaxPlanningOverview(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.tax.planningOverview(),
+    queryFn: () => apiClient.get<TaxPlanningOverview>('/tax/planning-overview'),
+    enabled,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -129,6 +139,7 @@ export function useSaveTaxProfile() {
       queryClient.invalidateQueries({ queryKey: queryKeys.tax.plan() });
       queryClient.invalidateQueries({ queryKey: queryKeys.tax.analytics() });
       queryClient.invalidateQueries({ queryKey: queryKeys.tax.declarationInsights() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tax.planningOverview() });
       queryClient.invalidateQueries({
         queryKey: [...queryKeys.tax.all, 'declaration-preview', ME_SCOPE],
       });
@@ -150,6 +161,7 @@ export function useAnalyzeTax() {
       queryClient.invalidateQueries({ queryKey: queryKeys.tax.plan() });
       queryClient.invalidateQueries({ queryKey: queryKeys.tax.analytics() });
       queryClient.invalidateQueries({ queryKey: queryKeys.tax.declarationInsights() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tax.planningOverview() });
       queryClient.invalidateQueries({
         queryKey: [...queryKeys.tax.all, 'declaration-preview', ME_SCOPE],
       });

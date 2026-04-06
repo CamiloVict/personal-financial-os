@@ -13,6 +13,11 @@ import { TaxService } from './tax.service';
 export class TaxController {
   constructor(private readonly taxService: TaxService) {}
 
+  @Get('planning-overview')
+  getPlanningOverview(@DbUserId() userId: string) {
+    return this.taxService.getPlanningOverview(userId);
+  }
+
   @Get('profile')
   getProfile(@DbUserId() userId: string) {
     return this.taxService.getProfile(userId);

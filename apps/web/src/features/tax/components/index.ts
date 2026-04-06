@@ -1,3 +1,4 @@
+export { TaxPlanningDashboard } from './TaxPlanningDashboard';
 export { TaxProfileForm } from './TaxProfileForm';
 export { TaxClassifications } from './TaxClassifications';
 export { TaxScenarios } from './TaxScenarios';

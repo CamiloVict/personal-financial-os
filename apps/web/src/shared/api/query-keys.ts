@@ -46,6 +46,8 @@ export const queryKeys = {
       [...queryKeys.tax.all, 'declaration-insights', ME_SCOPE] as const,
     declarationPreview: (leverKey: string) =>
       [...queryKeys.tax.all, 'declaration-preview', ME_SCOPE, leverKey] as const,
+    planningOverview: () =>
+      [...queryKeys.tax.all, 'planning-overview', ME_SCOPE] as const,
   },
   currency: {
     all: currencyRoot,
