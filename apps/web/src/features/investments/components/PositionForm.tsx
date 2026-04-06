@@ -1,6 +1,14 @@
 import React, { Dispatch, SetStateAction } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight, Plus, Scale } from 'lucide-react';
+
+const DEBT_KIND_OPTIONS = [
+  { value: 'MORTGAGE', label: 'Hipoteca / vivienda' },
+  { value: 'BUSINESS_LOAN', label: 'Crédito comercial / inversión' },
+  { value: 'AUTO_LOAN', label: 'Crédito vehículo' },
+  { value: 'PERSONAL_LOAN', label: 'Préstamo personal' },
+  { value: 'CREDIT_CARD', label: 'Tarjeta de crédito' },
+] as const;
 
 interface PositionFormProps {
   types: any[];
@@ -16,25 +24,73 @@ interface PositionFormProps {
   setStartDate: Dispatch<SetStateAction<string>>;
   onSubmit: (e: React.FormEvent) => void;
   isPending: boolean;
+  /** Tipo seleccionado permite deuda ligada al activo (InvestmentTypeDefinition.allowsLinkedDebt). */
+  allowsLinkedDebt?: boolean;
+  linkDebt?: boolean;
+  setLinkDebt?: Dispatch<SetStateAction<boolean>>;
+  debtName?: string;
+  setDebtName?: Dispatch<SetStateAction<string>>;
+  debtTotalAmount?: string;
+  setDebtTotalAmount?: Dispatch<SetStateAction<string>>;
+  debtRemainingAmount?: string;
+  setDebtRemainingAmount?: Dispatch<SetStateAction<string>>;
+  debtInterestRate?: string;
+  setDebtInterestRate?: Dispatch<SetStateAction<string>>;
+  debtMonthlyPayment?: string;
+  setDebtMonthlyPayment?: Dispatch<SetStateAction<string>>;
+  debtType?: string;
+  setDebtType?: Dispatch<SetStateAction<string>>;
+  debtDueDate?: string;
+  setDebtDueDate?: Dispatch<SetStateAction<string>>;
+  /** Validación al enviar (p. ej. saldo de deuda obligatorio). */
+  submitError?: string | null;
 }
 
 export function PositionForm({
-  types, typeId, setTypeId, name, setName,
-  initialCapital, setInitialCapital, currency, setCurrency,
-  startDate, setStartDate, onSubmit, isPending
+  types,
+  typeId,
+  setTypeId,
+  name,
+  setName,
+  initialCapital,
+  setInitialCapital,
+  currency,
+  setCurrency,
+  startDate,
+  setStartDate,
+  onSubmit,
+  isPending,
+  allowsLinkedDebt = false,
+  linkDebt = false,
+  setLinkDebt,
+  debtName = '',
+  setDebtName = () => {},
+  debtTotalAmount = '',
+  setDebtTotalAmount = () => {},
+  debtRemainingAmount = '',
+  setDebtRemainingAmount = () => {},
+  debtInterestRate = '',
+  setDebtInterestRate = () => {},
+  debtMonthlyPayment = '',
+  setDebtMonthlyPayment = () => {},
+  debtType = 'MORTGAGE',
+  setDebtType = () => {},
+  debtDueDate = '',
+  setDebtDueDate = () => {},
+  submitError = null,
 }: PositionFormProps) {
-  const selectedType = types.find(t => t.id === typeId);
+  const selectedType = types.find((t) => t.id === typeId);
 
   return (
     <div className="lg:col-span-4 glass-card p-6 rounded-xl self-start">
       <h3 className="text-base font-bold text-slate-800 tracking-tight mb-6">Añadir Posición</h3>
-      
+
       {types.length === 0 ? (
         <div className="bg-rose-50 text-rose-800 p-4 rounded-lg border border-rose-200 text-sm space-y-3">
           <p>
             Para registrar una posición necesitas al menos un <strong>tipo de activo</strong> (fondo, ETF,
-            vivienda en arriendo, etc.). Eso se define en la página{' '}
-            <strong>Tipos de inversión</strong>, en el menú superior.
+            vivienda en arriendo, etc.). Eso se define en la página <strong>Tipos de inversión</strong>, en el menú
+            superior.
           </p>
           <Link
             href="/investment-types"
@@ -48,17 +104,32 @@ export function PositionForm({
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Clase de Activo</label>
-            <select value={typeId} onChange={e => setTypeId(e.target.value)} className="glass-input w-full p-2.5 rounded-lg text-sm">
-              {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <select
+              value={typeId}
+              onChange={(e) => setTypeId(e.target.value)}
+              className="glass-input w-full p-2.5 rounded-lg text-sm"
+            >
+              {types.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
             </select>
-            
+
             {selectedType && (
               <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200">
                 <span className="font-semibold block mb-1">Reglas Activas:</span>
                 <ul className="list-disc pl-4 space-y-0.5">
                   {selectedType.generatesCashflow && <li>Permite flujo de caja</li>}
-                  {selectedType.allowsProfitDistribution && <li>Reparte Utilidad ({selectedType.expectedFrequency})</li>}
+                  {selectedType.allowsProfitDistribution && (
+                    <li>Reparte Utilidad ({selectedType.expectedFrequency})</li>
+                  )}
                   {selectedType.hasManualValuation && <li>Requiere valoración manual</li>}
+                  {selectedType.allowsLinkedDebt && (
+                    <li>
+                      Admite <strong>deuda vinculada</strong> al activo (hipoteca, crédito del bien, etc.)
+                    </li>
+                  )}
                 </ul>
               </div>
             )}
@@ -66,7 +137,13 @@ export function PositionForm({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Identificador / Nombre</label>
-            <input required value={name} onChange={e => setName(e.target.value)} className="glass-input w-full p-2.5 rounded-lg text-sm" placeholder="Ej. Casa de la playa, TSLA..." />
+            <input
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="glass-input w-full p-2.5 rounded-lg text-sm"
+              placeholder="Ej. Casa de la playa, TSLA..."
+            />
           </div>
 
           <div className="flex gap-4">
@@ -74,23 +151,178 @@ export function PositionForm({
               <label className="block text-sm font-medium text-slate-700 mb-1">Capital Inicial</label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-slate-400 font-bold">$</span>
-                <input type="number" required value={initialCapital} onChange={e => setInitialCapital(e.target.value)} className="glass-input w-full p-2.5 pl-7 rounded-lg text-sm" placeholder="0.00" />
+                <input
+                  type="number"
+                  required
+                  value={initialCapital}
+                  onChange={(e) => setInitialCapital(e.target.value)}
+                  className="glass-input w-full p-2.5 pl-7 rounded-lg text-sm"
+                  placeholder="0.00"
+                />
               </div>
             </div>
             <div className="w-1/3">
               <label className="block text-sm font-medium text-slate-700 mb-1">Moneda</label>
-              <select value={currency} onChange={e => setCurrency(e.target.value)} className="glass-input w-full p-2.5 rounded-lg text-sm">
-                <option value="USD">USD</option><option value="EUR">EUR</option><option value="COP">COP</option><option value="MXN">MXN</option>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="glass-input w-full p-2.5 rounded-lg text-sm"
+              >
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="COP">COP</option>
+                <option value="MXN">MXN</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Inicio</label>
-            <input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} className="glass-input w-full p-2.5 rounded-lg text-sm" />
+            <input
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="glass-input w-full p-2.5 rounded-lg text-sm"
+            />
           </div>
 
-          <button type="submit" disabled={isPending} className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-lg font-semibold flex justify-center items-center gap-2 transition-all text-sm shadow-sm">
+          {allowsLinkedDebt && setLinkDebt ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <Scale className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800">Deuda asociada al activo</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                    Si este bien está financiado, registra la obligación aquí. Se creará en <strong>Deudas</strong>{' '}
+                    enlazada a esta posición para el análisis de apalancamiento.
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer touch-manipulation">
+                <input
+                  type="checkbox"
+                  checked={linkDebt}
+                  onChange={(e) => setLinkDebt(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-slate-700">Crear deuda vinculada al guardar la posición</span>
+              </label>
+
+              {linkDebt ? (
+                <div className="space-y-3 pt-1 border-t border-slate-200/80">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Nombre de la deuda</label>
+                    <input
+                      value={debtName}
+                      onChange={(e) => setDebtName(e.target.value)}
+                      className="glass-input w-full p-2 rounded-lg text-sm"
+                      placeholder={`Ej. Hipoteca — ${name || 'activo'}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Tipo</label>
+                    <select
+                      value={debtType}
+                      onChange={(e) => setDebtType(e.target.value)}
+                      className="glass-input w-full p-2 rounded-lg text-sm"
+                    >
+                      {DEBT_KIND_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Saldo / capital pendiente</label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-2 text-slate-400 text-xs font-bold">$</span>
+                        <input
+                          type="number"
+                          required={linkDebt}
+                          min={0}
+                          step="any"
+                          value={debtRemainingAmount}
+                          onChange={(e) => setDebtRemainingAmount(e.target.value)}
+                          className="glass-input w-full p-2 pl-6 rounded-lg text-sm"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        Monto original (opcional)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-2 text-slate-400 text-xs font-bold">$</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={debtTotalAmount}
+                          onChange={(e) => setDebtTotalAmount(e.target.value)}
+                          className="glass-input w-full p-2 pl-6 rounded-lg text-sm"
+                          placeholder="Igual al saldo si no aplica"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">
+                        Tasa interés anual (%)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={debtInterestRate}
+                        onChange={(e) => setDebtInterestRate(e.target.value)}
+                        className="glass-input w-full p-2 rounded-lg text-sm"
+                        placeholder="Ej. 12.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Cuota mensual (opcional)</label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-2 text-slate-400 text-xs font-bold">$</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={debtMonthlyPayment}
+                          onChange={(e) => setDebtMonthlyPayment(e.target.value)}
+                          className="glass-input w-full p-2 pl-6 rounded-lg text-sm"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Vencimiento (opcional)</label>
+                    <input
+                      type="date"
+                      value={debtDueDate}
+                      onChange={(e) => setDebtDueDate(e.target.value)}
+                      className="glass-input w-full p-2 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {submitError ? (
+            <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{submitError}</p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={isPending}
+            className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-lg font-semibold flex justify-center items-center gap-2 transition-all text-sm shadow-sm disabled:opacity-60"
+          >
             <Plus className="w-4 h-4" />
             {isPending ? 'Registrando...' : 'Registrar Posición'}
           </button>

@@ -1,13 +1,14 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { PieChart as PieChartIcon, Activity } from 'lucide-react';
-import { 
-  useInvestmentPositions, 
-  useInvestmentTypes, 
-  useCreateInvestmentPosition, 
-  useDeleteInvestmentPosition, 
-  useCreateInvestmentEvent 
+import {
+  useInvestmentPositions,
+  useInvestmentTypes,
+  useCreateInvestmentPosition,
+  useDeleteInvestmentPosition,
+  useCreateInvestmentEvent,
 } from '@/features/investments/api/queries';
+import { useCreateDebt } from '@/features/debts/api/queries';
 
 import {
   PositionForm,
@@ -21,6 +22,7 @@ export default function InvestmentPositionsPage() {
   const { data: types = [], isLoading: isLoadingTypes } = useInvestmentTypes();
 
   const createPositionMutation = useCreateInvestmentPosition();
+  const createDebtMutation = useCreateDebt();
   const deletePositionMutation = useDeleteInvestmentPosition();
   const createEventMutation = useCreateInvestmentEvent();
 
@@ -31,6 +33,16 @@ export default function InvestmentPositionsPage() {
   const [initialCapital, setInitialCapital] = useState<string>('');
   const [currency, setCurrency] = useState('USD');
   const [startDate, setStartDate] = useState('');
+
+  const [linkDebt, setLinkDebt] = useState(false);
+  const [debtName, setDebtName] = useState('');
+  const [debtTotalAmount, setDebtTotalAmount] = useState('');
+  const [debtRemainingAmount, setDebtRemainingAmount] = useState('');
+  const [debtInterestRate, setDebtInterestRate] = useState('');
+  const [debtMonthlyPayment, setDebtMonthlyPayment] = useState('');
+  const [debtType, setDebtType] = useState('MORTGAGE');
+  const [debtDueDate, setDebtDueDate] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [selectedPosition, setSelectedPosition] = useState<any>(null);
   const [eventType, setEventType] = useState('PROFIT_DISTRIBUTION');
@@ -44,25 +56,75 @@ export default function InvestmentPositionsPage() {
     }
   }, [types, typeId]);
 
+  useEffect(() => {
+    const t = types.find((x) => x.id === typeId);
+    if (t?.allowsLinkedDebt) setLinkDebt(true);
+    else setLinkDebt(false);
+  }, [typeId, types]);
+
+  const selectedType = types.find((t) => t.id === typeId);
+  const allowsLinkedDebt = Boolean(selectedType?.allowsLinkedDebt);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     const parsedDate = startDate ? new Date(startDate).toISOString() : new Date().toISOString();
-    
-    createPositionMutation.mutate({
-      typeId,
-      name,
-      startDate: parsedDate,
-      initialCapital: Number(initialCapital) || 0,
-      currency,
-      currentEstimatedValue: Number(initialCapital) || 0,
-      status: 'ACTIVE'
-    }, {
-      onSuccess: () => {
-        setName(''); 
-        setInitialCapital(''); 
-        setStartDate('');
+    const positionNameSnapshot = name.trim();
+    const selected = types.find((t) => t.id === typeId);
+
+    if (selected?.allowsLinkedDebt && linkDebt) {
+      const rem = Number(debtRemainingAmount);
+      if (!Number.isFinite(rem) || rem <= 0) {
+        setSubmitError('Si activas la deuda vinculada, indica el saldo pendiente (mayor que 0).');
+        return;
       }
-    });
+    }
+
+    createPositionMutation.mutate(
+      {
+        typeId,
+        name: positionNameSnapshot,
+        startDate: parsedDate,
+        initialCapital: Number(initialCapital) || 0,
+        currency,
+        currentEstimatedValue: Number(initialCapital) || 0,
+        status: 'ACTIVE',
+      },
+      {
+        onSuccess: (data: unknown) => {
+          const position = data as { id: string };
+          const rem = Number(debtRemainingAmount);
+          const totRaw = Number(debtTotalAmount);
+          const totalAmount = Number.isFinite(totRaw) && totRaw > 0 ? totRaw : rem;
+
+          setName('');
+          setInitialCapital('');
+          setStartDate('');
+
+          if (selected?.allowsLinkedDebt && linkDebt && position?.id && rem > 0) {
+            createDebtMutation.mutate({
+              name: debtName.trim() || `${positionNameSnapshot} — financiamiento`,
+              type: debtType,
+              totalAmount,
+              remainingAmount: rem,
+              currency,
+              interestRate: Number(debtInterestRate) || 0,
+              monthlyPayment: Number(debtMonthlyPayment) || 0,
+              dueDate: debtDueDate ? new Date(debtDueDate).toISOString() : null,
+              linkedAssetId: position.id,
+            });
+          }
+
+          setDebtName('');
+          setDebtTotalAmount('');
+          setDebtRemainingAmount('');
+          setDebtInterestRate('');
+          setDebtMonthlyPayment('');
+          setDebtType('MORTGAGE');
+          setDebtDueDate('');
+        },
+      },
+    );
   };
 
   const handleEventSubmit = (e: React.FormEvent) => {
@@ -116,15 +178,38 @@ export default function InvestmentPositionsPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10">
         
-        <PositionForm 
+        <PositionForm
           types={types}
-          typeId={typeId} setTypeId={setTypeId}
-          name={name} setName={setName}
-          initialCapital={initialCapital} setInitialCapital={setInitialCapital}
-          currency={currency} setCurrency={setCurrency}
-          startDate={startDate} setStartDate={setStartDate}
+          typeId={typeId}
+          setTypeId={setTypeId}
+          name={name}
+          setName={setName}
+          initialCapital={initialCapital}
+          setInitialCapital={setInitialCapital}
+          currency={currency}
+          setCurrency={setCurrency}
+          startDate={startDate}
+          setStartDate={setStartDate}
           onSubmit={handleSubmit}
-          isPending={createPositionMutation.isPending}
+          isPending={createPositionMutation.isPending || createDebtMutation.isPending}
+          allowsLinkedDebt={allowsLinkedDebt}
+          linkDebt={linkDebt}
+          setLinkDebt={setLinkDebt}
+          debtName={debtName}
+          setDebtName={setDebtName}
+          debtTotalAmount={debtTotalAmount}
+          setDebtTotalAmount={setDebtTotalAmount}
+          debtRemainingAmount={debtRemainingAmount}
+          setDebtRemainingAmount={setDebtRemainingAmount}
+          debtInterestRate={debtInterestRate}
+          setDebtInterestRate={setDebtInterestRate}
+          debtMonthlyPayment={debtMonthlyPayment}
+          setDebtMonthlyPayment={setDebtMonthlyPayment}
+          debtType={debtType}
+          setDebtType={setDebtType}
+          debtDueDate={debtDueDate}
+          setDebtDueDate={setDebtDueDate}
+          submitError={submitError}
         />
 
         <div className="lg:col-span-8">

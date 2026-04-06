@@ -25,12 +25,26 @@ export interface IncomeStreamInput {
 
 export interface TaxClassificationResult {
   referenceId: string;
+  /** Ingreso anual estimado (ej. mensual × 12) asociado a esta clasificación */
+  annualGrossAmount: number;
   suggestedCedula: string;
   confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW';
   isForeignSource: boolean;
   foreignTaxPaid: number;
   explanation: string;
   missingConditions: string[];
+}
+
+/** Fila para comparar impuesto aproximado al activar una palanca de optimización */
+export interface TaxLeverComparisonRow {
+  id: string;
+  label: string;
+  description: string;
+  estimatedGrossIncome: number;
+  estimatedTaxableBase: number;
+  estimatedNetTaxPayable: number;
+  /** Ahorro vs escenario conservador (ingreso bruto sin deducciones) */
+  savingsVsConservative: number;
 }
 
 export interface TaxScenarioOutput {
@@ -54,4 +68,9 @@ export interface TaxRuleEngine {
   version: string;
   classifyIncome(stream: IncomeStreamInput, profile: TaxProfileInput): TaxClassificationResult;
   generateScenarios(profile: TaxProfileInput, classifiedIncome: TaxClassificationResult[]): TaxScenarioOutput[];
+  /** Comparación conservador vs cada beneficio aislado vs tu perfil completo */
+  compareLeverScenarios(
+    actualProfile: TaxProfileInput,
+    classifiedIncome: TaxClassificationResult[],
+  ): TaxLeverComparisonRow[];
 }

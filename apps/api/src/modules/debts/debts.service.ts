@@ -69,11 +69,21 @@ export class DebtsService {
         ? userPositions.find((p) => p.id === debt.linkedPositionId)
         : null;
 
-      if (
-        linkedAsset ||
-        kind === 'MORTGAGE' ||
-        kind === 'BUSINESS_LOAN'
-      ) {
+      /**
+       * “Buena” deuda = apalancamiento sobre activo que suele apreciar o generar flujo (vivienda, negocio),
+       * o deuda ligada a una posición de inversión cuando el tipo no es consumo depreciable.
+       * AUTO_LOAN y CREDIT_CARD no se tratan como buen apalancamiento aunque haya activo vinculado (el auto deprecia;
+       * el modelo de retorno del activo no aplica como en hipoteca/renta).
+       */
+      const isConsumptiveOrRevolver =
+        kind === 'AUTO_LOAN' || kind === 'CREDIT_CARD';
+      const isGoodDebt =
+        !isConsumptiveOrRevolver &&
+        (Boolean(linkedAsset) ||
+          kind === 'MORTGAGE' ||
+          kind === 'BUSINESS_LOAN');
+
+      if (isGoodDebt) {
         goodDebtTotal += remaining;
 
         const assetValue = linkedAsset

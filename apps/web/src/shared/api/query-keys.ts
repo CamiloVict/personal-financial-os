@@ -28,5 +28,9 @@ export const queryKeys = {
     classifications: () => [...queryKeys.tax.all, 'classifications', ME_SCOPE] as const,
     plan: () => [...queryKeys.tax.all, 'plan', ME_SCOPE] as const,
     analytics: () => [...queryKeys.tax.all, 'analytics', ME_SCOPE] as const,
+    declarationInsights: () =>
+      [...queryKeys.tax.all, 'declaration-insights', ME_SCOPE] as const,
+    declarationPreview: (leverKey: string) =>
+      [...queryKeys.tax.all, 'declaration-preview', ME_SCOPE, leverKey] as const,
   },
 };

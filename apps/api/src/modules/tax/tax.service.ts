@@ -1,9 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import {
   ColombiaTaxEngineAG2026,
   TaxProfileInput,
   IncomeStreamInput,
+  applyTaxLeverSelection,
+  computeOptimizedTaxSnapshot,
+  calculateColombiaIncomeTaxUVT2026,
 } from '@personal-finance-os/tax-engine';
 
 @Injectable()
@@ -19,48 +26,92 @@ export class TaxService {
     });
   }
 
+  private normalizeProfilePayload(payload: Record<string, unknown>) {
+    const taxYear =
+      typeof payload.taxYear === 'number'
+        ? payload.taxYear
+        : Number(payload.taxYear) || new Date().getFullYear();
+    const jurisdiction =
+      typeof payload.jurisdiction === 'string' ? payload.jurisdiction : 'CO';
+    return {
+      taxYear,
+      jurisdiction,
+      isResident: payload.isResident !== false,
+      daysInCountry: Math.min(
+        366,
+        Math.max(0, Number(payload.daysInCountry ?? 365)),
+      ),
+      primaryNationality:
+        typeof payload.primaryNationality === 'string'
+          ? payload.primaryNationality
+          : 'CO',
+      hasForeignIncome: Boolean(payload.hasForeignIncome),
+      hasForeignAssets: Boolean(payload.hasForeignAssets),
+      hasDependents: Boolean(payload.hasDependents),
+      hasVoluntaryPension: Boolean(payload.hasVoluntaryPension),
+      hasAFC: Boolean(payload.hasAFC),
+      hasPrepaidMedicine: Boolean(payload.hasPrepaidMedicine),
+      hasHousingInterest: Boolean(payload.hasHousingInterest),
+    };
+  }
+
   async saveProfile(payload: Record<string, unknown>) {
     const userId = payload.userId as string;
-    const taxYear = (payload.taxYear as number) ?? new Date().getFullYear();
-    const jurisdiction = (payload.jurisdiction as string) || 'CO';
+    if (!userId) {
+      throw new BadRequestException('Missing authenticated user');
+    }
+    const n = this.normalizeProfilePayload(payload);
 
     return this.prisma.taxProfile.upsert({
       where: {
-        userId_taxYear_jurisdiction: { userId, taxYear, jurisdiction },
+        userId_taxYear_jurisdiction: {
+          userId,
+          taxYear: n.taxYear,
+          jurisdiction: n.jurisdiction,
+        },
       },
       create: {
         userId,
-        taxYear,
-        jurisdiction,
-        isResident: (payload.isResident as boolean) ?? true,
-        daysInCountry: (payload.daysInCountry as number) ?? 365,
-        primaryNationality: (payload.primaryNationality as string) || 'CO',
-        hasForeignIncome: (payload.hasForeignIncome as boolean) ?? false,
-        hasForeignAssets: (payload.hasForeignAssets as boolean) ?? false,
-        hasDependents: (payload.hasDependents as boolean) ?? false,
-        hasVoluntaryPension:
-          (payload.hasVoluntaryPension as boolean) ?? false,
-        hasAFC: (payload.hasAFC as boolean) ?? false,
-        hasPrepaidMedicine: (payload.hasPrepaidMedicine as boolean) ?? false,
-        hasHousingInterest:
-          (payload.hasHousingInterest as boolean) ?? false,
+        taxYear: n.taxYear,
+        jurisdiction: n.jurisdiction,
+        isResident: n.isResident,
+        daysInCountry: n.daysInCountry,
+        primaryNationality: n.primaryNationality,
+        hasForeignIncome: n.hasForeignIncome,
+        hasForeignAssets: n.hasForeignAssets,
+        hasDependents: n.hasDependents,
+        hasVoluntaryPension: n.hasVoluntaryPension,
+        hasAFC: n.hasAFC,
+        hasPrepaidMedicine: n.hasPrepaidMedicine,
+        hasHousingInterest: n.hasHousingInterest,
       },
       update: {
-        isResident: payload.isResident as boolean,
-        daysInCountry: payload.daysInCountry as number,
-        hasDependents: payload.hasDependents as boolean,
-        hasVoluntaryPension: payload.hasVoluntaryPension as boolean,
-        hasAFC: payload.hasAFC as boolean,
-        hasPrepaidMedicine: payload.hasPrepaidMedicine as boolean,
-        hasHousingInterest: payload.hasHousingInterest as boolean,
+        isResident: n.isResident,
+        daysInCountry: n.daysInCountry,
+        primaryNationality: n.primaryNationality,
+        hasForeignIncome: n.hasForeignIncome,
+        hasForeignAssets: n.hasForeignAssets,
+        hasDependents: n.hasDependents,
+        hasVoluntaryPension: n.hasVoluntaryPension,
+        hasAFC: n.hasAFC,
+        hasPrepaidMedicine: n.hasPrepaidMedicine,
+        hasHousingInterest: n.hasHousingInterest,
       },
     });
+  }
+
+  /** Guarda perfil y ejecuta el motor en la misma operación (evita carreras entre dos POST). */
+  async saveProfileAndAnalyze(userId: string, body: Record<string, unknown>) {
+    await this.saveProfile({ ...body, userId });
+    return this.analyzeTaxSituation(userId);
   }
 
   async analyzeTaxSituation(userId: string) {
     const profile = await this.getProfile(userId);
     if (!profile) {
-      throw new Error('Tax Profile is required to run the engine.');
+      throw new NotFoundException(
+        'No hay perfil fiscal. Guarda primero tu perfil en la pestaña correspondiente.',
+      );
     }
 
     const profileInput: TaxProfileInput = {
@@ -103,7 +154,7 @@ export class TaxService {
         confidenceLevel: c.confidenceLevel,
         isForeignSource: c.isForeignSource,
         hasWithholding: false,
-        foreignTaxPaid: c.foreignTaxPaid,
+        foreignTaxPaid: Number(c.foreignTaxPaid) || 0,
         engineVersion: this.engine.version,
         explanation: c.explanation,
         missingConditions: c.missingConditions,
@@ -196,5 +247,167 @@ export class TaxService {
 
     if (!latestPlan) return null;
     return { ...latestPlan, scenarios: latestPlan.scenarios };
+  }
+
+  /**
+   * Proyección declaración de renta: comparación por palanca + si aplica vista “contribuyente establecido”.
+   */
+  async getDeclarationInsights(userId: string) {
+    const profile = await this.getProfile(userId);
+    if (!profile) return null;
+
+    const profileInput: TaxProfileInput = {
+      isResident: profile.isResident,
+      daysInCountry: profile.daysInCountry,
+      primaryNationality: profile.primaryNationality,
+      hasForeignIncome: profile.hasForeignIncome,
+      hasDependents: profile.hasDependents,
+      hasVoluntaryPension: profile.hasVoluntaryPension,
+      hasAFC: profile.hasAFC,
+      hasPrepaidMedicine: profile.hasPrepaidMedicine,
+      hasHousingInterest: profile.hasHousingInterest,
+    };
+
+    const streams = await this.prisma.cashflowStream.findMany({
+      where: { userId, flowType: 'INCOME' },
+    });
+
+    const oneYearMs = 365 * 24 * 60 * 60 * 1000;
+    const threshold = Date.now() - oneYearMs;
+    const hasEstablishedIncome = streams.some(
+      (s) => new Date(s.startDate).getTime() <= threshold,
+    );
+
+    const incomeStreams: IncomeStreamInput[] = streams.map((s) => ({
+      id: s.id,
+      amount: Number(s.expectedAmount) * 12,
+      sourceCountry:
+        s.currency === 'USD' || s.currency === 'EUR' ? 'FOREIGN' : 'CO',
+      currency: s.currency,
+      type: s.streamType as 'FIXED' | 'VARIABLE',
+      contractType: s.currency === 'USD' ? 'FOREIGN_CONTRACTOR' : 'LABOR',
+      hasSubordination: s.currency !== 'USD',
+    }));
+
+    const classifications = incomeStreams.map((stream) =>
+      this.engine.classifyIncome(stream, profileInput),
+    );
+
+    const totalAnnual = incomeStreams.reduce((a, s) => a + s.amount, 0);
+    let leverComparison = this.engine.compareLeverScenarios(
+      profileInput,
+      classifications,
+    );
+
+    /** Sin ingresos en Cashflow el motor devuelve []; igual mostramos tarjeta + gráfico en cero. */
+    if (leverComparison.length === 0) {
+      leverComparison = [
+        {
+          id: 'CONSERVATIVE',
+          label: 'Conservador (sin deducciones)',
+          description:
+            'Registra ingresos en Cashflow para estimar el impuesto sobre la base bruta.',
+          estimatedGrossIncome: 0,
+          estimatedTaxableBase: 0,
+          estimatedNetTaxPayable: 0,
+          savingsVsConservative: 0,
+        },
+        {
+          id: 'OPTIMIZED_ACTUAL',
+          label: 'Tu perfil combinado',
+          description:
+            'Con ingresos y beneficios marcados en tu perfil, verás aquí la proyección optimizada.',
+          estimatedGrossIncome: 0,
+          estimatedTaxableBase: 0,
+          estimatedNetTaxPayable: 0,
+          savingsVsConservative: 0,
+        },
+      ];
+    }
+
+    const UVT_2026 = 48000;
+    const approxFilingThresholdUvt = 1400;
+    const exceedsMassThreshold =
+      totalAnnual >= approxFilingThresholdUvt * UVT_2026;
+
+    /** Siempre que exista perfil fiscal guardado, mostrar bloque de proyección en la web. */
+    const showDeclarationModule = true;
+
+    return {
+      showDeclarationModule,
+      hasEstablishedIncome,
+      exceedsMassThreshold,
+      totalAnnualIncomeEstimated: totalAnnual,
+      engineVersion: this.engine.version,
+      leverComparison,
+    };
+  }
+
+  /**
+   * Impuesto estimado si activaras **a la vez** las palancas indicadas (sobre base sin otros beneficios),
+   * respetando topes del motor (40% / 1340 UVT, etc.).
+   */
+  async previewLeverCombination(userId: string, leverIds: string[]) {
+    const profile = await this.getProfile(userId);
+    if (!profile) return null;
+
+    const unique = [...new Set(leverIds)].filter(Boolean);
+    if (unique.length === 0) return null;
+
+    const profileInput: TaxProfileInput = {
+      isResident: profile.isResident,
+      daysInCountry: profile.daysInCountry,
+      primaryNationality: profile.primaryNationality,
+      hasForeignIncome: profile.hasForeignIncome,
+      hasDependents: profile.hasDependents,
+      hasVoluntaryPension: profile.hasVoluntaryPension,
+      hasAFC: profile.hasAFC,
+      hasPrepaidMedicine: profile.hasPrepaidMedicine,
+      hasHousingInterest: profile.hasHousingInterest,
+    };
+
+    const streams = await this.prisma.cashflowStream.findMany({
+      where: { userId, flowType: 'INCOME' },
+    });
+
+    const incomeStreams: IncomeStreamInput[] = streams.map((s) => ({
+      id: s.id,
+      amount: Number(s.expectedAmount) * 12,
+      sourceCountry:
+        s.currency === 'USD' || s.currency === 'EUR' ? 'FOREIGN' : 'CO',
+      currency: s.currency,
+      type: s.streamType as 'FIXED' | 'VARIABLE',
+      contractType: s.currency === 'USD' ? 'FOREIGN_CONTRACTOR' : 'LABOR',
+      hasSubordination: s.currency !== 'USD',
+    }));
+
+    const classifications = incomeStreams.map((stream) =>
+      this.engine.classifyIncome(stream, profileInput),
+    );
+    const totalAnnual = incomeStreams.reduce((a, s) => a + s.amount, 0);
+    const foreignTaxes = classifications.reduce(
+      (a, c) => a + (c.foreignTaxPaid || 0),
+      0,
+    );
+
+    const patched = applyTaxLeverSelection(profileInput, unique);
+    const snap = computeOptimizedTaxSnapshot(
+      patched,
+      totalAnnual,
+      foreignTaxes,
+    );
+    const conservativeTax = calculateColombiaIncomeTaxUVT2026(totalAnnual);
+
+    return {
+      leverIds: unique,
+      estimatedGrossIncome: totalAnnual,
+      estimatedTaxableBase: snap.taxableBase,
+      estimatedNetTaxPayable: snap.netPayable,
+      savingsVsConservative: Math.max(0, conservativeTax - snap.netPayable),
+      label:
+        unique.length === 1
+          ? 'Combinación: 1 beneficio'
+          : `Combinación: ${unique.length} beneficios`,
+    };
   }
 }
