@@ -8,6 +8,8 @@ const GOAL_BOOK_CCY = 'COP';
 interface GoalListProps {
   goals: any[];
   isLoading: boolean;
+  /** Evita mostrar “sin metas” cuando falló la query. */
+  loadError?: boolean;
   presentedByGoalId?: Record<
     string,
     { target: number; current: number; currency: string }
@@ -18,6 +20,7 @@ interface GoalListProps {
 export function GoalList({
   goals,
   isLoading,
+  loadError,
   presentedByGoalId,
   presentationLoading,
 }: GoalListProps) {
@@ -30,7 +33,11 @@ export function GoalList({
         </div>
         
         <div className="p-0 flex-1 bg-white rounded-b-xl">
-          {goals.length === 0 && !isLoading ? (
+          {loadError ? (
+            <div className="p-12 text-center text-sm text-slate-500">
+              Revisá el aviso de error arriba o reintentá la carga.
+            </div>
+          ) : goals.length === 0 && !isLoading ? (
             <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-2">
               <Target className="w-8 h-8 text-slate-300" />
               <p className="font-semibold text-xs">No tienes metas configuradas.</p>

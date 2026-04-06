@@ -24,12 +24,23 @@ import {
 import { useGlobalStore } from '@/shared/store/global';
 import { useProductInsights } from '@/features/dashboard/api/queries';
 import { InsightsContextStrip } from '@/features/dashboard/components';
+import { ErrorState } from '@/shared/ui/ErrorState';
 
 export default function DebtsPage() {
-  const { data: analysis, isLoading } = useLeverageAnalysis();
+  const {
+    data: analysis,
+    isLoading: loadingLeverage,
+    isError: leverageError,
+    refetch: refetchLeverage,
+  } = useLeverageAnalysis();
   const { data: productInsightsPayload, isLoading: loadingProductInsights } =
     useProductInsights();
-  const { data: debtsList = [] } = useDebtsList(!isLoading && !!analysis);
+  const leverageReady = !loadingLeverage && !!analysis;
+  const {
+    data: debtsList = [],
+    isError: debtsError,
+    refetch: refetchDebts,
+  } = useDebtsList(leverageReady);
   const patchDebt = usePatchDebt();
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
 
@@ -75,10 +86,38 @@ export default function DebtsPage() {
     };
   }, [analysis, presentedByDebtId, presRows, displayValuationMode, debtsList]);
 
-  if (isLoading) {
+  if (loadingLeverage && !leverageError) {
     return (
       <div className="flex justify-center items-center py-20">
         <Activity className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (leverageError) {
+    return (
+      <div className="space-y-4 animate-in fade-in duration-500">
+        <DebtsPageHeader />
+        <InsightsContextStrip
+          insights={productInsightsPayload?.insights}
+          modules={['debts']}
+          includeGlobal={false}
+          loading={loadingProductInsights}
+          max={2}
+        />
+        <ErrorState
+          title="No se pudo cargar el análisis de apalancamiento"
+          description="No podemos mostrar tu salud de endeudamiento ahora. Comprueba la conexión o reintenta."
+          className="rounded-2xl"
+        >
+          <button
+            type="button"
+            onClick={() => void refetchLeverage()}
+            className="mx-auto rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            Reintentar
+          </button>
+        </ErrorState>
       </div>
     );
   }
@@ -100,6 +139,23 @@ export default function DebtsPage() {
       />
 
       <ExplanationPanel explanation={a.explanation} defaultOpen={false} />
+
+      {debtsError ? (
+        <ErrorState
+          variant="compact"
+          title="No se pudo cargar el detalle de deudas"
+          description="El resumen de apalancamiento se muestra; la lista para valuación puede estar incompleta hasta que reintentes."
+          className="rounded-xl py-4"
+        >
+          <button
+            type="button"
+            onClick={() => void refetchDebts()}
+            className="text-xs font-semibold text-rose-900 underline underline-offset-2 hover:text-rose-950"
+          >
+            Reintentar
+          </button>
+        </ErrorState>
+      ) : null}
 
       {a.totalDebt === 0 ? (
         <DebtsEmptyTotal />

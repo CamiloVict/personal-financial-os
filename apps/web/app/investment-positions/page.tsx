@@ -22,18 +22,27 @@ import {
 import { useProductInsights } from '@/features/dashboard/api/queries';
 import { InsightsContextStrip } from '@/features/dashboard/components';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
+import { ErrorState } from '@/shared/ui/ErrorState';
 import { useGlobalStore } from '@/shared/store/global';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
 import { linesFromPositions, presentedCurrencyFromRows } from '@/features/currency/valuationUtils';
 
 export default function InvestmentPositionsPage() {
-  const { data: positionsPayload, isLoading: isLoadingPos } =
-    useInvestmentPositions();
+  const {
+    data: positionsPayload,
+    isLoading: isLoadingPos,
+    isError: positionsError,
+    refetch: refetchPositions,
+  } = useInvestmentPositions();
   const positions = positionsPayload?.positions ?? [];
   const positionsConfidence = positionsPayload?.confidence;
   const { data: types = [], isLoading: isLoadingTypes } = useInvestmentTypes();
-  const { data: portfolioAnalytics, isLoading: loadingPortfolioAnalytics } =
-    usePortfolioAnalytics(positions.length > 0);
+  const {
+    data: portfolioAnalytics,
+    isLoading: loadingPortfolioAnalytics,
+    isError: portfolioAnalyticsError,
+    refetch: refetchPortfolioAnalytics,
+  } = usePortfolioAnalytics(positions.length > 0);
   const { data: productInsightsPayload, isLoading: loadingProductInsights } =
     useProductInsights();
 
@@ -265,7 +274,40 @@ export default function InvestmentPositionsPage() {
         max={2}
       />
 
-      {positions.length > 0 && (
+      {positionsError ? (
+        <ErrorState
+          title="No se pudieron cargar las posiciones"
+          description="No podemos mostrar tu portafolio ahora. Comprueba la conexión o reintenta."
+          className="rounded-2xl"
+        >
+          <button
+            type="button"
+            onClick={() => void refetchPositions()}
+            className="mx-auto rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            Reintentar
+          </button>
+        </ErrorState>
+      ) : null}
+
+      {positions.length > 0 && portfolioAnalyticsError ? (
+        <ErrorState
+          variant="compact"
+          title="No se pudo cargar la analítica del portafolio"
+          description="Los KPIs y gráficos de analítica no están disponibles. La lista de posiciones sí."
+          className="rounded-xl py-4"
+        >
+          <button
+            type="button"
+            onClick={() => void refetchPortfolioAnalytics()}
+            className="text-xs font-semibold text-rose-900 underline underline-offset-2 hover:text-rose-950"
+          >
+            Reintentar
+          </button>
+        </ErrorState>
+      ) : null}
+
+      {positions.length > 0 && !portfolioAnalyticsError && (
         <PortfolioAnalyticsSection
           analytics={portfolioAnalytics}
           loading={loadingPortfolioAnalytics}

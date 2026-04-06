@@ -28,6 +28,7 @@ import {
 } from '@personal-finance-os/explanation';
 import { augmentTaxExplanation } from '../../common/explanation/tax-context';
 import { ConfidenceService } from '../confidence/confidence.service';
+import { ConversionService } from '../currency/conversion.service';
 import {
   buildSupportChecklistSections,
   CO_PLANNING_BENEFITS,
@@ -48,7 +49,85 @@ export class TaxService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly confidenceService: ConfidenceService,
+    private readonly conversion: ConversionService,
   ) {}
+
+  /** Fecha de snapshot FX (preferencia usuario o hoy). */
+  private async valuationAsOfDateForUser(userId: string): Promise<Date> {
+    const pref = await this.prisma.userPreference.findUnique({
+      where: { userId },
+      select: { valuationAsOfDate: true },
+    });
+    const d = pref?.valuationAsOfDate;
+    if (d != null) {
+      const t = new Date(d);
+      if (!Number.isNaN(t.getTime())) return t;
+    }
+    return new Date();
+  }
+
+  /**
+   * Ingreso anual por stream en COP (TRM a fecha de valuación) para coherencia con UVT y totales;
+   * conserva `currency` / heurísticas de contrato del stream original.
+   */
+  private async buildIncomeStreamsCop(
+    userId: string,
+    streams: Array<{
+      id: string;
+      expectedAmount: unknown;
+      currency: string | null;
+      streamType: string;
+    }>,
+  ): Promise<IncomeStreamInput[]> {
+    const asOf = await this.valuationAsOfDateForUser(userId);
+    const out: IncomeStreamInput[] = [];
+    for (const s of streams) {
+      const monthly = Number(s.expectedAmount) || 0;
+      const annualNominal = monthly * 12;
+      const rawCcy =
+        (s.currency ?? 'COP').toString().trim().toUpperCase() || 'COP';
+      let amountCop = annualNominal;
+      if (rawCcy !== 'COP') {
+        const { amount } = await this.conversion.convert(
+          annualNominal,
+          rawCcy,
+          'COP',
+          asOf,
+        );
+        amountCop = amount;
+      }
+      out.push({
+        id: s.id,
+        amount: amountCop,
+        sourceCountry:
+          rawCcy === 'USD' || rawCcy === 'EUR' ? 'FOREIGN' : 'CO',
+        currency: s.currency ?? 'COP',
+        type: s.streamType as 'FIXED' | 'VARIABLE',
+        contractType: rawCcy === 'USD' ? 'FOREIGN_CONTRACTOR' : 'LABOR',
+        hasSubordination: rawCcy !== 'USD',
+      });
+    }
+    return out;
+  }
+
+  private async streamExpectedAnnualCop(
+    stream: { expectedAmount: unknown; currency: string | null } | null | undefined,
+    asOf: Date,
+  ): Promise<number> {
+    if (!stream) return 0;
+    const monthly = Number(stream.expectedAmount) || 0;
+    const annual = monthly * 12;
+    const rawCcy =
+      (stream.currency ?? 'COP').toString().trim().toUpperCase() || 'COP';
+    if (rawCcy === 'COP') return annual;
+    const { amount } = await this.conversion.convert(
+      annual,
+      rawCcy,
+      'COP',
+      asOf,
+    );
+    return amount;
+  }
 
   private stableJsonStringify(obj: unknown): string {
     const sort = (v: unknown): unknown => {
@@ -296,16 +375,7 @@ export class TaxService {
       where: { userId, flowType: 'INCOME' },
     });
 
-    const incomeStreams: IncomeStreamInput[] = streams.map((s) => ({
-      id: s.id,
-      amount: Number(s.expectedAmount) * 12,
-      sourceCountry:
-        s.currency === 'USD' || s.currency === 'EUR' ? 'FOREIGN' : 'CO',
-      currency: s.currency,
-      type: s.streamType as 'FIXED' | 'VARIABLE',
-      contractType: s.currency === 'USD' ? 'FOREIGN_CONTRACTOR' : 'LABOR',
-      hasSubordination: s.currency !== 'USD',
-    }));
+    const incomeStreams = await this.buildIncomeStreamsCop(userId, streams);
 
     const classifications = incomeStreams.map((stream) =>
       this.engine.classifyIncome(stream, profileInput),
@@ -402,6 +472,7 @@ export class TaxService {
       ],
       extraAssumptions: [
         'Escenarios “conservador” y “optimizado” se generan con el mismo ingreso clasificado.',
+        'Ingresos en USD/EUR se convierten a COP con la TRM a la fecha de valuación de tu perfil (o la fecha actual si no hay) antes de sumar y aplicar UVT.',
         'Gastos activos, deudas e inversiones (cashflow/deudas/módulo inversiones) alimentan deducciones e intereses hipotecarios cuando el modelo puede inferirlos.',
         ...normalized.warnings,
       ],
@@ -600,16 +671,7 @@ export class TaxService {
       (s) => new Date(s.startDate).getTime() <= threshold,
     );
 
-    const incomeStreams: IncomeStreamInput[] = streams.map((s) => ({
-      id: s.id,
-      amount: Number(s.expectedAmount) * 12,
-      sourceCountry:
-        s.currency === 'USD' || s.currency === 'EUR' ? 'FOREIGN' : 'CO',
-      currency: s.currency,
-      type: s.streamType as 'FIXED' | 'VARIABLE',
-      contractType: s.currency === 'USD' ? 'FOREIGN_CONTRACTOR' : 'LABOR',
-      hasSubordination: s.currency !== 'USD',
-    }));
+    const incomeStreams = await this.buildIncomeStreamsCop(userId, streams);
 
     const classifications = incomeStreams.map((stream) =>
       this.engine.classifyIncome(stream, profileInput),
@@ -676,6 +738,7 @@ export class TaxService {
       ],
       extraAssumptions: [
         'Comparación por palanca: cada fila recalcula el motor con un subconjunto de beneficios.',
+        'Ingresos en moneda extranjera se expresan en COP (TRM a fecha de valuación) para totales y umbrales en COP/UVT.',
         `Umbral ingreso “establecido”: stream con antigüedad > 365 días.`,
         `Umbral filing orientativo: ingreso ≥ ${approxFilingThresholdUvt} UVT × ${UVT_2026} COP/UVT.`,
         ...normalized.warnings,
@@ -739,16 +802,7 @@ export class TaxService {
       where: { userId, flowType: 'INCOME' },
     });
 
-    const incomeStreams: IncomeStreamInput[] = streams.map((s) => ({
-      id: s.id,
-      amount: Number(s.expectedAmount) * 12,
-      sourceCountry:
-        s.currency === 'USD' || s.currency === 'EUR' ? 'FOREIGN' : 'CO',
-      currency: s.currency,
-      type: s.streamType as 'FIXED' | 'VARIABLE',
-      contractType: s.currency === 'USD' ? 'FOREIGN_CONTRACTOR' : 'LABOR',
-      hasSubordination: s.currency !== 'USD',
-    }));
+    const incomeStreams = await this.buildIncomeStreamsCop(userId, streams);
 
     const classifications = incomeStreams.map((stream) =>
       this.engine.classifyIncome(stream, profileInput),
@@ -888,16 +942,14 @@ export class TaxService {
     const optimized =
       latestPlan?.scenarios.find((s) => s.type === 'OPTIMIZED') ?? null;
 
-    const totalIncomeAnnual = items.reduce((acc, c) => {
-      const amt = Number(c.stream?.expectedAmount ?? 0) * 12;
-      return acc + amt;
-    }, 0);
-
+    const asOfPlanning = await this.valuationAsOfDateForUser(userId);
+    let totalIncomeAnnual = 0;
     const byCedula = new Map<string, number>();
     for (const c of items) {
-      const amt = Number(c.stream?.expectedAmount ?? 0) * 12;
+      const cop = await this.streamExpectedAnnualCop(c.stream, asOfPlanning);
+      totalIncomeAnnual += cop;
       const k = c.suggestedCedula;
-      byCedula.set(k, (byCedula.get(k) ?? 0) + amt);
+      byCedula.set(k, (byCedula.get(k) ?? 0) + cop);
     }
     const incomeComposition = [...byCedula.entries()].map(
       ([cedula, annualAmount]) => ({

@@ -14,8 +14,16 @@ import {
   Cell,
 } from 'recharts';
 import { Calculator, Info } from 'lucide-react';
+import { ErrorState } from '@/shared/ui/ErrorState';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
 import type { TaxDeclarationPreview } from '../api/queries';
+import {
+  CHART_PALETTE,
+  axisTickProps,
+  chartMargins,
+  legendStyle,
+  tooltipContentStyle,
+} from '@/shared/charts/chartTokens';
 
 export type LeverRow = {
   id: string;
@@ -133,7 +141,11 @@ export function TaxDeclarationSection({
     taxNum,
   ]);
 
-  const barColors = ['#94a3b8', '#f97316', '#4f46e5'];
+  const barFill = (key: string) => {
+    if (key === 'CONSERVATIVE') return CHART_PALETTE.fiscalBase;
+    if (key === 'COMBINED_PREVIEW') return CHART_PALETTE.simScenario;
+    return CHART_PALETTE.fiscalNet;
+  };
 
   if (!data.showDeclarationModule) return null;
 
@@ -188,9 +200,12 @@ export function TaxDeclarationSection({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-indigo-200 bg-linear-to-br from-indigo-50 to-white p-4 shadow-sm">
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
-          <Calculator className="w-5 h-5 text-indigo-600" />
+      <div
+        id="tax-declaration-projection"
+        className="scroll-mt-24 rounded-xl border border-indigo-200 bg-linear-to-br from-indigo-50 to-white p-4 shadow-sm"
+      >
+        <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-slate-900">
+          <Calculator className="h-5 w-5 text-indigo-600" />
           Proyección declaración de renta (aprox.)
         </h2>
         <div className="flex gap-2 text-[11px] text-slate-600 leading-relaxed mb-3">
@@ -276,9 +291,14 @@ export function TaxDeclarationSection({
           <p className="text-[10px] text-amber-800 mb-2">Calculando la combinación seleccionada…</p>
         ) : null}
         {selectedLeverIds.length > 0 && combinedPreviewError && combinedPreview == null ? (
-          <p className="text-[10px] text-rose-700 mb-2">
-            No se pudo cargar la vista previa de la combinación. Revisa la conexión o reintenta.
-          </p>
+          <div className="mb-2">
+            <ErrorState
+              variant="compact"
+              title="No se pudo cargar la combinación"
+              description="Revisa la conexión o reintenta. El gráfico muestra conservador y tu perfil hasta que el servidor responda."
+              className="border-rose-200/80 bg-rose-50/40 py-3"
+            />
+          </div>
         ) : null}
         {combinedPreviewStale ? (
           <p className="text-[10px] text-slate-500 mb-2">Actualizando cifras para la nueva combinación…</p>
@@ -293,13 +313,17 @@ export function TaxDeclarationSection({
             </div>
           ) : null}
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <BarChart data={chartData} margin={chartMargins.withLegend}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke={CHART_PALETTE.gridMuted}
+              />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#64748b', fontSize: 10 }}
+                tick={axisTickProps}
                 interval={0}
                 angle={-12}
                 textAnchor="end"
@@ -308,14 +332,17 @@ export function TaxDeclarationSection({
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#64748b', fontSize: 10 }}
+                tick={axisTickProps}
                 tickFormatter={(v) => yTick(Number(v))}
               />
-              <Tooltip formatter={(v) => tooltipFmt(v)} />
-              <Legend wrapperStyle={{ fontSize: '10px' }} />
+              <Tooltip
+                formatter={(v: unknown) => tooltipFmt(v)}
+                contentStyle={tooltipContentStyle}
+              />
+              <Legend wrapperStyle={{ ...legendStyle, fontSize: 10 }} />
               <Bar dataKey="impuesto" name="Impuesto a pagar (aprox.)" radius={[4, 4, 0, 0]} maxBarSize={56}>
-                {chartData.map((entry, i) => (
-                  <Cell key={entry.key} fill={barColors[Math.min(i, barColors.length - 1)]} />
+                {chartData.map((entry) => (
+                  <Cell key={entry.key} fill={barFill(entry.key)} />
                 ))}
               </Bar>
             </BarChart>

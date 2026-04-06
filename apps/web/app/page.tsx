@@ -33,6 +33,7 @@ import {
 } from '@/features/dashboard/components';
 import type { GoalProgressRow } from '@/features/dashboard/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
+import { ErrorState } from '@/shared/ui/ErrorState';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
 import {
   linesFromStreams,
@@ -76,8 +77,12 @@ export default function HomePage() {
     useInvestmentPositions();
   const positions = positionsPayload?.positions ?? [];
   const { data: goals = [], isLoading: loadingGoals } = useGoals();
-  const { data: leverageAnalysis, isLoading: loadingLeverage } =
-    useLeverageAnalysis();
+  const {
+    data: leverageAnalysis,
+    isLoading: loadingLeverage,
+    isError: leverageError,
+    refetch: refetchLeverage,
+  } = useLeverageAnalysis();
   const { data: monthlyTrend, isLoading: loadingMonthly } =
     useCashflowMonthlyTrend();
   const { data: netWorthPayload, isLoading: loadingNetWorth } =
@@ -353,6 +358,31 @@ export default function HomePage() {
         insights={productInsightsPayload?.insights}
         loading={loadingProductInsights}
       />
+
+      {leverageError ? (
+        <ErrorState
+          variant="compact"
+          title="No se pudo cargar la deuda total (apalancamiento)"
+          description="Los KPIs de deuda y patrimonio neto pueden mostrar “—”. Reintenta o revisa el módulo Deudas."
+          className="rounded-xl py-4"
+        >
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => void refetchLeverage()}
+              className="text-xs font-semibold text-rose-900 underline underline-offset-2 hover:text-rose-950"
+            >
+              Reintentar
+            </button>
+            <Link
+              href="/debts"
+              className="text-xs font-semibold text-indigo-700 hover:underline"
+            >
+              Ir a Deudas
+            </Link>
+          </div>
+        </ErrorState>
+      ) : null}
 
       <FinancialHealthKpiStrip
         loading={kpiLoading}

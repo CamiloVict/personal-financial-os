@@ -17,8 +17,14 @@ import {
 } from 'recharts';
 import { formatBookAmount } from '@/features/currency/format';
 import type { TaxPlanningOverview } from '../types/taxPlanningOverview';
+import {
+  CHART_PALETTE,
+  axisTickProps,
+  legendStyle,
+  tooltipContentStyle,
+} from '@/shared/charts/chartTokens';
 
-const PIE_COLORS = ['#4f46e5', '#059669', '#d97706', '#7c3aed', '#db2777', '#64748b'];
+const piePalette = CHART_PALETTE.series;
 
 function fmtCop(n: number) {
   return formatBookAmount(n, 'COP');
@@ -87,7 +93,7 @@ export function TaxPlanningDashboard({ data, loading }: TaxPlanningDashboardProp
 
   return (
     <section className="space-y-4 mb-6">
-      <div className="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/90 to-white p-4 shadow-sm">
+      <div className="rounded-xl border border-indigo-200 bg-linear-to-br from-indigo-50/90 to-white p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-lg bg-indigo-100 shrink-0">
             <Scale className="w-5 h-5 text-indigo-700" aria-hidden />
@@ -247,14 +253,14 @@ export function TaxPlanningDashboard({ data, loading }: TaxPlanningDashboardProp
                     nameKey="name"
                   >
                     {pieData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      <Cell key={i} fill={piePalette[i % piePalette.length]} />
                     ))}
                   </Pie>
                   <Tooltip
                     formatter={(v: unknown) => fmtCop(Number(v))}
-                    contentStyle={{ fontSize: 11 }}
+                    contentStyle={tooltipContentStyle}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Legend wrapperStyle={{ ...legendStyle, fontSize: 10 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -269,11 +275,36 @@ export function TaxPlanningDashboard({ data, loading }: TaxPlanningDashboardProp
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={taxBarData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} height={48} />
-                  <YAxis tick={{ fontSize: 9 }} tickFormatter={(v) => `${(Number(v) / 1e6).toFixed(0)}M`} />
-                  <Tooltip formatter={(v: unknown) => fmtCop(Number(v))} />
-                  <Bar dataKey="impuesto" name="Impuesto neto" fill="#6366f1" radius={[2, 2, 0, 0]} maxBarSize={36} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={CHART_PALETTE.gridMuted}
+                  />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ ...axisTickProps, fontSize: 9 }}
+                    interval={0}
+                    height={48}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ ...axisTickProps, fontSize: 9 }}
+                    tickFormatter={(v) => `${(Number(v) / 1e6).toFixed(0)}M`}
+                  />
+                  <Tooltip
+                    formatter={(v: unknown) => fmtCop(Number(v))}
+                    contentStyle={tooltipContentStyle}
+                  />
+                  <Bar
+                    dataKey="impuesto"
+                    name="Impuesto neto"
+                    fill={CHART_PALETTE.fiscalNet}
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={36}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -290,11 +321,36 @@ export function TaxPlanningDashboard({ data, loading }: TaxPlanningDashboardProp
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={taxBarData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} height={48} />
-                  <YAxis tick={{ fontSize: 9 }} tickFormatter={(v) => `${(Number(v) / 1e6).toFixed(0)}M`} />
-                  <Tooltip formatter={(v: unknown) => fmtCop(Number(v))} />
-                  <Bar dataKey="base" name="Base gravable" fill="#94a3b8" radius={[2, 2, 0, 0]} maxBarSize={36} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={CHART_PALETTE.gridMuted}
+                  />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ ...axisTickProps, fontSize: 9 }}
+                    interval={0}
+                    height={48}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ ...axisTickProps, fontSize: 9 }}
+                    tickFormatter={(v) => `${(Number(v) / 1e6).toFixed(0)}M`}
+                  />
+                  <Tooltip
+                    formatter={(v: unknown) => fmtCop(Number(v))}
+                    contentStyle={tooltipContentStyle}
+                  />
+                  <Bar
+                    dataKey="base"
+                    name="Base gravable"
+                    fill={CHART_PALETTE.fiscalBase}
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={36}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -314,23 +370,42 @@ export function TaxPlanningDashboard({ data, loading }: TaxPlanningDashboardProp
                   layout="vertical"
                   margin={{ top: 4, right: 8, left: 4, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    horizontal={false}
+                    stroke={CHART_PALETTE.gridMuted}
+                  />
                   <XAxis type="number" domain={[0, 1]} hide />
                   <YAxis
                     type="category"
                     dataKey="name"
                     width={120}
-                    tick={{ fontSize: 8 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ ...axisTickProps, fontSize: 8 }}
                   />
                   <Tooltip
+                    contentStyle={tooltipContentStyle}
                     formatter={(v: unknown, name) =>
                       String(name) === 'activo'
                         ? [`${v}`, 'Indicado en perfil']
                         : [`${v}`, 'Pendiente de indicar']
                     }
                   />
-                  <Bar dataKey="activo" stackId="a" fill="#10b981" name="activo" barSize={14} />
-                  <Bar dataKey="pendiente" stackId="a" fill="#e2e8f0" name="pendiente" barSize={14} />
+                  <Bar
+                    dataKey="activo"
+                    stackId="a"
+                    fill={CHART_PALETTE.positive}
+                    name="activo"
+                    barSize={14}
+                  />
+                  <Bar
+                    dataKey="pendiente"
+                    stackId="a"
+                    fill={CHART_PALETTE.grid}
+                    name="pendiente"
+                    barSize={14}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>

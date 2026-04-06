@@ -94,13 +94,24 @@ export function TaxMissedOpportunities({
         <TrendingDown className="w-4 h-4 text-orange-600" />
         Simulación de impacto: beneficios no activados en el perfil
       </h3>
-      <p className="text-xs text-slate-700 mb-4">
+      <p className="mb-4 text-xs leading-relaxed text-slate-700">
         Si aplicara a tu caso, podrías reflejarlo en <strong>Perfil y Beneficios</strong> y guardar para recalcular.{' '}
         {onToggleLever ? (
-          <span className="text-orange-800 font-medium">
-            Pulsa una o varias tarjetas para simular en el gráfico superior el impuesto con esa combinación de
-            beneficios.
-          </span>
+          <>
+            <span className="font-medium text-orange-900">
+              Pulsa una o varias tarjetas para simular el impuesto con esa combinación: el resultado aparece en la
+              sección <strong>Proyección declaración de renta</strong> (gráfico de barras más arriba en esta pestaña), no
+              en las tarjetas de detalle de <strong>Escenarios y liquidación</strong>, que siguen mostrando tu plan
+              analizado por el motor.
+            </span>{' '}
+            <a
+              href="#tax-declaration-projection"
+              className="font-semibold text-orange-900 underline decoration-orange-400 underline-offset-2"
+            >
+              Ir a Proyección declaración
+            </a>
+            .
+          </>
         ) : null}
       </p>
 

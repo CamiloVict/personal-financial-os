@@ -5,6 +5,7 @@ import { useGoals, useCreateGoal } from '@/features/goals/api/queries';
 import { GoalForm, GoalList } from '@/features/goals/components';
 import { useProductInsights } from '@/features/dashboard/api/queries';
 import { InsightsContextStrip } from '@/features/dashboard/components';
+import { ErrorState } from '@/shared/ui/ErrorState';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
 import {
   linesFromGoals,
@@ -13,7 +14,12 @@ import {
 import { useGlobalStore } from '@/shared/store/global';
 
 export default function GoalsPage() {
-  const { data: goals = [], isLoading } = useGoals();
+  const {
+    data: goals = [],
+    isLoading,
+    isError: goalsError,
+    refetch: refetchGoals,
+  } = useGoals();
   const { data: productInsightsPayload, isLoading: loadingInsights } =
     useProductInsights();
   const createGoalMutation = useCreateGoal();
@@ -97,6 +103,22 @@ export default function GoalsPage() {
         max={2}
       />
 
+      {goalsError ? (
+        <ErrorState
+          title="No se pudieron cargar las metas"
+          description="Podés intentar de nuevo; el formulario sigue disponible por si el alta individual responde."
+          className="rounded-2xl"
+        >
+          <button
+            type="button"
+            onClick={() => void refetchGoals()}
+            className="mx-auto rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            Reintentar
+          </button>
+        </ErrorState>
+      ) : null}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
         <GoalForm 
           name={name} setName={setName}
@@ -110,6 +132,7 @@ export default function GoalsPage() {
         <GoalList
           goals={goals}
           isLoading={isLoading}
+          loadError={goalsError}
           presentedByGoalId={presentedByGoalId}
           presentationLoading={goalPresLoading}
         />

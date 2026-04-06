@@ -476,6 +476,7 @@ export default function TaxDashboard() {
             taxNum={taxVal.num}
             taxChartCurrency={taxVal.chartCurrency}
             taxPresentationLoading={taxVal.isLoading}
+            declarationSimulationActive={selectedLeverIds.length > 0}
           />
 
           {!plan && !loadingPlan ? (

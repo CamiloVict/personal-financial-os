@@ -2,8 +2,9 @@ import React from 'react';
 import { FileSpreadsheet, ShieldAlert, Activity } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { formatPresentedAmount } from '@/features/currency/format';
+import { CHART_PALETTE, legendStyle, tooltipContentStyle } from '@/shared/charts/chartTokens';
 
-const CHART_COLORS = ['#4f46e5', '#06b6d4', '#0ea5e9', '#3b82f6', '#8b5cf6'];
+const piePalette = CHART_PALETTE.series;
 
 interface TaxClassificationsProps {
   classifications: any[];
@@ -55,15 +56,16 @@ export function TaxClassifications({
                   nameKey="name"
                 >
                   {pieData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={piePalette[index % piePalette.length]} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: any) =>
+                  formatter={(value: unknown) =>
                     formatPresentedAmount(Number(value ?? 0), pieChartCurrency)
                   }
+                  contentStyle={tooltipContentStyle}
                 />
-                <Legend wrapperStyle={{ fontSize: '10px' }} />
+                <Legend wrapperStyle={{ ...legendStyle, fontSize: 10 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

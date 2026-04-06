@@ -2,6 +2,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 import type { LeverageAnalysis } from '../types';
 import { leverageHealthBadgeClass, leverageHealthLabel } from '../utils';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+import { CHART_PALETTE, legendStyle, tooltipContentStyle } from '@/shared/charts';
 
 interface DebtsOverviewSidebarProps {
   analysis: LeverageAnalysis;
@@ -52,9 +53,9 @@ export function DebtsOverviewSidebar({
       ? formatPresentedAmount(n, displayCcy)
       : formatBookAmount(n, fallbackBookCurrency);
 
-  const pieData = [
-    { name: 'Deuda Buena (Apalancamiento)', value: displayGood, color: '#10b981' },
-    { name: 'Deuda Mala (Consumo)', value: displayBad, color: '#ef4444' },
+  const pieSlices = [
+    { name: 'Deuda Buena (Apalancamiento)', value: displayGood, fill: CHART_PALETTE.positive },
+    { name: 'Deuda Mala (Consumo)', value: displayBad, fill: CHART_PALETTE.fiscalGross },
   ].filter((d) => d.value > 0);
 
   return (
@@ -95,30 +96,29 @@ export function DebtsOverviewSidebar({
         </div>
       </div>
 
-      {pieData.length > 0 && (
+      {pieSlices.length > 0 && (
         <div className="glass-card rounded-xl p-4 shadow-sm">
           <h3 className="text-xs font-bold text-slate-800 mb-2 tracking-tight">Composición de la Deuda</h3>
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={pieData}
+                  data={pieSlices}
                   innerRadius={40}
                   outerRadius={55}
                   paddingAngle={5}
                   dataKey="value"
                   nameKey="name"
                 >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {pieSlices.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: unknown) =>
-                    fmtMoney(Number(value ?? 0))
-                  }
+                  formatter={(value: unknown) => fmtMoney(Number(value ?? 0))}
+                  contentStyle={tooltipContentStyle}
                 />
-                <Legend wrapperStyle={{ fontSize: '9px' }} />
+                <Legend wrapperStyle={{ ...legendStyle, fontSize: 9 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

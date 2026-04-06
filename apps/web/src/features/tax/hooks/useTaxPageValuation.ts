@@ -27,6 +27,21 @@ function pushCOP(
   out.push({ id, amount: n, currency: 'COP', valueDate });
 }
 
+/** Línea con moneda del stream (p. ej. ingreso en USD) para que present-lines convierta bien. */
+function pushValuationLine(
+  out: ValuationLineInput[],
+  id: string,
+  amount: unknown,
+  currency: string | null | undefined,
+  valueDate: string,
+) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return;
+  const c = (currency ?? 'COP').toString().trim().toUpperCase() || 'COP';
+  const cur = c === 'USD' || c === 'EUR' ? c : 'COP';
+  out.push({ id, amount: n, currency: cur, valueDate });
+}
+
 export function buildTaxValuationLines(opts: {
   valuationAsOfDate: string;
   declarationInsights: {
@@ -40,7 +55,10 @@ export function buildTaxValuationLines(opts: {
   } | null | undefined;
   plan: { scenarios?: unknown[] } | null | undefined;
   normalizedForTax: NormalizedTaxFinancials | null | undefined;
-  classifications: Array<{ referenceId?: string; stream?: { expectedAmount?: number } }>;
+  classifications: Array<{
+    referenceId?: string;
+    stream?: { expectedAmount?: number; currency?: string | null };
+  }>;
 }): ValuationLineInput[] {
   const vd = opts.valuationAsOfDate;
   const out: ValuationLineInput[] = [];
@@ -102,8 +120,9 @@ export function buildTaxValuationLines(opts: {
   for (const c of opts.classifications) {
     const ref = c.referenceId;
     if (!ref) continue;
-    const annual = Number(c.stream?.expectedAmount ?? 0) * 12;
-    pushCOP(out, `tax-pie-${ref}`, annual, vd);
+    const monthly = Number(c.stream?.expectedAmount ?? 0);
+    const annual = monthly * 12;
+    pushValuationLine(out, `tax-pie-${ref}`, annual, c.stream?.currency, vd);
   }
 
   return out;

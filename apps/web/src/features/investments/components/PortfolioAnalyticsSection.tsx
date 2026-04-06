@@ -18,8 +18,16 @@ import {
 } from 'recharts';
 import { formatPresentedAmount } from '@/features/currency/format';
 import type { PortfolioAnalyticsResponse } from '../types/portfolioAnalytics';
+import {
+  CHART_PALETTE,
+  axisTickProps,
+  chartMargins,
+  legendStyle,
+  tooltipContentStyle,
+} from '@/shared/charts';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#06b6d4'];
+const piePalette = CHART_PALETTE.series;
+const tickSm = { ...axisTickProps, fontSize: 9 } as const;
 
 function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number);
@@ -191,11 +199,14 @@ export function PortfolioAnalyticsSection({
                     nameKey="name"
                   >
                     {pieData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      <Cell key={i} fill={piePalette[i % piePalette.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: unknown) => fmt(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Tooltip
+                    formatter={(v: unknown) => fmt(v)}
+                    contentStyle={tooltipContentStyle}
+                  />
+                  <Legend wrapperStyle={{ ...legendStyle, fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -214,27 +225,35 @@ export function PortfolioAnalyticsSection({
           {historyData.length > 1 ? (
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={historyData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <ComposedChart data={historyData} margin={chartMargins.compact}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={CHART_PALETTE.gridMuted}
+                  />
                   <XAxis
                     dataKey="date"
-                    tick={{ fill: '#64748b', fontSize: 9 }}
+                    tick={tickSm}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(d) => (typeof d === 'string' ? d.slice(2) : d)}
                   />
                   <YAxis
-                    tick={{ fill: '#64748b', fontSize: 9 }}
+                    tick={tickSm}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v) => yTick(Number(v))}
                   />
-                  <Tooltip formatter={(v: unknown) => fmt(v)} labelFormatter={(l) => String(l)} />
+                  <Tooltip
+                    formatter={(v: unknown) => fmt(v)}
+                    labelFormatter={(l) => String(l)}
+                    contentStyle={tooltipContentStyle}
+                  />
                   <Area
                     type="monotone"
                     dataKey="value"
-                    stroke="#3b82f6"
-                    fill="#93c5fd"
+                    stroke={CHART_PALETTE.income}
+                    fill={CHART_PALETTE.incomeMuted}
                     fillOpacity={0.35}
                     strokeWidth={2}
                   />
@@ -256,24 +275,35 @@ export function PortfolioAnalyticsSection({
           {flowMonthly.some((r) => r.retiradas > 0 || r.reinvertidas > 0) ? (
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={flowMonthly} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fill: '#64748b', fontSize: 9 }}
-                    axisLine={false}
-                    tickLine={false}
+                <BarChart data={flowMonthly} margin={chartMargins.compact}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={CHART_PALETTE.gridMuted}
                   />
+                  <XAxis dataKey="month" tick={tickSm} axisLine={false} tickLine={false} />
                   <YAxis
-                    tick={{ fill: '#64748b', fontSize: 9 }}
+                    tick={tickSm}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v) => yTick(Number(v))}
                   />
-                  <Tooltip formatter={(v: unknown) => fmt(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="retiradas" name="Retiradas" fill="#f59e0b" radius={[2, 2, 0, 0]} maxBarSize={28} />
-                  <Bar dataKey="reinvertidas" name="Reinvertidas" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={28} />
+                  <Tooltip formatter={(v: unknown) => fmt(v)} contentStyle={tooltipContentStyle} />
+                  <Legend wrapperStyle={{ ...legendStyle, fontSize: 11 }} />
+                  <Bar
+                    dataKey="retiradas"
+                    name="Retiradas"
+                    fill={CHART_PALETTE.simScenario}
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="reinvertidas"
+                    name="Reinvertidas"
+                    fill={CHART_PALETTE.positive}
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -292,24 +322,35 @@ export function PortfolioAnalyticsSection({
           {capitalMonthly.some((r) => r.aportes > 0 || r.retiros > 0) ? (
             <div className="h-52">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={capitalMonthly} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fill: '#64748b', fontSize: 9 }}
-                    axisLine={false}
-                    tickLine={false}
+                <BarChart data={capitalMonthly} margin={chartMargins.compact}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={CHART_PALETTE.gridMuted}
                   />
+                  <XAxis dataKey="month" tick={tickSm} axisLine={false} tickLine={false} />
                   <YAxis
-                    tick={{ fill: '#64748b', fontSize: 9 }}
+                    tick={tickSm}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v) => yTick(Number(v))}
                   />
-                  <Tooltip formatter={(v: unknown) => fmt(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="aportes" name="Aportes" fill="#6366f1" radius={[2, 2, 0, 0]} maxBarSize={28} />
-                  <Bar dataKey="retiros" name="Retiros" fill="#94a3b8" radius={[2, 2, 0, 0]} maxBarSize={28} />
+                  <Tooltip formatter={(v: unknown) => fmt(v)} contentStyle={tooltipContentStyle} />
+                  <Legend wrapperStyle={{ ...legendStyle, fontSize: 11 }} />
+                  <Bar
+                    dataKey="aportes"
+                    name="Aportes"
+                    fill={CHART_PALETTE.fiscalNet}
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
+                  <Bar
+                    dataKey="retiros"
+                    name="Retiros"
+                    fill={CHART_PALETTE.fiscalBase}
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={28}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>

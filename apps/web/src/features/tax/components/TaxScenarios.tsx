@@ -25,6 +25,8 @@ interface TaxScenariosProps {
   taxNum?: (id: string, copAmount: number) => number;
   taxChartCurrency?: string;
   taxPresentationLoading?: boolean;
+  /** True si hay palancas activas en simulación de impacto (copy de coherencia con Proyección declaración). */
+  declarationSimulationActive?: boolean;
 }
 
 export function TaxScenarios({
@@ -33,6 +35,7 @@ export function TaxScenarios({
   taxNum,
   taxChartCurrency = 'COP',
   taxPresentationLoading,
+  declarationSimulationActive,
 }: TaxScenariosProps) {
   const chartRows = useMemo(() => {
     if (!plan?.scenarios?.length) return [];
@@ -59,10 +62,24 @@ export function TaxScenarios({
 
   return (
     <div>
-      <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-        <Landmark className="w-4 h-4 text-indigo-600" />
+      <h2 className="mb-3 flex items-center gap-1.5 text-lg font-bold text-slate-800">
+        <Landmark className="h-4 w-4 text-indigo-600" />
         Escenarios y Liquidación Sugerida
       </h2>
+
+      {declarationSimulationActive ? (
+        <p className="mb-3 rounded-lg border border-slate-200/90 bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600">
+          Hay beneficios seleccionados en <strong>Simulación de impacto</strong> (abajo). El impuesto de esa combinación
+          se ve en <strong>Proyección declaración de renta</strong>{' '}
+          <a
+            href="#tax-declaration-projection"
+            className="font-semibold text-indigo-700 underline decoration-indigo-300 underline-offset-2"
+          >
+            (ir al gráfico)
+          </a>
+          . Las cifras de estas tarjetas son el plan del motor y no cambian al pulsar allí.
+        </p>
+      ) : null}
 
       <div className="chart-surface mb-4 rounded-2xl border border-slate-200/90 p-4 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold tracking-tight text-slate-900">

@@ -25,6 +25,7 @@ import {
 } from '@/features/cashflow/components';
 import { useProductInsights } from '@/features/dashboard/api/queries';
 import { InsightsContextStrip } from '@/features/dashboard/components';
+import { ErrorState } from '@/shared/ui/ErrorState';
 import { valuationModeFootnote } from '@/features/currency/format';
 import { useGlobalStore } from '@/shared/store/global';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
@@ -38,11 +39,21 @@ import {
 
 export default function CashflowPage() {
   const { data: categories = [], isLoading: isLoadingCat } = useCategories();
-  const { data: streams = [], isLoading: isLoadingStreams } = useCashflowStreams();
+  const {
+    data: streams = [],
+    isLoading: isLoadingStreams,
+    isError: streamsError,
+    refetch: refetchStreams,
+  } = useCashflowStreams();
   const { data: positionsPayload, isLoading: isLoadingPositions } =
     useInvestmentPositions();
   const positions = positionsPayload?.positions ?? [];
-  const { data: cashflowAnalytics, isLoading: isLoadingAnalytics } = useCashflowAnalytics();
+  const {
+    data: cashflowAnalytics,
+    isLoading: isLoadingAnalytics,
+    isError: analyticsError,
+    refetch: refetchAnalytics,
+  } = useCashflowAnalytics();
   const { data: cashflowIntelligence, isLoading: isLoadingIntelligence } =
     useCashflowIntelligence();
   const { data: productInsightsPayload, isLoading: loadingInsights } =
@@ -201,6 +212,39 @@ export default function CashflowPage() {
           </p>
         </div>
       </header>
+
+      {streamsError ? (
+        <ErrorState
+          title="No se pudieron cargar tus streams"
+          description="No podemos mostrar la lista de ingresos y gastos. Comprueba la conexión o reintenta."
+          className="rounded-2xl"
+        >
+          <button
+            type="button"
+            onClick={() => void refetchStreams()}
+            className="mx-auto rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            Reintentar
+          </button>
+        </ErrorState>
+      ) : null}
+
+      {!streamsError && analyticsError ? (
+        <ErrorState
+          variant="compact"
+          title="No se pudieron cargar las analíticas de cashflow"
+          description="Los gráficos de distribución pueden faltar. El resto de la página sigue disponible."
+          className="rounded-xl py-4"
+        >
+          <button
+            type="button"
+            onClick={() => void refetchAnalytics()}
+            className="text-xs font-semibold text-rose-900 underline underline-offset-2 hover:text-rose-950"
+          >
+            Reintentar
+          </button>
+        </ErrorState>
+      ) : null}
 
       <CashflowMetrics
         totalExpectedIncome={totalExpectedIncome}
