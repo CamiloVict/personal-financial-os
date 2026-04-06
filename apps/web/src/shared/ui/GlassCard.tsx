@@ -7,7 +7,7 @@ interface GlassCardProps {
 }
 
 export function GlassCard({ children, className = '', onClick }: GlassCardProps) {
-  const baseClasses = 'glass-card rounded-xl p-4 shadow-sm bg-white border border-slate-200';
+  const baseClasses = 'glass-card p-4';
   const interactiveClasses = onClick ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all' : '';
   
   return (

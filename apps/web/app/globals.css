@@ -5,6 +5,10 @@
   --color-primary-dark: #2563eb;
   --color-success: #10b981;
   --color-danger: #ef4444;
+  --color-chart-grid: #e8eef4;
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06);
+  --shadow-card-hover: 0 10px 40px -12px rgb(15 23 42 / 0.12);
 }
 
 body {
@@ -17,7 +21,26 @@ body {
 }
 
 .glass-card {
-  @apply bg-white border border-slate-200 shadow-sm transition-all duration-200;
+  @apply bg-white border border-slate-200/90 shadow-sm transition-all duration-200 rounded-2xl;
+}
+
+/* Contenedor tipo KPI (dashboard, métricas) */
+.kpi-tile {
+  @apply rounded-2xl border border-slate-200/90 bg-white p-3 shadow-sm sm:p-3.5;
+}
+
+/* Gráficos embebidos: mismo lenguaje que ChartCard */
+.chart-surface {
+  @apply bg-white border border-slate-200/90 shadow-sm;
+}
+
+/* Títulos de sección de página (jerarquía) */
+.page-section-title {
+  @apply text-lg font-bold tracking-tight text-slate-900 sm:text-xl;
+}
+
+.page-section-subtitle {
+  @apply mt-1 text-xs leading-relaxed text-slate-500 sm:text-sm;
 }
 
 /* Solo “lift” en puntero fino con hover real; evita estados raros en táctil. */

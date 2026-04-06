@@ -1,13 +1,29 @@
 import React from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts';
 import { formatPresentedAmount } from '@/features/currency/format';
-
-const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
+import {
+  CHART_PALETTE,
+  chartMargins,
+  axisTickProps,
+  legendStyle,
+  tooltipContentStyle,
+} from '@/shared/charts';
 
 interface PositionChartsProps {
   pieData: any[];
   positions: any[];
-  /** Filas del gráfico de barras; si no se pasa, se arma desde `positions` en nominal. */
   barChartData?: { name: string; capital: number; valor: number }[];
   chartCurrency?: string;
 }
@@ -34,35 +50,77 @@ export function PositionCharts({
   const yTick = (val: number) =>
     chartCurrency === 'USD' ? `$${val / 1000}k` : `${(val / 1e6).toFixed(1)}M`;
 
+  const seriesColors = [...CHART_PALETTE.series];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-      <div className="glass-card rounded-xl p-4">
-        <h3 className="text-sm font-bold text-slate-800 mb-3 tracking-tight">Composición</h3>
-        <div className="h-40">
+    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="chart-surface rounded-2xl border border-slate-200/90 p-3 shadow-sm sm:p-4">
+        <h3 className="mb-3 text-sm font-semibold tracking-tight text-slate-900">Composición</h3>
+        <div className="h-40 sm:h-44">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={pieData} innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value" nameKey="name">
-                {pieData.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+              <Pie
+                data={pieData}
+                innerRadius="38%"
+                outerRadius="58%"
+                paddingAngle={4}
+                dataKey="value"
+                nameKey="name"
+              >
+                {pieData.map((_: unknown, index: number) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={seriesColors[index % seriesColors.length]}
+                    stroke="transparent"
+                  />
+                ))}
               </Pie>
-              <Tooltip formatter={(value: unknown) => fmt(value)} />
-              <Legend wrapperStyle={{fontSize: '10px'}} />
+              <Tooltip formatter={(value: unknown) => fmt(value)} contentStyle={tooltipContentStyle} />
+              <Legend wrapperStyle={{ ...legendStyle, fontSize: 10 }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="glass-card rounded-xl p-4">
-        <h3 className="text-sm font-bold text-slate-800 mb-3 tracking-tight">Rendimiento (Capital vs Valor)</h3>
-        <div className="h-40">
+      <div className="chart-surface rounded-2xl border border-slate-200/90 p-3 shadow-sm sm:p-4">
+        <h3 className="mb-3 text-sm font-semibold tracking-tight text-slate-900">
+          Capital vs valor estimado
+        </h3>
+        <div className="h-40 sm:h-44">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={bars} margin={{top: 0, right: 0, left: -20, bottom: 0}}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 9}} />
-              <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 9}} tickFormatter={(val) => yTick(val)} />
-              <Tooltip cursor={{fill: '#f8fafc'}} formatter={(value: unknown) => fmt(value)} />
-              <Legend wrapperStyle={{fontSize: '10px', paddingTop: '5px'}} />
-              <Bar dataKey="capital" name="Aportado" fill="#94a3b8" radius={[2, 2, 0, 0]} maxBarSize={20} />
-              <Bar dataKey="valor" name="Estimado" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={20} />
+            <BarChart data={bars} margin={chartMargins.compact}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke={CHART_PALETTE.gridMuted}
+              />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTickProps} />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={axisTickProps}
+                tickFormatter={(val) => yTick(val)}
+              />
+              <Tooltip
+                cursor={{ fill: 'rgba(248, 250, 252, 0.95)' }}
+                formatter={(value: unknown) => fmt(value)}
+                contentStyle={tooltipContentStyle}
+              />
+              <Legend wrapperStyle={{ ...legendStyle, fontSize: 10 }} />
+              <Bar
+                dataKey="capital"
+                name="Aportado"
+                fill={CHART_PALETTE.neutral}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={22}
+              />
+              <Bar
+                dataKey="valor"
+                name="Estimado"
+                fill={CHART_PALETTE.positive}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={22}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

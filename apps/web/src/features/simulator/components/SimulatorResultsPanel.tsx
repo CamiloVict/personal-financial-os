@@ -12,6 +12,13 @@ import type { SimulationResult, SimulationYearData } from '../types';
 import { getMetricClasses } from '../utils/metricStyles';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
 import { formatPresentedAmount } from '@/features/currency/format';
+import {
+  CHART_PALETTE,
+  axisTickProps,
+  chartMargins,
+  legendStyle,
+  tooltipContentStyle,
+} from '@/shared/charts/chartTokens';
 
 interface SimulatorResultsPanelProps {
   result: SimulationResult;
@@ -78,62 +85,62 @@ export function SimulatorResultsPanel({
         })}
       </div>
 
-      <div className="glass-card p-3 rounded-lg shadow-sm flex-1 flex flex-col bg-white">
-        <h3 className="text-xs font-bold text-slate-800 mb-0.5">Crecimiento del Patrimonio Neto</h3>
-        <p className="text-[8px] text-slate-500 mb-2">
-          Línea Amarilla (Escenario Acción) vs Línea Gris (Línea Base / Inacción).
+      <div className="chart-surface flex flex-1 flex-col rounded-2xl border border-slate-200/90 bg-white p-3 shadow-sm">
+        <h3 className="mb-0.5 text-xs font-semibold tracking-tight text-slate-900">
+          Crecimiento del patrimonio neto
+        </h3>
+        <p className="mb-2 text-[8px] leading-relaxed text-slate-500">
+          Escenario acción (ámbar) frente a línea base (gris).
         </p>
 
-        <div className="relative flex-1 min-h-[180px]">
+        <div className="relative min-h-[180px] flex-1">
           {presentationLoading ? (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70 text-[10px] font-medium text-slate-500">
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 text-[10px] font-medium text-slate-500 backdrop-blur-[1px]">
               Aplicando valuación…
             </div>
           ) : null}
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={years} margin={{ top: 5, right: 10, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <LineChart data={years} margin={chartMargins.default}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke={CHART_PALETTE.gridMuted}
+              />
               <XAxis
                 dataKey="year"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#64748b', fontSize: 8 }}
+                tick={{ ...axisTickProps, fontSize: 8 }}
                 tickFormatter={(val) => `A${val}`}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#64748b', fontSize: 8 }}
+                tick={{ ...axisTickProps, fontSize: 8 }}
                 tickFormatter={(val) => yTick(Number(val))}
               />
               <Tooltip
                 formatter={(value, name) => [
                   tooltipFmt(value),
-                  String(name) === 'scenarioNetWorth' ? 'Escenario Acción' : 'Línea Base',
+                  String(name) === 'scenarioNetWorth' ? 'Escenario acción' : 'Línea base',
                 ]}
                 labelFormatter={(label) => `Año ${label}`}
-                contentStyle={{
-                  borderRadius: '6px',
-                  border: 'none',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                  fontSize: '9px',
-                  padding: '4px 8px',
-                }}
+                contentStyle={{ ...tooltipContentStyle, fontSize: 11 }}
               />
-              <Legend wrapperStyle={{ fontSize: '9px', paddingTop: '0px' }} iconSize={8} />
+              <Legend wrapperStyle={{ ...legendStyle, fontSize: 9, paddingTop: 0 }} iconSize={8} />
               <Line
                 type="monotone"
                 dataKey="baselineNetWorth"
-                name="Línea Base"
-                stroke="#cbd5e1"
+                name="Línea base"
+                stroke={CHART_PALETTE.simBaseline}
                 strokeWidth={2}
                 dot={false}
               />
               <Line
                 type="monotone"
                 dataKey="scenarioNetWorth"
-                name="Escenario Acción"
-                stroke="#f59e0b"
+                name="Escenario acción"
+                stroke={CHART_PALETTE.simScenario}
                 strokeWidth={2}
                 dot={{ r: 1.5, strokeWidth: 1 }}
                 activeDot={{ r: 3 }}

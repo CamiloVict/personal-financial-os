@@ -330,10 +330,8 @@ export default function HomePage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <header className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-end border-b border-slate-200 pb-4 mb-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Salud financiera
-          </h1>
-          <p className="text-slate-500 mt-1 text-xs leading-relaxed max-w-xl">
+          <h1 className="page-section-title">Salud financiera</h1>
+          <p className="page-section-subtitle max-w-xl">
             Resumen de flujo, patrimonio, metas y fiscal. Profundizá por módulo cuando necesites
             detalle.
           </p>

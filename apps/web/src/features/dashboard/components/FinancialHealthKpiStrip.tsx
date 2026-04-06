@@ -39,7 +39,7 @@ function Kpi({
   loading?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm">
+    <div className="kpi-tile">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">
           {label}

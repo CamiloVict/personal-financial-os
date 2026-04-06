@@ -11,6 +11,13 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { formatBookAmount, formatPresentedAmount } from '@/features/currency/format';
+import {
+  CHART_PALETTE,
+  axisTickProps,
+  chartMargins,
+  legendStyle,
+  tooltipContentStyle,
+} from '@/shared/charts/chartTokens';
 
 interface TaxScenariosProps {
   plan: any;
@@ -57,56 +64,60 @@ export function TaxScenarios({
         Escenarios y Liquidación Sugerida
       </h2>
 
-      <div className="glass-card rounded-xl shadow-sm p-4 mb-4">
-        <h3 className="text-sm font-bold text-slate-800 mb-3">Comparativa de Escenarios Visual</h3>
+      <div className="chart-surface mb-4 rounded-2xl border border-slate-200/90 p-4 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold tracking-tight text-slate-900">
+          Comparativa de escenarios
+        </h3>
         <div className="relative h-40">
           {taxPresentationLoading ? (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70 text-[11px] font-medium text-slate-500">
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-white/80 text-[11px] font-medium text-slate-500 backdrop-blur-[1px]">
               Aplicando valuación…
             </div>
           ) : null}
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartRows}
-              margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <BarChart data={chartRows} margin={chartMargins.withLegend}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke={CHART_PALETTE.gridMuted}
+              />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#64748b', fontSize: 9 }}
+                tick={{ ...axisTickProps, fontSize: 9 }}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#64748b', fontSize: 9 }}
+                tick={{ ...axisTickProps, fontSize: 9 }}
                 tickFormatter={(val) => yTick(Number(val))}
               />
               <Tooltip
                 cursor={{ fill: '#f8fafc' }}
-                formatter={(value: any) => tooltipFmt(value)}
+                contentStyle={tooltipContentStyle}
+                formatter={(value: unknown) => tooltipFmt(value)}
               />
-              <Legend wrapperStyle={{ fontSize: '9px', paddingTop: '2px' }} />
+              <Legend wrapperStyle={{ ...legendStyle, fontSize: 9, paddingTop: 2 }} />
               <Bar
                 dataKey="base"
-                name="Base Gravable Neta"
-                fill="#94a3b8"
-                radius={[2, 2, 0, 0]}
+                name="Base gravable neta"
+                fill={CHART_PALETTE.fiscalBase}
+                radius={[4, 4, 0, 0]}
                 maxBarSize={20}
               />
               <Bar
                 dataKey="impuesto"
-                name="Impuesto Bruto"
-                fill="#ef4444"
-                radius={[2, 2, 0, 0]}
+                name="Impuesto bruto"
+                fill={CHART_PALETTE.fiscalGross}
+                radius={[4, 4, 0, 0]}
                 maxBarSize={20}
               />
               <Bar
                 dataKey="neto"
-                name="Impuesto a Pagar (Neto)"
-                fill="#6366f1"
-                radius={[2, 2, 0, 0]}
+                name="Impuesto a pagar (neto)"
+                fill={CHART_PALETTE.fiscalNet}
+                radius={[4, 4, 0, 0]}
                 maxBarSize={20}
               />
             </BarChart>

@@ -15,6 +15,14 @@ import {
 import { Activity } from 'lucide-react';
 import { formatPresentedAmount } from '@/features/currency/format';
 import type { MonthlyCashflowPoint } from '@/features/dashboard/api/queries';
+import {
+  CHART_PALETTE,
+  chartMargins,
+  axisTickProps,
+  legendStyle,
+  tooltipContentStyle,
+} from '@/shared/charts';
+import { EmptyState } from '@/shared/ui/EmptyState';
 
 function monthLabel(ym: string) {
   const [y, m] = ym.split('-').map(Number);
@@ -44,8 +52,11 @@ export function MonthlyCashflowTrendChart({
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white">
-        <Activity className="h-8 w-8 animate-spin text-slate-300" />
+      <div className="chart-surface flex h-64 min-h-[16rem] items-center justify-center rounded-2xl border border-slate-200/90 bg-white shadow-sm">
+        <div className="flex flex-col items-center gap-2">
+          <Activity className="h-8 w-8 animate-spin text-slate-300" aria-hidden />
+          <span className="text-[10px] font-medium text-slate-400">Cargando tendencia…</span>
+        </div>
       </div>
     );
   }
@@ -53,31 +64,34 @@ export function MonthlyCashflowTrendChart({
   const hasActivity = eventCount > 0;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="chart-surface rounded-2xl border border-slate-200/90 bg-white p-3 shadow-sm sm:p-4">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Evolución de cashflow</h3>
-          <p className="text-[10px] text-slate-500 mt-0.5">
+          <h3 className="text-sm font-semibold text-slate-900 sm:text-base">Evolución de cashflow</h3>
+          <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">
             Ingresos vs gastos por mes (eventos registrados). Últimos 12 meses.
           </p>
         </div>
-        <p className="text-[10px] text-slate-400">
+        <p className="text-[10px] font-medium text-slate-400">
           {hasActivity ? `${eventCount} evento(s)` : 'Sin eventos aún'}
         </p>
       </div>
       {!hasActivity ? (
-        <p className="rounded-lg bg-slate-50 border border-dashed border-slate-200 py-8 text-center text-xs text-slate-500">
-          Registrá pagos o ingresos reales en Cashflow para ver la tendencia mensual.
-        </p>
+        <EmptyState
+          title="Aún no hay eventos"
+          description="Registrá pagos o ingresos reales en Cashflow para ver la tendencia mensual."
+          variant="compact"
+          className="border-slate-200/80 bg-slate-50/30"
+        />
       ) : (
-        <div className="h-64 w-full min-h-[16rem]">
+        <div className="h-64 min-h-[16rem] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#94a3b8" />
+            <ComposedChart data={data} margin={chartMargins.default}>
+              <CartesianGrid strokeDasharray="3 3" stroke={CHART_PALETTE.grid} />
+              <XAxis dataKey="label" tick={axisTickProps} stroke={CHART_PALETTE.axis} />
               <YAxis
-                tick={{ fontSize: 10 }}
-                stroke="#94a3b8"
+                tick={axisTickProps}
+                stroke={CHART_PALETTE.axis}
                 tickFormatter={(v) =>
                   chartCurrency === 'USD'
                     ? `$${Number(v) / 1000}k`
@@ -87,17 +101,27 @@ export function MonthlyCashflowTrendChart({
               <Tooltip
                 formatter={(value) => fmt(Number(value ?? 0))}
                 labelFormatter={(label) => String(label)}
-                contentStyle={{ fontSize: 12 }}
+                contentStyle={tooltipContentStyle}
               />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="income" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expense" name="Gastos" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+              <Legend wrapperStyle={legendStyle} />
+              <Bar
+                dataKey="income"
+                name="Ingresos"
+                fill={CHART_PALETTE.positive}
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                dataKey="expense"
+                name="Gastos"
+                fill={CHART_PALETTE.expenseBar}
+                radius={[4, 4, 0, 0]}
+              />
               <Line
                 type="monotone"
                 dataKey="net"
                 name="Neto"
-                stroke="#6366f1"
-                strokeWidth={2}
+                stroke={CHART_PALETTE.netLine}
+                strokeWidth={2.5}
                 dot={false}
               />
             </ComposedChart>
