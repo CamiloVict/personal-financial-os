@@ -12,7 +12,10 @@ export function PositionList({ positions, onSelectPosition, onDeletePosition, is
   return (
     <div className="space-y-4">
       {positions.map(pos => (
-        <div key={pos.id} className="glass-card rounded-xl overflow-hidden hover:shadow-md transition-all group">
+        <div
+          key={pos.id}
+          className="glass-card rounded-xl overflow-hidden transition-all group active:shadow-md [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-md"
+        >
           <div className="p-5 border-b border-slate-100 flex justify-between items-start bg-slate-50">
             <div>
               <h4 className="text-lg font-bold text-slate-900 tracking-tight">{pos.name}</h4>
@@ -42,14 +45,19 @@ export function PositionList({ positions, onSelectPosition, onDeletePosition, is
             </div>
           </div>
 
-          <div className="p-4 border-t border-slate-100 bg-white flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onSelectPosition(pos)} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+          <div className="p-4 border-t border-slate-100 bg-white flex flex-wrap justify-end gap-3 transition-opacity hover-reveal-actions">
+            <button
+              type="button"
+              onClick={() => onSelectPosition(pos)}
+              className="touch-manipulation flex items-center gap-2 bg-slate-100 active:bg-slate-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-200 text-slate-700 px-3 py-2 min-h-10 rounded-lg text-xs font-semibold transition-colors"
+            >
               <ListPlus className="w-3.5 h-3.5" /> Registrar Evento
             </button>
-            <button 
+            <button
+              type="button"
               disabled={isDeleting}
-              onClick={() => { if(confirm('¿Eliminar?')) { onDeletePosition(pos.id); } }} 
-              className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1.5 rounded-lg text-xs transition-colors"
+              onClick={() => { if(confirm('¿Eliminar?')) { onDeletePosition(pos.id); } }}
+              className="touch-manipulation flex items-center gap-2 bg-rose-50 active:bg-rose-200 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-rose-100 text-rose-600 px-3 py-2 min-h-10 rounded-lg text-xs transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

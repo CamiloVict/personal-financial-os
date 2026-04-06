@@ -30,7 +30,10 @@ export function GoalList({ goals, isLoading }: GoalListProps) {
                 const progress = target > 0 ? Math.min(100, (current / target) * 100) : 0;
 
                 return (
-                  <li key={goal.id} className="p-4 hover:bg-slate-50 transition-colors group">
+                  <li
+                    key={goal.id}
+                    className="p-4 transition-colors group active:bg-slate-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-50"
+                  >
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h4 className="font-bold text-slate-900 tracking-tight text-base">{goal.name}</h4>
@@ -58,8 +61,11 @@ export function GoalList({ goals, isLoading }: GoalListProps) {
                       </div>
                     </div>
 
-                    <div className="mt-3 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Link href={`/goals/${goal.id}`} className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all shadow-sm">
+                    <div className="mt-3 flex justify-end transition-opacity hover-reveal-actions">
+                      <Link
+                        href={`/goals/${goal.id}`}
+                        className="touch-manipulation inline-flex items-center gap-1 bg-slate-900 active:bg-slate-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-800 text-white px-3 py-2 min-h-9 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all shadow-sm"
+                      >
                         Ver Recomendaciones <ArrowRight className="w-3 h-3" />
                       </Link>
                     </div>

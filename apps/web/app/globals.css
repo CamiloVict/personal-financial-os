@@ -20,8 +20,40 @@ body {
   @apply bg-white border border-slate-200 shadow-sm transition-all duration-200;
 }
 
-.glass-card:hover {
-  @apply shadow-md -translate-y-0.5;
+/* Solo “lift” en puntero fino con hover real; evita estados raros en táctil. */
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover {
+    @apply shadow-md -translate-y-0.5;
+  }
+}
+
+/*
+ * Filas con acciones ocultas hasta hover: en móvil / táctil siempre visibles.
+ * Usar en contenedor hijo de .group (ej. barra Registrar | Eliminar).
+ */
+.hover-reveal-actions {
+  opacity: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hover-reveal-actions {
+    opacity: 0;
+  }
+  .group:hover .hover-reveal-actions {
+    opacity: 1;
+  }
+}
+
+/* Acento lateral (tipos de inversión): visible en táctil; hover solo en escritorio. */
+.hover-reveal-accent {
+  opacity: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hover-reveal-accent {
+    opacity: 0;
+  }
+  .group:hover .hover-reveal-accent {
+    opacity: 1;
+  }
 }
 
 .glass-input {

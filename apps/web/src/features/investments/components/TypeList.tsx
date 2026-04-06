@@ -19,18 +19,19 @@ export function TypeList({ types, isLoading, onDeleteType, isDeleting }: TypeLis
       <div className="grid gap-4">
         {types.map(type => (
           <div key={type.id} className="glass-card rounded-2xl p-5 group relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="hover-reveal-accent absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-xl transition-opacity" />
             
             <div className="flex justify-between items-start mb-4">
               <h4 className="text-base font-bold text-slate-900 tracking-tight">{type.name}</h4>
-              <button 
+              <button
+                type="button"
                 disabled={isDeleting}
                 onClick={() => {
                   if(confirm('¿Seguro que deseas eliminar este modelo? Las inversiones asociadas podrían fallar.')) {
                     onDeleteType(type.id);
                   }
-                }} 
-                className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors"
+                }}
+                className="touch-manipulation min-h-10 min-w-10 flex items-center justify-center text-slate-400 active:text-rose-600 active:bg-rose-500/15 p-1.5 rounded-lg [@media(hover:hover)_and_(pointer:fine)]:hover:text-rose-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-rose-500/10 transition-colors disabled:opacity-50"
                 title="Eliminar"
               >
                 <Trash2 className="w-4 h-4" />

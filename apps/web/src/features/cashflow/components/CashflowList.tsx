@@ -27,7 +27,10 @@ export function CashflowList({ streams, isLoading, onSelectStream, onDeleteStrea
           ) : (
             <ul className="divide-y divide-slate-100">
               {streams.map((stream: any) => (
-                <li key={stream.id} className="p-4 hover:bg-slate-50 transition-colors group">
+                <li
+                  key={stream.id}
+                  className="p-4 transition-colors group active:bg-slate-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-50"
+                >
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3 items-start">
                       <div className={`p-1.5 rounded-md mt-0.5 ${stream.flowType === 'INCOME' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
@@ -54,18 +57,20 @@ export function CashflowList({ streams, isLoading, onSelectStream, onDeleteStrea
                     </div>
                   </div>
 
-                  <div className="mt-3 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
+                  <div className="mt-3 flex flex-wrap justify-end gap-2 transition-opacity hover-reveal-actions">
+                    <button
+                      type="button"
                       onClick={() => onSelectStream(stream)}
-                      className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors"
+                      className="touch-manipulation flex items-center gap-1 bg-slate-100 active:bg-slate-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-200 text-slate-700 px-2 py-1.5 min-h-9 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors"
                     >
                       <CheckCircle2 className="w-3 h-3" /> Registrar
                     </button>
-                    <button 
+                    <button
+                      type="button"
                       onClick={() => {
                         if(confirm('¿Eliminar este flujo proyectado?')) onDeleteStream(stream.id);
                       }}
-                      className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 px-1.5 py-1 rounded-md transition-colors"
+                      className="touch-manipulation flex items-center gap-1 bg-rose-50 active:bg-rose-200 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-rose-100 text-rose-700 px-2 py-1.5 min-h-9 min-w-9 justify-center rounded-md transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
