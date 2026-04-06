@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../shared/api/client';
-import type { SimulationResult } from '../types';
+import type { ScenarioType, SimulationResult } from '../types';
 import { simulatorQueryKeys } from './query-keys';
 
 export interface SimulatePropertyPurchaseInput {
@@ -85,5 +85,62 @@ export function useSimulateCustom() {
   return useMutation({
     mutationFn: (input: SimulateCustomInput) =>
       apiClient.post<SimulationResult>('/simulator/what-if/custom', input),
+  });
+}
+
+export type SimulatorSavedLatestResponse = {
+  scenarioType: string;
+  inputs: Record<string, unknown>;
+  result: SimulationResult;
+  savedAt: string;
+  expiresAt: string;
+} | null;
+
+export function useSimulatorSavedLatest(
+  scenarioType: ScenarioType,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: simulatorQueryKeys.savedLatest(scenarioType),
+    queryFn: () =>
+      apiClient.get<SimulatorSavedLatestResponse>(
+        `/simulator/saved/latest?scenarioType=${encodeURIComponent(scenarioType)}`,
+      ),
+    enabled,
+  });
+}
+
+export function useSaveSimulatorSnapshot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      scenarioType: ScenarioType;
+      inputs: Record<string, unknown>;
+      result: SimulationResult;
+    }) =>
+      apiClient.post<{ savedAt: string; expiresAt: string }>(
+        '/simulator/saved',
+        body,
+      ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: simulatorQueryKeys.savedLatest(variables.scenarioType),
+      });
+    },
+  });
+}
+
+export function useDeleteSimulatorSnapshot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (scenarioType: ScenarioType) =>
+      apiClient.delete(
+        `/simulator/saved?scenarioType=${encodeURIComponent(scenarioType)}`,
+      ),
+    onSuccess: (_data, scenarioType) => {
+      queryClient.invalidateQueries({
+        queryKey: simulatorQueryKeys.savedLatest(scenarioType),
+      });
+    },
   });
 }

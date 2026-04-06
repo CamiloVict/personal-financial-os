@@ -38,6 +38,45 @@ model User {
   // Tax Module
   taxProfiles            TaxProfile[]
   taxCalculationAudits   TaxCalculationAudit[]
+
+  /// Asignador: último plan guardado (TTL 30 días en aplicación)
+  savedAllocatorAnalyses SavedAllocatorAnalysis[]
+  /// Simulador what-if por tipo de escenario (TTL 30 días en aplicación)
+  savedSimulationRuns    SavedSimulationRun[]
+}
+
+/// Snapshot del asignador de capital (JSON = AllocatorResult del API).
+model SavedAllocatorAnalysis {
+  id     String @id @default(uuid())
+  userId String
+  result Json
+
+  schemaVersion String   @default("1")
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Snapshot de simulación what-if (inputs + resultado).
+model SavedSimulationRun {
+  id           String @id @default(uuid())
+  userId       String
+  scenarioType String
+  inputs       Json
+  result       Json
+
+  schemaVersion String   @default("1")
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scenarioType])
+  @@index([expiresAt])
 }
 
 // ==========================================

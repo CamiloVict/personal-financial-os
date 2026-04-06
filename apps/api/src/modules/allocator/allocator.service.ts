@@ -206,4 +206,58 @@ export class AllocatorService {
       confidence,
     };
   }
+
+  private readonly snapshotTtlMs = 30 * 24 * 60 * 60 * 1000;
+
+  async saveAllocatorSnapshot(
+    userId: string,
+    result: AllocatorResult,
+  ): Promise<{ savedAt: string; expiresAt: string }> {
+    await this.prisma.savedAllocatorAnalysis.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+    const expiresAt = new Date(Date.now() + this.snapshotTtlMs);
+    await this.prisma.$transaction([
+      this.prisma.savedAllocatorAnalysis.deleteMany({ where: { userId } }),
+      this.prisma.savedAllocatorAnalysis.create({
+        data: {
+          userId,
+          result: result as object,
+          expiresAt,
+        },
+      }),
+    ]);
+    const row = await this.prisma.savedAllocatorAnalysis.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return {
+      savedAt: row!.createdAt.toISOString(),
+      expiresAt: row!.expiresAt.toISOString(),
+    };
+  }
+
+  async getLatestAllocatorSnapshot(userId: string): Promise<{
+    plan: AllocatorResult;
+    savedAt: string;
+    expiresAt: string;
+  } | null> {
+    await this.prisma.savedAllocatorAnalysis.deleteMany({
+      where: { userId, expiresAt: { lt: new Date() } },
+    });
+    const row = await this.prisma.savedAllocatorAnalysis.findFirst({
+      where: { userId, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!row) return null;
+    return {
+      plan: row.result as unknown as AllocatorResult,
+      savedAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+    };
+  }
+
+  async deleteAllocatorSnapshot(userId: string): Promise<void> {
+    await this.prisma.savedAllocatorAnalysis.deleteMany({ where: { userId } });
+  }
 }

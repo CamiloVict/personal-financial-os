@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { buildSimulatorExplanation } from '../../common/explanation/simulator-explanation';
+import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { ConfidenceService } from '../confidence/confidence.service';
 import {
   SimulationResult,
@@ -9,11 +11,24 @@ import {
   SimulateTaxAdvantagedInput,
   SimulateBusinessInput,
   SimulateCustomInput,
+  SIMULATOR_SCENARIO_TYPES,
+  SimulatorScenarioTypeKey,
 } from './simulator.contracts';
 
 @Injectable()
 export class SimulatorService {
-  constructor(private readonly confidenceService: ConfidenceService) {}
+  constructor(
+    private readonly confidenceService: ConfidenceService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  private readonly snapshotTtlMs = 30 * 24 * 60 * 60 * 1000;
+
+  private assertScenarioType(t: string): asserts t is SimulatorScenarioTypeKey {
+    if (!(SIMULATOR_SCENARIO_TYPES as readonly string[]).includes(t)) {
+      throw new BadRequestException(`scenarioType inválido: ${t}`);
+    }
+  }
 
   // 1. Property Purchase vs Market
   async simulatePropertyPurchase(userId: string, input: SimulatePropertyPurchaseInput): Promise<SimulationResult> {
@@ -531,5 +546,86 @@ export class SimulatorService {
       explanation,
       confidence: this.confidenceService.evaluateSimulation(),
     };
+  }
+
+  async saveSimulationSnapshot(
+    userId: string,
+    scenarioType: string,
+    inputs: Record<string, unknown>,
+    result: SimulationResult,
+  ): Promise<{ savedAt: string; expiresAt: string }> {
+    this.assertScenarioType(scenarioType);
+    await this.prisma.savedSimulationRun.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+    const expiresAt = new Date(Date.now() + this.snapshotTtlMs);
+    await this.prisma.$transaction([
+      this.prisma.savedSimulationRun.deleteMany({
+        where: { userId, scenarioType },
+      }),
+      this.prisma.savedSimulationRun.create({
+        data: {
+          userId,
+          scenarioType,
+          inputs: inputs as Prisma.InputJsonValue,
+          result: JSON.parse(JSON.stringify(result)) as Prisma.InputJsonValue,
+          expiresAt,
+        },
+      }),
+    ]);
+    const row = await this.prisma.savedSimulationRun.findFirst({
+      where: { userId, scenarioType },
+      orderBy: { createdAt: 'desc' },
+    });
+    return {
+      savedAt: row!.createdAt.toISOString(),
+      expiresAt: row!.expiresAt.toISOString(),
+    };
+  }
+
+  async getLatestSimulationSnapshot(
+    userId: string,
+    scenarioType?: string,
+  ): Promise<{
+    scenarioType: string;
+    inputs: Record<string, unknown>;
+    result: SimulationResult;
+    savedAt: string;
+    expiresAt: string;
+  } | null> {
+    await this.prisma.savedSimulationRun.deleteMany({
+      where: { userId, expiresAt: { lt: new Date() } },
+    });
+    const where: {
+      userId: string;
+      expiresAt: { gt: Date };
+      scenarioType?: string;
+    } = { userId, expiresAt: { gt: new Date() } };
+    if (scenarioType !== undefined && scenarioType !== '') {
+      this.assertScenarioType(scenarioType);
+      where.scenarioType = scenarioType;
+    }
+    const row = await this.prisma.savedSimulationRun.findFirst({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!row) return null;
+    return {
+      scenarioType: row.scenarioType,
+      inputs: row.inputs as Record<string, unknown>,
+      result: row.result as unknown as SimulationResult,
+      savedAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+    };
+  }
+
+  async deleteSimulationSnapshot(
+    userId: string,
+    scenarioType: string,
+  ): Promise<void> {
+    this.assertScenarioType(scenarioType);
+    await this.prisma.savedSimulationRun.deleteMany({
+      where: { userId, scenarioType },
+    });
   }
 }

@@ -1,12 +1,18 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useSimulateAllocatorScenarios } from '@/features/allocator/api/queries';
+import {
+  useSimulateAllocatorScenarios,
+  useAllocatorSavedLatest,
+  useSaveAllocatorSnapshot,
+  useDeleteAllocatorSnapshot,
+} from '@/features/allocator/api/queries';
 import type { AllocatorPlan } from '@/features/allocator/types';
 import {
   AllocatorPageHeader,
   AllocatorCapitalForm,
   AllocatorScenariosSection,
+  AllocatorSnapshotBar,
 } from '@/features/allocator/components';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 import { ConfidenceBadge } from '@/shared/ui/ConfidenceBadge';
@@ -19,6 +25,10 @@ import { useGlobalStore } from '@/shared/store/global';
 
 export default function AllocatorPage() {
   const simulateMutation = useSimulateAllocatorScenarios();
+  const { data: savedLatest, isLoading: savedLoading } =
+    useAllocatorSavedLatest();
+  const saveSnapshot = useSaveAllocatorSnapshot();
+  const deleteSnapshot = useDeleteAllocatorSnapshot();
   const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
 
@@ -101,6 +111,23 @@ export default function AllocatorPage() {
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <AllocatorPageHeader />
+
+      <AllocatorSnapshotBar
+        saved={savedLatest ?? null}
+        savedLoading={savedLoading}
+        hasPlan={Boolean(plan)}
+        onSave={() => {
+          if (plan) saveSnapshot.mutate(plan);
+        }}
+        onRestore={() => {
+          if (!savedLatest) return;
+          setPlan(savedLatest.plan);
+          setAvailableCapital(String(savedLatest.plan.availableCapital));
+        }}
+        onForget={() => deleteSnapshot.mutate()}
+        isSaving={saveSnapshot.isPending}
+        isForgetting={deleteSnapshot.isPending}
+      />
 
       <AllocatorCapitalForm
         availableCapital={availableCapital}

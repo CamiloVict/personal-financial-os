@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post } from '@nestjs/common';
 import { DbUserId } from '../../auth/db-user.decorator';
 import { AllocatorService } from './allocator.service';
 import { AllocatorInput, AllocatorResult } from './allocator.contracts';
@@ -17,5 +17,25 @@ export class AllocatorController {
       userId,
       input.availableCapital,
     );
+  }
+
+  /** Última asignación guardada (vigente hasta 30 días). */
+  @Get('saved/latest')
+  getSavedLatest(@DbUserId() userId: string) {
+    return this.allocatorService.getLatestAllocatorSnapshot(userId);
+  }
+
+  /** Guarda el plan actual; sustituye cualquier guardado anterior del usuario. */
+  @Post('saved')
+  saveSnapshot(
+    @DbUserId() userId: string,
+    @Body() body: { plan: AllocatorResult },
+  ) {
+    return this.allocatorService.saveAllocatorSnapshot(userId, body.plan);
+  }
+
+  @Delete('saved')
+  deleteSaved(@DbUserId() userId: string) {
+    return this.allocatorService.deleteAllocatorSnapshot(userId);
   }
 }

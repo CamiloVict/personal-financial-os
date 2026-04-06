@@ -84,3 +84,14 @@ export interface SimulateCustomInput {
   // Generic
   yearsToSimulate: number;
 }
+
+/** Alineado con ScenarioType del cliente web. */
+export const SIMULATOR_SCENARIO_TYPES = [
+  'PROPERTY',
+  'DEBT_VS_INVEST',
+  'TAX_ADVANTAGED',
+  'BUSINESS',
+  'CUSTOM',
+] as const;
+
+export type SimulatorScenarioTypeKey = (typeof SIMULATOR_SCENARIO_TYPES)[number];

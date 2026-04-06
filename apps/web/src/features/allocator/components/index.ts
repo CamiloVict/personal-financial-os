@@ -4,3 +4,4 @@ export { AllocatorScenariosSection } from './AllocatorScenariosSection';
 export { AllocatorPlanSummary } from './AllocatorPlanSummary';
 export { AllocatorScenariosEmpty } from './AllocatorScenariosEmpty';
 export { AllocatorScenarioItem } from './AllocatorScenarioItem';
+export { AllocatorSnapshotBar } from './AllocatorSnapshotBar';

@@ -7,6 +7,9 @@ import {
   useSimulateTaxAdvantaged,
   useSimulateBusiness,
   useSimulateCustom,
+  useSimulatorSavedLatest,
+  useSaveSimulatorSnapshot,
+  useDeleteSimulatorSnapshot,
 } from '@/features/simulator/api/queries';
 import type { ScenarioType, SimulationResult } from '@/features/simulator/types';
 import {
@@ -20,7 +23,12 @@ import {
   SimulatorFormSubmit,
   SimulatorResultsEmpty,
   SimulatorResultsPanel,
+  SimulatorSnapshotBar,
 } from '@/features/simulator/components';
+import {
+  applySimulatorSavedInputs,
+  collectSimulatorInputs,
+} from '@/features/simulator/utils/applySimulatorSavedInputs';
 import { ExplanationPanel } from '@/shared/ui/ExplanationPanel';
 import { useValuationPresentation } from '@/features/currency/hooks/useValuationPresentation';
 import {
@@ -39,6 +47,11 @@ export default function SimulatorPage() {
 
   const [activeScenario, setActiveScenario] = useState<ScenarioType>('PROPERTY');
   const [result, setResult] = useState<SimulationResult | null>(null);
+
+  const { data: simSaved, isLoading: simSavedLoading } =
+    useSimulatorSavedLatest(activeScenario);
+  const saveSimSnapshot = useSaveSimulatorSnapshot();
+  const deleteSimSnapshot = useDeleteSimulatorSnapshot();
 
   const valuationAsOfDate = useGlobalStore((s) => s.valuationAsOfDate);
   const displayValuationMode = useGlobalStore((s) => s.displayValuationMode);
@@ -201,6 +214,76 @@ export default function SimulatorPage() {
     setResult(null);
   };
 
+  const simulatorInputState = {
+    propertyValue,
+    downPayment,
+    interestRateAnnual,
+    loanTermYears,
+    expectedMonthlyRent,
+    expectedAnnualAppreciation,
+    maintenanceAnnualPercentage,
+    baselineInvestmentReturn,
+    debtBalance,
+    debtInterestRateAnnual,
+    minimumMonthlyPayment,
+    monthlyExtraCapital,
+    investmentReturnAnnual,
+    yearsToSimulateDebt,
+    monthlyContribution,
+    marginalTaxRate,
+    taxInvestmentReturnAnnual,
+    yearsToSimulateTax,
+    initialCapital,
+    monthlyOperatingCost,
+    expectedMonthlyRevenue,
+    passiveMarketReturnAnnual,
+    yearsToSimulateBusiness,
+    customBaselineInitialCapital,
+    customBaselineMonthlyContribution,
+    customBaselineAnnualReturn,
+    customScenarioInitialCapital,
+    customScenarioMonthlyContribution,
+    customScenarioAnnualReturn,
+    customScenarioAnnualCost,
+    customYearsToSimulate,
+  };
+
+  const applySavedInputsToForm = (inputs: Record<string, unknown>) => {
+    applySimulatorSavedInputs(activeScenario, inputs, {
+      setPropertyValue,
+      setDownPayment,
+      setInterestRateAnnual,
+      setLoanTermYears,
+      setExpectedMonthlyRent,
+      setExpectedAnnualAppreciation,
+      setMaintenanceAnnualPercentage,
+      setBaselineInvestmentReturn,
+      setDebtBalance,
+      setDebtInterestRateAnnual,
+      setMinimumMonthlyPayment,
+      setMonthlyExtraCapital,
+      setInvestmentReturnAnnual,
+      setYearsToSimulateDebt,
+      setMonthlyContribution,
+      setMarginalTaxRate,
+      setTaxInvestmentReturnAnnual,
+      setYearsToSimulateTax,
+      setInitialCapital,
+      setMonthlyOperatingCost,
+      setExpectedMonthlyRevenue,
+      setPassiveMarketReturnAnnual,
+      setYearsToSimulateBusiness,
+      setCustomBaselineInitialCapital,
+      setCustomBaselineMonthlyContribution,
+      setCustomBaselineAnnualReturn,
+      setCustomScenarioInitialCapital,
+      setCustomScenarioMonthlyContribution,
+      setCustomScenarioAnnualReturn,
+      setCustomScenarioAnnualCost,
+      setCustomYearsToSimulate,
+    });
+  };
+
   return (
     <div className="space-y-3 animate-in fade-in duration-500">
       <SimulatorPageHeader />
@@ -302,6 +385,31 @@ export default function SimulatorPage() {
         </div>
 
         <div className="lg:col-span-8 space-y-4">
+          <SimulatorSnapshotBar
+            activeScenario={activeScenario}
+            saved={simSaved ?? null}
+            savedLoading={simSavedLoading}
+            hasResult={Boolean(result)}
+            onSave={() => {
+              if (!result) return;
+              saveSimSnapshot.mutate({
+                scenarioType: activeScenario,
+                inputs: collectSimulatorInputs(
+                  activeScenario,
+                  simulatorInputState,
+                ),
+                result,
+              });
+            }}
+            onRestore={() => {
+              if (!simSaved) return;
+              applySavedInputsToForm(simSaved.inputs);
+              setResult(simSaved.result);
+            }}
+            onForget={() => deleteSimSnapshot.mutate(activeScenario)}
+            isSaving={saveSimSnapshot.isPending}
+            isForgetting={deleteSimSnapshot.isPending}
+          />
           {!result ? (
             <SimulatorResultsEmpty />
           ) : (

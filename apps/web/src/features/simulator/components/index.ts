@@ -8,3 +8,4 @@ export { SimulatorCustomFields } from './SimulatorCustomFields';
 export { SimulatorFormSubmit } from './SimulatorFormSubmit';
 export { SimulatorResultsEmpty } from './SimulatorResultsEmpty';
 export { SimulatorResultsPanel } from './SimulatorResultsPanel';
+export { SimulatorSnapshotBar } from './SimulatorSnapshotBar';
