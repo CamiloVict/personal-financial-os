@@ -27,6 +27,14 @@ export interface AllocationScenario {
   actionData?: any;
 }
 
+/** Menú alternativo: reparte el 100% del capital de entrada (USD libro) sin el orden fiscal→deuda→déficit. */
+export interface CapitalBlendMenu {
+  id: string;
+  title: string;
+  description: string;
+  scenarios: AllocationScenario[];
+}
+
 export interface AllocatorResult {
   userId: string;
   availableCapital: number;
@@ -39,6 +47,11 @@ export interface AllocatorResult {
    * Solo aparece cuando hubo capital sin asignar tras fiscal/deuda/metas mínimas.
    */
   surplusAlternatives?: AllocationScenario[];
+  /**
+   * Vistas de referencia que reparten todo el capital entre liquidez, inversión ilustrativa y metas
+   * (pesos del déficit en USD libro). Mutuamente excluyentes entre sí y con la columna principal.
+   */
+  capitalBlendMenus?: CapitalBlendMenu[];
   explanation: FinancialExplanation;
   confidence: FinancialConfidence;
 }

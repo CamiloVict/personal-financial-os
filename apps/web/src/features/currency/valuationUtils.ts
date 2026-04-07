@@ -207,6 +207,13 @@ export function linesFromAllocatorPlan(
       modeledAmount: number;
       expectedReturnAmount: number;
     }>;
+    capitalBlendMenus?: Array<{
+      scenarios: Array<{
+        id: string;
+        modeledAmount: number;
+        expectedReturnAmount: number;
+      }>;
+    }>;
   },
   asOf: string,
 ): ValuationLineInput[] {
@@ -245,6 +252,11 @@ export function linesFromAllocatorPlan(
   }
   for (const sc of plan.surplusAlternatives ?? []) {
     pushScenarioLines(sc);
+  }
+  for (const menu of plan.capitalBlendMenus ?? []) {
+    for (const sc of menu.scenarios) {
+      pushScenarioLines(sc);
+    }
   }
   return lines;
 }

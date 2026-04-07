@@ -51,7 +51,7 @@ export function AllocatorSnapshotBar({
               <>
                 <p className="font-semibold text-amber-900">Asignación guardada</p>
                 <p className="text-amber-800/90 mt-0.5">
-                  Capital modelo:{' '}
+                  Capital modelo (USD libro):{' '}
                   <span className="font-mono">
                     {Number(saved!.plan.availableCapital).toLocaleString('es-CO')}
                   </span>

@@ -1,4 +1,4 @@
-import type { AllocatorPlan } from '../types';
+import type { AllocatorEntryMeta, AllocatorPlan } from '../types';
 import { AllocatorPlanSummary } from './AllocatorPlanSummary';
 import { AllocatorScenariosEmpty } from './AllocatorScenariosEmpty';
 import { AllocatorScenarioItem } from './AllocatorScenarioItem';
@@ -14,6 +14,7 @@ interface AllocatorScenariosSectionProps {
     { modeled: number; expectedReturn: number }
   >;
   presentationLoading?: boolean;
+  entryMeta?: AllocatorEntryMeta | null;
 }
 
 export function AllocatorScenariosSection({
@@ -24,6 +25,7 @@ export function AllocatorScenariosSection({
   presentedCurrency,
   presentedByScenarioId,
   presentationLoading,
+  entryMeta,
 }: AllocatorScenariosSectionProps) {
   return (
     <div className="mt-6 animate-in slide-in-from-bottom-8 duration-500">
@@ -42,6 +44,7 @@ export function AllocatorScenariosSection({
         presentedAssigned={presentedAssigned}
         presentedCurrency={presentedCurrency}
         presentationLoading={presentationLoading}
+        entryMeta={entryMeta}
       />
 
       {plan.engineNotes && plan.engineNotes.length > 0 ? (
@@ -51,7 +54,7 @@ export function AllocatorScenariosSection({
               key={i}
               className="rounded-lg border border-sky-200/80 bg-sky-50/80 px-3 py-2 text-[10px] text-sky-950/90 leading-snug"
             >
-              <span className="font-semibold text-sky-900">Liquidez: </span>
+              <span className="font-semibold text-sky-900">Nota: </span>
               {note}
             </li>
           ))}
@@ -78,6 +81,47 @@ export function AllocatorScenariosSection({
           })}
         </div>
       )}
+
+      {plan.capitalBlendMenus && plan.capitalBlendMenus.length > 0 ? (
+        <div className="mt-8 pt-6 border-t border-violet-200/70">
+          <h3 className="text-xs font-bold text-violet-900/90 tracking-tight mb-1">
+            Otras formas de repartir todo el capital de entrada
+          </h3>
+          <p className="text-[10px] text-violet-900/75 mb-4 leading-relaxed max-w-3xl">
+            Cada bloque suma el <strong className="font-medium">100% del capital</strong> que ingresaste (USD libro en
+            el motor), mezclando liquidez, inversión ilustrativa y metas según el peso del déficit en USD. Son{' '}
+            <strong className="font-medium">alternativas</strong> al recorrido de arriba (fiscal → deuda → déficit →
+            sobrante): no las mezcles con esa columna como si fueran adicionales.
+          </p>
+          <div className="space-y-8">
+            {plan.capitalBlendMenus.map((menu) => (
+              <div key={menu.id}>
+                <p className="text-[11px] font-bold text-slate-800 mb-0.5">{menu.title}</p>
+                <p className="text-[10px] text-slate-500 mb-3 leading-relaxed max-w-3xl">
+                  {menu.description}
+                </p>
+                <div className="space-y-3">
+                  {menu.scenarios.map((scenario, index) => {
+                    const pres = presentedByScenarioId?.[scenario.id];
+                    return (
+                      <AllocatorScenarioItem
+                        key={scenario.id}
+                        scenario={scenario}
+                        index={index}
+                        presentedModeled={pres?.modeled ?? null}
+                        presentedReturn={pres?.expectedReturn ?? null}
+                        presentedCurrency={presentedCurrency}
+                        presentationLoading={presentationLoading}
+                        variant="reference"
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {plan.surplusAlternatives && plan.surplusAlternatives.length > 0 ? (
         <div className="mt-8 pt-6 border-t border-amber-200/60">

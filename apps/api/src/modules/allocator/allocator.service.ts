@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { createNode, emptyFinancialExplanation } from '@personal-finance-os/explanation';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { ConfidenceService } from '../confidence/confidence.service';
-import { AllocatorResult, AllocationScenario } from './allocator.contracts';
+import {
+  AllocatorResult,
+  AllocationScenario,
+  CapitalBlendMenu,
+} from './allocator.contracts';
+import { ConversionService } from '../currency/conversion.service';
 import { v4 as uuidv4 } from 'uuid';
 
 /** Reparte `total` en `parts` enteros que suman exactamente `total`. */
@@ -19,6 +24,7 @@ export class AllocatorService {
   constructor(
     private prisma: PrismaService,
     private readonly confidenceService: ConfidenceService,
+    private readonly conversion: ConversionService,
   ) {}
 
   async simulateCapitalAllocation(
@@ -27,6 +33,9 @@ export class AllocatorService {
   ): Promise<AllocatorResult> {
     const scenarios: AllocationScenario[] = [];
     let unallocatedCapital = availableCapital;
+    const asOf = new Date();
+    const conversionWarnings: string[] = [];
+    const illustrativeAnnualPct = 7;
 
     const year = new Date().getFullYear();
     const userProfile = await this.prisma.taxProfile.findFirst({
@@ -101,15 +110,26 @@ export class AllocatorService {
       const rate = Number(debt.interestRate || 0);
 
       if (rate > 15) {
-        const remainingAmount = Number(debt.remainingAmount);
-        const suggestedAmount = Math.min(unallocatedCapital, remainingAmount);
+        const remainingUsd = await this.amountToUsdBook(
+          Number(debt.remainingAmount),
+          debt.currency || 'USD',
+          asOf,
+        );
+        if (remainingUsd === null) {
+          conversionWarnings.push(
+            `Deuda «${debt.name}»: sin conversión a USD libro; no se sugiere abono en el modelo.`,
+          );
+          continue;
+        }
+        if (remainingUsd <= 0) continue;
+        const suggestedAmount = Math.min(unallocatedCapital, remainingUsd);
         const expectedInterestSaved = suggestedAmount * (rate / 100);
 
         scenarios.push({
           id: uuidv4(),
           type: 'IMPACT_DEBT_PAYDOWN',
           title: `Escenario: abono a «${debt.name}»`,
-          description: `Si abonaras $${Math.round(suggestedAmount).toLocaleString()} a esta obligación al ${rate}% EA en el modelo, el interés evitado anualizado estimado sería $${Math.round(expectedInterestSaved).toLocaleString()}.`,
+          description: `Si abonaras $${Math.round(suggestedAmount).toLocaleString()} USD libro a esta obligación al ${rate}% EA en el modelo, el interés evitado anualizado estimado sería $${Math.round(expectedInterestSaved).toLocaleString()}.`,
           modeledAmount: Math.round(suggestedAmount),
           expectedReturnAmount: Math.round(expectedInterestSaved),
           returnPercentage: rate,
@@ -132,21 +152,42 @@ export class AllocatorService {
       return ta - tb;
     });
 
+    /** Déficit de cada meta en USD libro (misma unidad que `availableCapital`). */
+    const shortfallUsdByGoalId = new Map<string, number>();
+    for (const g of openGoals) {
+      const sfRaw = Math.max(
+        0,
+        Number(g.targetAmount) - Number(g.currentAmount),
+      );
+      const sfUsd = await this.amountToUsdBook(
+        sfRaw,
+        g.currency || 'COP',
+        asOf,
+      );
+      if (sfUsd === null) {
+        conversionWarnings.push(
+          `Meta «${g.name}»: sin conversión del déficit a USD libro (FX); se omite en el reparto secuencial.`,
+        );
+        continue;
+      }
+      if (sfUsd > 0) shortfallUsdByGoalId.set(g.id, sfUsd);
+    }
+
     for (const goal of openGoals) {
       if (unallocatedCapital <= 0) break;
-      const shortfall =
-        Number(goal.targetAmount) - Number(goal.currentAmount);
-      const suggestedAmount = Math.min(unallocatedCapital, shortfall);
+      const shortfallUsd = shortfallUsdByGoalId.get(goal.id);
+      if (shortfallUsd == null || shortfallUsd <= 0) continue;
+      const suggestedAmount = Math.min(unallocatedCapital, shortfallUsd);
 
       scenarios.push({
         id: uuidv4(),
         type: 'IMPACT_GOAL_FUNDING',
         title: `Escenario: aporte a meta «${goal.name}»`,
-        description: `Si asignaras $${Math.round(suggestedAmount).toLocaleString()} a esta meta${
+        description: `Hasta el déficit en USD libro (${Math.round(shortfallUsd).toLocaleString()} máx. en esta corrida). Meta registrada en ${goal.currency || 'COP'}; no proyecta rendimiento adicional.${
           goal.targetDate
-            ? ` con fecha objetivo ${goal.targetDate.toLocaleDateString()}`
+            ? ` Fecha objetivo: ${goal.targetDate.toLocaleDateString()}.`
             : ''
-        }, el modelo solo registra el monto; no proyecta rendimiento adicional.`,
+        }`,
         modeledAmount: Math.round(suggestedAmount),
         expectedReturnAmount: 0,
         returnPercentage: 0,
@@ -156,11 +197,24 @@ export class AllocatorService {
       unallocatedCapital -= suggestedAmount;
     }
 
+    const goalsWithShortfallUsd = openGoals
+      .filter((g) => (shortfallUsdByGoalId.get(g.id) ?? 0) > 0)
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        shortfallUsd: shortfallUsdByGoalId.get(g.id)!,
+      }));
+
+    const capitalBlendMenus = this.buildCapitalBlendMenus(
+      availableCapital,
+      goalsWithShortfallUsd,
+      illustrativeAnnualPct,
+    );
+
     const surplusBeforeSplit = unallocatedCapital;
     let surplusAlternatives: AllocationScenario[] | undefined;
     /** Umbral mínimo para sugerir reparto del sobrante (evita ruido con montos triviales). */
     const MIN_SURPLUS_TO_SPLIT = 100;
-    const illustrativeAnnualPct = 7;
 
     if (surplusBeforeSplit >= MIN_SURPLUS_TO_SPLIT) {
       const surplus = Math.round(surplusBeforeSplit);
@@ -296,7 +350,7 @@ export class AllocatorService {
         'Simulación heurística de asignación de capital',
       ),
       summary:
-        'El orden del modelo aplica primero supuestos de renta exenta (AFC/FPV), luego deudas con tasa >15% EA y luego metas abiertas; si sobra capital, propone un reparto ilustrativo (liquidez / inversión / metas extra) y alternativas de referencia; es ilustrativo, no una orden de prioridad personal.',
+        'Metas y deudas se comparan con el capital en USD libro (FX a la fecha del cálculo). El orden principal: AFC/FPV, deudas >15% EA, déficit de metas, sobrante repartido; además hay menús que reparten el 100% del capital de otra forma y alternativas de sobrante; todo ilustrativo.',
       inputs: [
         createNode({
           kind: 'input',
@@ -331,6 +385,20 @@ export class AllocatorService {
             'Si queda capital libre, reparto orientativo ~25% liquidez, ~45% inversión ilustrativa y el resto aportes adicionales a hasta 3 metas (por plazo). Las “otras formas” son mutuamente excluyentes entre sí y con ese reparto.',
           ruleRef: 'ALLOC-SURPLUS-SPLIT',
         }),
+        createNode({
+          kind: 'rule',
+          label: 'Metas y deudas en USD libro',
+          description:
+            'Déficit de metas y saldos de deuda se convierten a USD libro con FX a la fecha del cálculo para comparar con el capital de entrada (también USD libro).',
+          ruleRef: 'ALLOC-FX-GOALS-DEBT',
+        }),
+        createNode({
+          kind: 'rule',
+          label: 'Menús de reparto total',
+          description:
+            'Varias formas de repartir el 100% del capital entre liquidez, inversión ilustrativa y metas (ponderadas por déficit en USD). Son referencia; no acumulan con la columna principal.',
+          ruleRef: 'ALLOC-BLEND-MENUS',
+        }),
       ],
       assumptions: [
         'Ingreso anual = suma de streams INCOME × 12 sin ajuste TRM.',
@@ -363,6 +431,9 @@ export class AllocatorService {
         'Hubo un sobrante relevante después de cubrir metas/deuda/fiscal: revisá las tarjetas “Sobrante (modelo)” y la sección de alternativas al final; no combines mentalidades distintas (reparto vs 100% en una sola idea).',
       );
     }
+    for (const w of conversionWarnings) {
+      engineNotes.push(w);
+    }
 
     return {
       userId,
@@ -373,10 +444,175 @@ export class AllocatorService {
         surplusAlternatives && surplusAlternatives.length > 0
           ? surplusAlternatives
           : undefined,
+      capitalBlendMenus:
+        capitalBlendMenus && capitalBlendMenus.length > 0
+          ? capitalBlendMenus
+          : undefined,
       explanation,
       confidence,
       engineNotes: engineNotes.length ? engineNotes : undefined,
     };
+  }
+
+  /** Lleva `amount` desde `currency` a USD libro; null si falla FX. */
+  private async amountToUsdBook(
+    amount: number,
+    currency: string,
+    asOf: Date,
+  ): Promise<number | null> {
+    const c = (currency || 'USD').toUpperCase();
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    if (c === 'USD') return amount;
+    try {
+      const r = await this.conversion.convert(amount, c, 'USD', asOf);
+      return r.amount;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Menús que reparten el 100% del capital (USD libro) sin seguir fiscal→deuda→déficit.
+   */
+  private buildCapitalBlendMenus(
+    availableCapital: number,
+    goalsWithShortfall: Array<{ id: string; name: string; shortfallUsd: number }>,
+    illustrativeAnnualPct: number,
+  ): CapitalBlendMenu[] | undefined {
+    const total = Math.round(availableCapital);
+    if (total < 50) return undefined;
+
+    const presets: Array<{
+      id: string;
+      title: string;
+      description: string;
+      wLiq: number;
+      wInv: number;
+      wGoals: number;
+    }> = [
+      {
+        id: 'blend-balanced',
+        title: 'Reparto equilibrado (referencia)',
+        description:
+          '~25% liquidez, ~45% inversión ilustrativa, ~30% metas (ponderado por déficit USD). Compará con la columna principal.',
+        wLiq: 0.25,
+        wInv: 0.45,
+        wGoals: 0.3,
+      },
+      {
+        id: 'blend-growth',
+        title: 'Reparto crecimiento (referencia)',
+        description:
+          '~12% liquidez, ~58% inversión ilustrativa, ~30% metas. Más riesgo nominal en el tramo de inversión del modelo.',
+        wLiq: 0.12,
+        wInv: 0.58,
+        wGoals: 0.3,
+      },
+      {
+        id: 'blend-liquidity',
+        title: 'Reparto liquidez (referencia)',
+        description:
+          '~40% liquidez, ~35% inversión ilustrativa, ~25% metas. Útil si priorizás colchón.',
+        wLiq: 0.4,
+        wInv: 0.35,
+        wGoals: 0.25,
+      },
+    ];
+
+    const menus: CapitalBlendMenu[] = [];
+
+    for (const p of presets) {
+      const liq = Math.round(total * p.wLiq);
+      const inv = Math.round(total * p.wInv);
+      let goalPool = total - liq - inv;
+      if (goalPool < 0) {
+        goalPool = 0;
+      }
+
+      const menuScenarios: AllocationScenario[] = [];
+
+      menuScenarios.push({
+        id: uuidv4(),
+        type: 'INVESTMENT_OPPORTUNITY',
+        title: `${p.title} — liquidez`,
+        description: `${Math.round(liq).toLocaleString()} USD libro del total de entrada en este menú.`,
+        modeledAmount: liq,
+        expectedReturnAmount: 0,
+        returnPercentage: 0,
+        priorityScore: 0,
+        actionData: { blendMenuId: p.id, bucket: 'BLEND_LIQUIDITY' },
+      });
+
+      if (goalsWithShortfall.length === 0) {
+        const invTotal = inv + goalPool;
+        menuScenarios.push({
+          id: uuidv4(),
+          type: 'INVESTMENT_OPPORTUNITY',
+          title: `${p.title} — inversión ilustrativa`,
+          description: `${Math.round(invTotal).toLocaleString()} USD libro (incluye el tramo que iría a metas si no hubiera abiertas). Referencia ${illustrativeAnnualPct}% anual.`,
+          modeledAmount: invTotal,
+          expectedReturnAmount: Math.round(
+            invTotal * (illustrativeAnnualPct / 100),
+          ),
+          returnPercentage: illustrativeAnnualPct,
+          priorityScore: 0,
+          actionData: { blendMenuId: p.id, bucket: 'BLEND_INVEST' },
+        });
+      } else {
+        menuScenarios.push({
+          id: uuidv4(),
+          type: 'INVESTMENT_OPPORTUNITY',
+          title: `${p.title} — inversión ilustrativa`,
+          description: `${Math.round(inv).toLocaleString()} USD libro. Referencia ${illustrativeAnnualPct}% anual en el modelo.`,
+          modeledAmount: inv,
+          expectedReturnAmount: Math.round(inv * (illustrativeAnnualPct / 100)),
+          returnPercentage: illustrativeAnnualPct,
+          priorityScore: 0,
+          actionData: { blendMenuId: p.id, bucket: 'BLEND_INVEST' },
+        });
+
+        if (goalPool > 0) {
+          const sumW = goalsWithShortfall.reduce(
+            (a, g) => a + g.shortfallUsd,
+            0,
+          );
+          let allocated = 0;
+          for (let i = 0; i < goalsWithShortfall.length; i++) {
+            const g = goalsWithShortfall[i]!;
+            const last = i === goalsWithShortfall.length - 1;
+            const share =
+              sumW > 0
+                ? g.shortfallUsd / sumW
+                : 1 / goalsWithShortfall.length;
+            const amt = last
+              ? Math.max(0, goalPool - allocated)
+              : Math.round(goalPool * share);
+            allocated += amt;
+            if (amt <= 0) continue;
+            menuScenarios.push({
+              id: uuidv4(),
+              type: 'IMPACT_GOAL_FUNDING',
+              title: `${p.title} — «${g.name}»`,
+              description: `Tramo hacia la meta según peso del déficit (USD libro) dentro de este menú.`,
+              modeledAmount: amt,
+              expectedReturnAmount: 0,
+              returnPercentage: 0,
+              priorityScore: 0,
+              actionData: { blendMenuId: p.id, goalId: g.id },
+            });
+          }
+        }
+      }
+
+      menus.push({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        scenarios: menuScenarios,
+      });
+    }
+
+    return menus.length ? menus : undefined;
   }
 
   private readonly snapshotTtlMs = 30 * 24 * 60 * 60 * 1000;

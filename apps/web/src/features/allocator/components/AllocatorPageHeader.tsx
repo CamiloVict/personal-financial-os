@@ -18,11 +18,12 @@ export function AllocatorPageHeader() {
         </div>
         <p className="page-section-subtitle max-w-3xl text-[11px] sm:text-sm">
           <strong className="font-medium text-slate-800">Pregunta:</strong> ¿Cómo distribuyo este capital? Ingresás
-          un monto <strong className="font-medium text-slate-800">hipotético</strong>; el modelo sugiere repartos
-          según deudas, perfil fiscal y metas que ya tenés en la app. Es ilustrativo:{' '}
-          <strong className="font-medium text-slate-800">no</strong> ejecuta pagos ni inversiones. Para comparar dos
-          futuros numéricos (base vs acción) usá el{' '}
-          <strong className="font-medium text-slate-800">Simulador</strong>.
+          un monto <strong className="font-medium text-slate-800">hipotético</strong> en la moneda de tu barra global (
+          <strong className="font-medium text-slate-800">COP</strong> en vista nominal/real COP,{' '}
+          <strong className="font-medium text-slate-800">USD</strong> en vista nominal USD); el backend normaliza a USD
+          libro con la fecha de valuación. El modelo sugiere repartos según deudas, fiscal y metas. Es ilustrativo:{' '}
+          <strong className="font-medium text-slate-800">no</strong> ejecuta pagos. Para escenarios what-if numéricos usá
+          el <strong className="font-medium text-slate-800">Simulador</strong>.
         </p>
       </div>
       <Link

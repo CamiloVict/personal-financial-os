@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   useSimulateAllocatorScenarios,
   useAllocatorSavedLatest,
   useSaveAllocatorSnapshot,
   useDeleteAllocatorSnapshot,
 } from '@/features/allocator/api/queries';
-import type { AllocatorPlan } from '@/features/allocator/types';
+import type { AllocatorEntryMeta, AllocatorPlan } from '@/features/allocator/types';
 import {
   AllocatorPageHeader,
   AllocatorCapitalForm,
@@ -24,6 +24,15 @@ import {
   presentedCurrencyFromRows,
 } from '@/features/currency/valuationUtils';
 import { useGlobalStore } from '@/shared/store/global';
+import {
+  allocatorInputCurrency,
+  allocatorInputHelpText,
+} from '@/features/allocator/utils/allocatorInputCurrency';
+import {
+  toBookUsd,
+  fromBookUsdToInputAmount,
+} from '@/features/allocator/utils/bookUsdConversion';
+import { ApiRequestError } from '@/shared/api/api-error';
 
 export default function AllocatorPage() {
   const simulateMutation = useSimulateAllocatorScenarios();
@@ -36,14 +45,71 @@ export default function AllocatorPage() {
 
   const [availableCapital, setAvailableCapital] = useState('');
   const [plan, setPlan] = useState<AllocatorPlan | null>(null);
+  const [capitalError, setCapitalError] = useState<string | null>(null);
+  const [submitBusy, setSubmitBusy] = useState(false);
+  const [entryMeta, setEntryMeta] = useState<AllocatorEntryMeta | null>(null);
+
+  const inputCurrency = useMemo(
+    () => allocatorInputCurrency(displayValuationMode),
+    [displayValuationMode],
+  );
+  const inputHelpText = useMemo(
+    () => allocatorInputHelpText(displayValuationMode, valuationAsOfDate),
+    [displayValuationMode, valuationAsOfDate],
+  );
+
+  useEffect(() => {
+    setEntryMeta(null);
+  }, [displayValuationMode, valuationAsOfDate]);
 
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!availableCapital || Number(availableCapital) <= 0) return;
 
-    simulateMutation.mutate(Number(availableCapital), {
-      onSuccess: (data) => setPlan(data as AllocatorPlan),
-    });
+    setCapitalError(null);
+    setSubmitBusy(true);
+
+    void (async () => {
+      const raw = Number(availableCapital);
+      try {
+        const bookUsd = await toBookUsd(raw, inputCurrency, valuationAsOfDate);
+        if (!Number.isFinite(bookUsd) || bookUsd <= 0) {
+          setSubmitBusy(false);
+          setCapitalError('Monto inválido tras la conversión a USD libro.');
+          return;
+        }
+        simulateMutation.mutate(bookUsd, {
+          onSuccess: (data) => {
+            setPlan(data as AllocatorPlan);
+            setEntryMeta({
+              inputCurrency,
+              inputAmount: raw,
+              bookUsdAmount: bookUsd,
+              valuationAsOfDate,
+            });
+          },
+          onError: (err) => {
+            const msg =
+              err instanceof ApiRequestError
+                ? err.message
+                : err instanceof Error
+                  ? err.message
+                  : 'Error al simular.';
+            setCapitalError(msg);
+          },
+          onSettled: () => setSubmitBusy(false),
+        });
+      } catch (err) {
+        setSubmitBusy(false);
+        const msg =
+          err instanceof ApiRequestError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'No se pudo convertir a USD libro. Revisá la fecha de valuación y las cotizaciones.';
+        setCapitalError(msg);
+      }
+    })();
   };
 
   const allocLines = useMemo(
@@ -84,8 +150,17 @@ export default function AllocatorPage() {
     }
     const ccy = presentedCurrencyFromRows(allocPresRows, displayValuationMode);
     const available = av.presentedAmount;
-    const unallocated = un.presentedAmount;
-    const assigned = available - unallocated;
+    const assignedFromCards = plan.scenarios.reduce((acc, sc) => {
+      const mod = find(`alloc-mod-${sc.id}`);
+      return acc + (mod?.presentedAmount ?? 0);
+    }, 0);
+    const allMainLinesOk = plan.scenarios.every(
+      (sc) => find(`alloc-mod-${sc.id}`) != null,
+    );
+    const assigned = allMainLinesOk
+      ? assignedFromCards
+      : available - un.presentedAmount;
+    const unallocated = Math.max(0, available - assigned);
     const byScenario: Record<
       string,
       { modeled: number; expectedReturn: number }
@@ -106,6 +181,11 @@ export default function AllocatorPage() {
     for (const sc of plan.surplusAlternatives ?? []) {
       fillByScenario(sc);
     }
+    for (const menu of plan.capitalBlendMenus ?? []) {
+      for (const sc of menu.scenarios) {
+        fillByScenario(sc);
+      }
+    }
     return {
       available,
       unallocated,
@@ -115,6 +195,8 @@ export default function AllocatorPage() {
         Object.keys(byScenario).length > 0 ? byScenario : undefined,
     };
   }, [plan, allocPresRows, displayValuationMode]);
+
+  const formBusy = submitBusy || simulateMutation.isPending;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
@@ -128,24 +210,49 @@ export default function AllocatorPage() {
           if (plan) saveSnapshot.mutate(plan);
         }}
         onRestore={() => {
-          if (!savedLatest) return;
-          setPlan(savedLatest.plan);
-          setAvailableCapital(String(savedLatest.plan.availableCapital));
+          void (async () => {
+            if (!savedLatest) return;
+            const p = savedLatest.plan;
+            setPlan(p);
+            setEntryMeta(null);
+            setCapitalError(null);
+            try {
+              const displayAmount = await fromBookUsdToInputAmount(
+                p.availableCapital,
+                inputCurrency,
+                valuationAsOfDate,
+              );
+              const rounded =
+                inputCurrency === 'COP'
+                  ? Math.round(displayAmount)
+                  : Math.round(displayAmount * 100) / 100;
+              setAvailableCapital(String(rounded));
+            } catch {
+              setAvailableCapital(String(p.availableCapital));
+            }
+          })();
         }}
-        onForget={() => deleteSnapshot.mutate()}
+        onForget={() => {
+          deleteSnapshot.mutate();
+          setEntryMeta(null);
+        }}
         isSaving={saveSnapshot.isPending}
         isForgetting={deleteSnapshot.isPending}
       />
 
       <AllocatorQuickCapitalChips
+        inputCurrency={inputCurrency}
         onPick={(n) => setAvailableCapital(String(n))}
-        disabled={simulateMutation.isPending}
+        disabled={formBusy}
       />
       <AllocatorCapitalForm
         availableCapital={availableCapital}
         onCapitalChange={setAvailableCapital}
         onSubmit={handleGenerate}
-        isPending={simulateMutation.isPending}
+        isPending={formBusy}
+        inputCurrency={inputCurrency}
+        helpText={inputHelpText}
+        errorMessage={capitalError}
       />
 
       {plan ? (
@@ -163,6 +270,7 @@ export default function AllocatorPage() {
             presentedCurrency={allocPresented.currency}
             presentedByScenarioId={allocPresented.byScenario}
             presentationLoading={allocPresLoading}
+            entryMeta={entryMeta}
           />
         </>
       ) : null}
